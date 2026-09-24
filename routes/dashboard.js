@@ -221,6 +221,51 @@ router.use((req, res, next) => {
 });
 
 // ------------------------------------------------------------------
+// Admin read-only oversight of the four analytics pages — routes/admin.js
+// (GET /admin/datasets/:id/view) sets session.adminViewAccountId when an
+// Admin picks "View analytics" for another account's dataset from Manage
+// Datasets, and GET /admin/exit-view clears it. resolveAccountId() is the
+// only thing that changes: it swaps in that account's id in place of the
+// Admin's own — deliberately called from ONLY the five routes below
+// (descriptive-analytics + its raw-drill-down, diagnostic-insights,
+// predictive-analytics, prescriptive-recommendations), not wired in as
+// blanket middleware, so every OTHER route in this SME-owner-facing
+// router (upload, monetization config, map/transform, review-fields, ...)
+// still resolves strictly to req.session.userId — an Admin who manually
+// visits one of those write routes while "viewing" another account only
+// ever affects their own (dataset-less) Admin account, never the
+// SME owner's data. Those four pages have no POST forms of their own
+// (confirmed before building this), so read-only oversight is exactly
+// what this does and nothing more.
+function resolveAccountId(req) {
+  if (req.session.user && req.session.user.role === 'Admin' && req.session.adminViewAccountId) {
+    return req.session.adminViewAccountId;
+  }
+  return req.session.userId;
+}
+
+// Attaches res.locals.adminViewingAccount (owner_name/business_name, or
+// null) so the four analytics templates can show a small "Viewing X as
+// admin" banner without every res.render() call in those routes needing
+// to remember to pass it — res.render() merges res.locals automatically.
+async function attachAdminViewingBanner(req, res, next) {
+  res.locals.adminViewingAccount = null;
+  if (req.session.user && req.session.user.role === 'Admin' && req.session.adminViewAccountId) {
+    try {
+      const { rows } = await pool.query(
+        `SELECT owner_name, business_name FROM sme_accounts WHERE id = $1`,
+        [req.session.adminViewAccountId]
+      );
+      res.locals.adminViewingAccount = rows[0] || null;
+    } catch (e) {
+      // Non-fatal — worst case the banner just doesn't show this request.
+      res.locals.adminViewingAccount = null;
+    }
+  }
+  next();
+}
+
+// ------------------------------------------------------------------
 // GET /  — "Monetization intelligence" / SME Owner Portal landing page
 // ------------------------------------------------------------------
 router.get('/', async (req, res, next) => {
@@ -1111,8 +1156,8 @@ function buildBusinessMetricsCards(bi, currency, datasetRowId = null) {
   };
 }
 
-router.get('/descriptive-analytics', async (req, res, next) => {
-  const accountId = req.session.userId;
+router.get('/descriptive-analytics', attachAdminViewingBanner, async (req, res, next) => {
+  const accountId = resolveAccountId(req);
   try {
     const { rows: datasets } = await pool.query(
       `SELECT id, dataset_id, dataset_name, domain, created_at
@@ -1295,7 +1340,7 @@ router.get('/descriptive-analytics', async (req, res, next) => {
 // rows themselves stay plain server-rendered HTML (_raw-drilldown-
 // rows.ejs), matching every other drill-down fragment in this app.
 router.get('/descriptive-analytics/raw-drill-down', async (req, res, next) => {
-  const accountId = req.session.userId;
+  const accountId = resolveAccountId(req);
   try {
     const datasetRowId = parseInt(req.query.dataset, 10);
     const { rows: datasetCheck } = await pool.query(
@@ -1935,8 +1980,8 @@ const DIAGNOSTIC_VIEWS = [
   { slug: 'dynamic-diagnostics', label: 'Dynamic diagnostics', icon: '🧭' },
 ];
 
-router.get('/diagnostic-insights', async (req, res, next) => {
-  const accountId = req.session.userId;
+router.get('/diagnostic-insights', attachAdminViewingBanner, async (req, res, next) => {
+  const accountId = resolveAccountId(req);
   try {
     const { rows: datasets } = await pool.query(
       `SELECT id, dataset_id, dataset_name, domain, created_at
@@ -2159,8 +2204,8 @@ const PREDICTIVE_VIEWS = [
   { slug: 'what-if', label: 'What-if scenario', icon: '🎛️' },
 ];
 
-router.get('/predictive-analytics', async (req, res, next) => {
-  const accountId = req.session.userId;
+router.get('/predictive-analytics', attachAdminViewingBanner, async (req, res, next) => {
+  const accountId = resolveAccountId(req);
   try {
     const { rows: datasets } = await pool.query(
       `SELECT id, dataset_id, dataset_name, domain, created_at
@@ -2688,8 +2733,8 @@ const PRESCRIPTIVE_VIEWS = [
   { slug: 'recommendation', label: 'Recommendation', icon: '🧭' },
 ];
 
-router.get('/prescriptive-recommendations', async (req, res, next) => {
-  const accountId = req.session.userId;
+router.get('/prescriptive-recommendations', attachAdminViewingBanner, async (req, res, next) => {
+  const accountId = resolveAccountId(req);
   try {
     const { rows: datasets } = await pool.query(
       `SELECT id, dataset_id, dataset_name, domain, created_at

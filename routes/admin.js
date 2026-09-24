@@ -24,6 +24,7 @@ const {
   WALKTHROUGH_TASKS, groupItemsByDomain,
   getEvaluationStateReadOnly, listAllEvaluationStatuses, getCompletedResponseSummary,
 } = require('../services/tamEvaluation');
+const { listAllDatasets, getDatasetForAdmin, deleteDataset } = require('../services/adminDatasets');
 
 const router = express.Router();
 router.use(requireAdmin);
@@ -34,13 +35,14 @@ router.use(requireAdmin);
 // ------------------------------------------------------------------
 router.get('/admin', async (req, res, next) => {
   try {
-    const [{ rows: countRows }, statuses] = await Promise.all([
+    const [{ rows: countRows }, statuses, allDatasets] = await Promise.all([
       pool.query(
         `SELECT COUNT(*) FILTER (WHERE role != 'Admin')::int AS sme_count,
                 COUNT(*) FILTER (WHERE role = 'Admin')::int AS admin_count
            FROM sme_accounts`
       ),
       listAllEvaluationStatuses(),
+      listAllDatasets(),
     ]);
     const counts = countRows[0];
     const completed = statuses.filter((s) => s.status === 'completed').length;
@@ -53,6 +55,7 @@ router.get('/admin', async (req, res, next) => {
       adminSection: 'home',
       smeCount: counts.sme_count,
       adminCount: counts.admin_count,
+      datasetCount: allDatasets.length,
       completed,
       inProgress,
       notStarted,
@@ -70,7 +73,7 @@ router.get('/admin/accounts', async (req, res, next) => {
   try {
     const accounts = await listAccounts(req.query.q);
     res.render('dashboard/admin-accounts', {
-      title: 'Manage accounts',
+      title: 'Manage SME Accounts',
       active: 'admin',
       adminSection: 'accounts',
       accounts,
@@ -307,7 +310,7 @@ router.get('/admin/evaluations', async (req, res, next) => {
       getCompletedResponseSummary(),
     ]);
     res.render('dashboard/admin-evaluations', {
-      title: 'Evaluations',
+      title: 'View Evaluation Report',
       active: 'admin',
       adminSection: 'evaluations',
       statuses,
@@ -341,6 +344,87 @@ router.get('/admin/evaluations/:accountId', async (req, res, next) => {
       domains: groupItemsByDomain(),
       responses,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
+// GET /admin/datasets — every dataset uploaded by every SME owner
+// account, with file/row counts and a Delete action per row.
+// ------------------------------------------------------------------
+router.get('/admin/datasets', async (req, res, next) => {
+  try {
+    const datasets = await listAllDatasets();
+    res.render('dashboard/admin-datasets', {
+      title: 'Manage datasets',
+      active: 'admin',
+      adminSection: 'datasets',
+      datasets,
+      deleted: req.query.deleted || null,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
+// GET /admin/datasets/:id/view — enters read-only "viewing as admin"
+// mode for this dataset's account, then sends the admin to Descriptive
+// analytics with that dataset selected. routes/dashboard.js's
+// resolveAccountId()/attachAdminViewingBanner() (only wired into the
+// four analytics routes, not the rest of that SME-owner-facing router)
+// are what actually make this account's data show up instead of the
+// admin's own empty one — see the comment there for why this is scoped
+// to just those four pages rather than blanket session impersonation.
+// ------------------------------------------------------------------
+router.get('/admin/datasets/:id/view', async (req, res, next) => {
+  try {
+    const dataset = await getDatasetForAdmin(req.params.id);
+    if (!dataset) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
+    req.session.adminViewAccountId = dataset.account_id;
+    return res.redirect(`/descriptive-analytics?dataset=${dataset.id}`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
+// GET /admin/exit-view — leaves "viewing as admin" mode.
+// ------------------------------------------------------------------
+router.get('/admin/exit-view', (req, res) => {
+  delete req.session.adminViewAccountId;
+  res.redirect('/admin/datasets');
+});
+
+// ------------------------------------------------------------------
+// GET/POST /admin/datasets/:id/delete — two-step confirm + delete for
+// one SME owner's dataset (all of its files/rows/cached analytics go
+// with it — see services/adminDatasets.js for exactly what cascades).
+// Irreversible, so this gets the same confirm-page pattern as the
+// admin/accounts role-change actions rather than a one-click button.
+// ------------------------------------------------------------------
+router.get('/admin/datasets/:id/delete', async (req, res, next) => {
+  try {
+    const dataset = await getDatasetForAdmin(req.params.id);
+    if (!dataset) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
+    res.render('dashboard/admin-dataset-delete-confirm', {
+      title: `Delete dataset — ${dataset.dataset_name}`,
+      active: 'admin',
+      adminSection: 'datasets',
+      dataset,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/admin/datasets/:id/delete', async (req, res, next) => {
+  try {
+    const dataset = await getDatasetForAdmin(req.params.id);
+    if (!dataset) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
+    await deleteDataset(dataset.id);
+    return res.redirect(`/admin/datasets?deleted=${encodeURIComponent(dataset.dataset_name)}`);
   } catch (err) {
     next(err);
   }

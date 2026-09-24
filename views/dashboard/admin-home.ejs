@@ -1,5 +1,5 @@
 <div class="page-title">🛡️ <span class="page-title-text">Admin</span></div>
-<p class="page-subtitle">Manage SME owner accounts and browse the TAM end-user evaluation data they log at <code>/evaluation</code>.</p>
+<p class="page-subtitle">Manage SME owner accounts and datasets, and browse the TAM end-user evaluation data they log at <code>/evaluation</code>.</p>
 
 <div class="kpi-row">
   <div class="stat-tile">
@@ -9,6 +9,10 @@
   <div class="stat-tile">
     <div class="stat-label">Admin accounts</div>
     <div class="stat-value"><%= adminCount %></div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-label">Datasets uploaded</div>
+    <div class="stat-value"><%= datasetCount %></div>
   </div>
   <div class="stat-tile">
     <div class="stat-label">Evaluations completed</div>
@@ -29,11 +33,15 @@
   <table class="table-simple">
     <tbody>
       <tr>
-        <td><strong>Manage accounts</strong><br /><span style="color: var(--text-muted); font-size: 13px;">Look up an SME owner account and change its password.</span></td>
+        <td><strong>Manage SME Accounts</strong><br /><span style="color: var(--text-muted); font-size: 13px;">Look up an SME owner account, change its password, or add/remove an admin.</span></td>
         <td style="text-align: right;"><a class="btn btn-ghost" href="/admin/accounts">Open</a></td>
       </tr>
       <tr>
-        <td><strong>Evaluations</strong><br /><span style="color: var(--text-muted); font-size: 13px;">Browse each account's task-walkthrough log and 17-item questionnaire, plus the cross-respondent summary.</span></td>
+        <td><strong>Manage Datasets</strong><br /><span style="color: var(--text-muted); font-size: 13px;">Every dataset any SME owner has uploaded — view its analytics read-only, or delete it.</span></td>
+        <td style="text-align: right;"><a class="btn btn-ghost" href="/admin/datasets">Open</a></td>
+      </tr>
+      <tr>
+        <td><strong>View Evaluation Report</strong><br /><span style="color: var(--text-muted); font-size: 13px;">Browse each account's task-walkthrough log and 17-item questionnaire, plus the cross-respondent summary.</span></td>
         <td style="text-align: right;"><a class="btn btn-ghost" href="/admin/evaluations">Open</a></td>
       </tr>
     </tbody>

@@ -1,0 +1,43 @@
+<div class="page-title">🗂️ <span class="page-title-text">Manage Datasets</span></div>
+<p class="page-subtitle">Every dataset uploaded by every SME owner account. View analytics opens it read-only in the four analytics pages; Delete removes it and everything computed from it.</p>
+
+<% if (deleted) { %>
+  <div class="alert-success">Deleted <strong><%= deleted %></strong>.</div>
+<% } %>
+
+<div class="form-card wide" style="max-width: none;">
+  <div class="table-scroll">
+    <table class="table-simple">
+      <thead>
+        <tr>
+          <th>Dataset</th>
+          <th>Owner</th>
+          <th>Domain</th>
+          <th>Files</th>
+          <th>Rows</th>
+          <th>Uploaded</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (datasets.length === 0) { %>
+          <tr><td colspan="7" style="color: var(--text-muted);">No datasets uploaded yet.</td></tr>
+        <% } %>
+        <% datasets.forEach(function(d) { %>
+          <tr>
+            <td><%= d.dataset_name %> <span style="color: var(--text-muted); font-size: 12.5px;">(<%= d.dataset_id %>)</span></td>
+            <td><%= d.business_name %> <span style="color: var(--text-muted);">(<%= d.username %>)</span></td>
+            <td><%= d.domain || '—' %></td>
+            <td><%= d.file_count %></td>
+            <td><%= Number(d.total_rows).toLocaleString() %></td>
+            <td><%= new Date(d.created_at).toLocaleDateString() %></td>
+            <td style="text-align: right; white-space: nowrap;">
+              <a class="btn btn-ghost btn-sm" href="/admin/datasets/<%= d.id %>/view">View analytics</a>
+              <a class="btn btn-ghost btn-sm" href="/admin/datasets/<%= d.id %>/delete">Delete</a>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>

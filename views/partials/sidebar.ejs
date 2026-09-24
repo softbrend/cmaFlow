@@ -3,12 +3,19 @@
 
   <ul class="nav-list">
     <% if (currentUser && currentUser.role === 'Admin') { %>
-      <%# An Admin account has no datasets/analytics of its own — a
-          completely separate nav for the admin section (routes/admin.js)
-          instead of the six-stage SME Owner Portal list below. %>
+      <%# Admin's own nav: the same four analytics stages an SME owner
+          sees (read-only here — an Admin views them via "View analytics"
+          on Manage Datasets, routes/dashboard.js's resolveAccountId()),
+          then the three admin-only tools. No Upload/Browse/Monetization
+          discovery/End-User Evaluation — those are SME-owner actions an
+          Admin account never performs on its own account. %>
       <li><a href="/admin" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'home') ? 'active' : '' %>"><span class="nav-dot"></span>Admin home</a></li>
-      <li><a href="/admin/accounts" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'accounts') ? 'active' : '' %>"><span class="nav-dot"></span>Manage accounts</a></li>
-      <li><a href="/admin/evaluations" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'evaluations') ? 'active' : '' %>"><span class="nav-dot"></span>Evaluations</a></li>
+      <% (navSections || []).forEach(function(s) { %>
+        <li><a href="/<%= s.slug %>" class="<%= active === s.slug ? 'active' : '' %>"><span class="nav-icon stage-<%= s.slug %>"><%= s.icon %></span><%= s.label %></a></li>
+      <% }); %>
+      <li><a href="/admin/evaluations" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'evaluations') ? 'active' : '' %>"><span class="nav-dot"></span>View Evaluation Report</a></li>
+      <li><a href="/admin/accounts" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'accounts') ? 'active' : '' %>"><span class="nav-dot"></span>Manage SME Accounts</a></li>
+      <li><a href="/admin/datasets" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'datasets') ? 'active' : '' %>"><span class="nav-dot"></span>Manage Datasets</a></li>
     <% } else { %>
       <%# The four analytics stages carry a stage-colored icon chip instead
           of the plain gold nav-dot — the same DESCRIPTIVE → DIAGNOSTIC →

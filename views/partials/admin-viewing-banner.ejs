@@ -1,0 +1,12 @@
+<%# Shown on the four analytics pages only when an Admin is browsing
+    another account's data (session.adminViewAccountId — set by GET
+    /admin/datasets/:id/view, cleared by GET /admin/exit-view). res.locals
+    already carries adminViewingAccount (routes/dashboard.js's
+    attachAdminViewingBanner), so every page that includes this partial
+    gets it for free with no locals to pass explicitly. %>
+<% if (typeof adminViewingAccount !== 'undefined' && adminViewingAccount) { %>
+  <div class="ok-box" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+    <span>👁️ Viewing as admin: <strong><%= adminViewingAccount.business_name %></strong> (<%= adminViewingAccount.owner_name %>) — read-only.</span>
+    <a class="btn btn-ghost btn-sm" href="/admin/exit-view">Exit view</a>
+  </div>
+<% } %>

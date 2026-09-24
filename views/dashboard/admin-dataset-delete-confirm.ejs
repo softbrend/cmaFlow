@@ -1,0 +1,14 @@
+<div class="page-title">🗑️ <span class="page-title-text">Delete dataset</span></div>
+<p class="page-subtitle"><%= dataset.dataset_name %> — <%= dataset.business_name %> (<%= dataset.username %>)</p>
+
+<div class="form-card">
+  <div class="form-title" style="font-size: 18px;">Delete this dataset?</div>
+  <p class="form-hint">
+    This removes every file, row, and cached analytics result computed from it. This can't be undone —
+    <strong><%= dataset.business_name %></strong> would need to re-upload it to get it back.
+  </p>
+  <form method="POST" action="/admin/datasets/<%= dataset.id %>/delete" style="display: flex; gap: 10px;">
+    <button type="submit" class="btn btn-danger">Yes, delete this dataset</button>
+    <a class="btn btn-ghost" href="/admin/datasets">Cancel</a>
+  </form>
+</div>
