@@ -402,5 +402,89 @@ CREATE TABLE IF NOT EXISTS field_role_feedback (
 CREATE INDEX IF NOT EXISTS idx_field_role_feedback_account
     ON field_role_feedback(account_id);
 
+-- ---------------------------------------------------------------------
+-- TAM End-User Evaluation — the six-task walkthrough + 17-item Technology
+-- Acceptance Model questionnaire described in
+-- claude/tam-instrument-end-user-evaluation.md (Table 1's six tasks,
+-- Tables 2-4's PU/PEOU/BI items), embedded directly in the running app
+-- rather than administered on paper. services/tamEvaluation.js is the
+-- single source of truth for the task list and item list; these tables
+-- just persist an SME owner's progress and answers against them.
+--
+-- One evaluation_sessions row per account: UNIQUE(account_id) means
+-- there is always exactly one "the" evaluation to resume or view, which
+-- is what makes "resume if not yet completed" unambiguous — GET
+-- /evaluation always finds this one row (creating it on first visit) and
+-- routes to wherever status/current_task says the account left off.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS evaluation_sessions (
+    id                        SERIAL PRIMARY KEY,
+    account_id                INTEGER     NOT NULL REFERENCES sme_accounts(id) ON DELETE CASCADE,
+    status                    VARCHAR(20) NOT NULL DEFAULT 'walkthrough' CHECK (status IN (
+                                  'walkthrough', 'questionnaire', 'completed'
+                              )),
+    current_task              SMALLINT    NOT NULL DEFAULT 1 CHECK (current_task BETWEEN 1 AND 6),
+    started_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
+    walkthrough_completed_at  TIMESTAMPTZ,
+    completed_at              TIMESTAMPTZ,
+    UNIQUE (account_id)
+);
+
+-- One row per (session, task 1-6). started_at is stamped the first time
+-- the account lands on that task's walkthrough screen (see
+-- startTaskIfNeeded() in services/tamEvaluation.js) and never overwritten
+-- on a later revisit/refresh of the same task, so time_on_task_seconds —
+-- filled in when the task is marked complete — reflects actual elapsed
+-- time on the task, the same "completion, time, assistance/errors"
+-- triad Table 1 specifies, just captured live instead of by a human
+-- administrator with a stopwatch.
+CREATE TABLE IF NOT EXISTS evaluation_task_logs (
+    id                    SERIAL PRIMARY KEY,
+    session_id            INTEGER     NOT NULL REFERENCES evaluation_sessions(id) ON DELETE CASCADE,
+    account_id            INTEGER     NOT NULL REFERENCES sme_accounts(id) ON DELETE CASCADE,
+    task_number           SMALLINT    NOT NULL CHECK (task_number BETWEEN 1 AND 6),
+    module_slug           VARCHAR(60) NOT NULL,
+    started_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+    completed_at          TIMESTAMPTZ,
+    time_on_task_seconds  INTEGER,
+    needed_assistance     BOOLEAN     NOT NULL DEFAULT false,
+    had_error             BOOLEAN     NOT NULL DEFAULT false,
+    notes                 TEXT,
+    UNIQUE (session_id, task_number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_evaluation_task_logs_session
+    ON evaluation_task_logs(session_id);
+
+CREATE INDEX IF NOT EXISTS idx_evaluation_task_logs_account
+    ON evaluation_task_logs(account_id);
+
+-- One row per (session, TAM item code — e.g. 'PU-01', 'PEOU-07', 'BI-03').
+-- Upserted on every "Save progress" and every final submit (see
+-- saveResponses() in services/tamEvaluation.js), so a partially-answered
+-- questionnaire always has exactly its answered-so-far items here for
+-- GET /evaluation to pre-fill on resume — rating stays NULL for an item
+-- the account hasn't reached yet. The instrument's own "rating <=3
+-- requires a remark" rule (Section 4.1) is enforced in the app only at
+-- final-submit time, not here, so an in-progress save is never blocked
+-- on a remark the account hasn't finished typing yet.
+CREATE TABLE IF NOT EXISTS evaluation_responses (
+    id            SERIAL PRIMARY KEY,
+    session_id    INTEGER     NOT NULL REFERENCES evaluation_sessions(id) ON DELETE CASCADE,
+    account_id    INTEGER     NOT NULL REFERENCES sme_accounts(id) ON DELETE CASCADE,
+    item_code     VARCHAR(10) NOT NULL,
+    domain        VARCHAR(10) NOT NULL CHECK (domain IN ('PU', 'PEOU', 'BI')),
+    rating        SMALLINT    CHECK (rating BETWEEN 1 AND 5),
+    remark        TEXT,
+    answered_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (session_id, item_code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_evaluation_responses_session
+    ON evaluation_responses(session_id);
+
+CREATE INDEX IF NOT EXISTS idx_evaluation_responses_account
+    ON evaluation_responses(account_id);
+
 -- Note: the "session" table used for login sessions is created
 -- automatically by connect-pg-simple the first time the server starts.

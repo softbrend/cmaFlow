@@ -1,0 +1,64 @@
+<div class="page-title">📋 <span class="page-title-text">End-User Evaluation</span></div>
+<p class="page-subtitle">A short usability check: six quick tasks, one per module, then a 17-item questionnaire about your experience. Your progress is saved automatically — close this anytime and pick up where you left off.</p>
+
+<div class="eval-steps">
+  <% tasks.forEach(function(t) {
+       var log = taskLogs.find(function(l) { return l.task_number === t.number; });
+       var done = log && log.completed_at;
+       var cls = done ? 'is-done' : (t.number === currentTask.number ? 'is-current' : ''); %>
+    <div class="eval-step <%= cls %>" title="<%= t.moduleLabel %>"><%= done ? '✓' : t.number %></div>
+  <% }); %>
+</div>
+
+<div class="form-card wide" style="margin-bottom: 22px;">
+  <div class="form-title">Task <%= currentTask.number %> of 6 — <%= currentTask.moduleLabel %></div>
+  <p class="form-hint" style="margin-bottom: 16px;"><%= currentTask.instructions %></p>
+
+  <a href="<%= currentTask.href %>" target="_blank" rel="noopener" class="btn btn-accent" style="margin-bottom: 24px;">
+    Open <%= currentTask.moduleLabel %> →
+  </a>
+
+  <p style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 16px;">
+    Once you’ve done the task above (it opened in a new tab), come back here and log it:
+  </p>
+
+  <form method="POST" action="/evaluation/task/<%= currentTask.number %>/complete">
+    <label class="field-checkbox">
+      <input type="checkbox" name="needed_assistance" />
+      I needed help from someone else to do this
+    </label>
+    <label class="field-checkbox">
+      <input type="checkbox" name="had_error" />
+      I ran into an error or something that didn’t work as expected
+    </label>
+    <div class="field">
+      <label for="notes">Notes (optional)</label>
+      <textarea id="notes" name="notes" placeholder="Anything worth noting about this task…"></textarea>
+    </div>
+    <button type="submit" class="btn btn-accent">Mark Task <%= currentTask.number %> Complete →</button>
+  </form>
+</div>
+
+<% var completedLogs = taskLogs.filter(function(l) { return l.completed_at; }); %>
+<% if (completedLogs.length > 0) { %>
+  <div class="form-card wide">
+    <div class="form-title" style="font-size: 18px;">Completed so far</div>
+    <table class="table-simple">
+      <thead><tr><th>#</th><th>Module</th><th>Time on task</th><th>Assistance</th><th>Error</th></tr></thead>
+      <tbody>
+        <% completedLogs.forEach(function(l) {
+             var task = tasks.find(function(t) { return t.number === l.task_number; });
+             var mins = Math.floor((l.time_on_task_seconds || 0) / 60);
+             var secs = (l.time_on_task_seconds || 0) % 60; %>
+          <tr>
+            <td><%= l.task_number %></td>
+            <td><%= task ? task.moduleLabel : l.module_slug %></td>
+            <td><%= mins %>m <%= secs %>s</td>
+            <td><%= l.needed_assistance ? 'Yes' : 'No' %></td>
+            <td><%= l.had_error ? 'Yes' : 'No' %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+<% } %>

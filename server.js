@@ -12,6 +12,7 @@ const { attachUser } = require('./middleware/auth');
 const { TMP_ROOT } = require('./middleware/upload');
 const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
+const evaluationRoutes = require('./routes/evaluation');
 
 // Clear any dataset-upload temp files left behind by a request that never
 // finished (e.g. the process was killed mid-upload) — safe to wipe on
@@ -67,6 +68,7 @@ app.get('/healthz', (req, res) => res.status(200).send('ok'));
 // --- Routes ---
 app.use('/', authRoutes);
 app.use('/', dashboardRoutes);
+app.use('/', evaluationRoutes);
 
 // --- 404 ---
 app.use((req, res) => {

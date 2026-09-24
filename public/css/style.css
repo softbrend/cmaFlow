@@ -641,6 +641,42 @@ a { color: inherit; }
 .field input:focus, .field select:focus { outline: 2px solid var(--accent); }
 .field-row { display: flex; gap: 14px; }
 .field-row .field { flex: 1; }
+.field textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--bg-input);
+  color: #1c2a20;
+  font-size: 14.5px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 64px;
+  transition: outline-color 0.15s ease;
+}
+.field textarea:focus { outline: 2px solid var(--accent); }
+.field-checkbox { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; font-size: 14px; }
+.field-checkbox input { width: auto; }
+
+/* ---------------- TAM End-User Evaluation ---------------- */
+.eval-steps { display: flex; gap: 8px; margin: 4px 0 24px; flex-wrap: wrap; }
+.eval-step {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700;
+  background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted);
+}
+.eval-step.is-done { background: var(--ok-box-bg); border-color: var(--ok); color: var(--ok); }
+.eval-step.is-current { background: var(--accent); border-color: var(--accent); color: #1c2a20; }
+.likert-item { border-bottom: 1px solid var(--border); padding: 18px 0; }
+.likert-item:last-child { border-bottom: none; }
+.likert-item-text { font-size: 14.5px; margin-bottom: 10px; line-height: 1.5; }
+.likert-item-code { color: var(--text-muted); font-weight: 700; font-size: 12px; margin-right: 6px; }
+.likert-row { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 10px; }
+.likert-option { display: flex; align-items: center; gap: 6px; font-size: 13.5px; }
+.likert-option input { width: auto; }
+.likert-item.needs-remark .field-remark { display: block; }
+.field-remark { margin-top: 4px; }
 
 .alert-error {
   background: var(--alert-error-bg);

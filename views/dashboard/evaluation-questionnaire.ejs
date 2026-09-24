@@ -1,0 +1,46 @@
+<div class="page-title">📋 <span class="page-title-text">End-User Evaluation — Questionnaire</span></div>
+<p class="page-subtitle">Six-task walkthrough complete. Rate each statement 5 (Strongly Agree) to 1 (Strongly Disagree) based on the modules you just used. Any rating of 3 or below needs a short remark explaining why. Save your progress anytime and come back to finish later.</p>
+
+<% if (errors) { %>
+  <div class="alert-error">
+    <% if (errors.missingCodes.length) { %>
+      <div>Please rate every item before submitting — still missing: <%= errors.missingCodes.join(', ') %></div>
+    <% } %>
+    <% if (errors.needsRemarkCodes.length) { %>
+      <div>A rating of 3 or below needs a remark — please add one for: <%= errors.needsRemarkCodes.join(', ') %></div>
+    <% } %>
+  </div>
+<% } %>
+
+<form method="POST" action="/evaluation/questionnaire">
+  <% domains.forEach(function(d) { %>
+    <div class="form-card wide" style="margin-bottom: 22px;">
+      <div class="form-title" style="font-size: 20px;"><%= d.label %> (<%= d.domain %>)</div>
+      <% d.items.forEach(function(item) {
+           var r = responses.get(item.code); %>
+        <div class="likert-item">
+          <div class="likert-item-text"><span class="likert-item-code"><%= item.code %></span><%= item.text %></div>
+          <div class="likert-row">
+            <% [5, 4, 3, 2, 1].forEach(function(v) {
+                 var labels = { 5: 'Strongly Agree', 4: 'Agree', 3: 'Neutral', 2: 'Disagree', 1: 'Strongly Disagree' };
+                 var checked = r && r.rating === v; %>
+              <label class="likert-option">
+                <input type="radio" name="rating_<%= item.code %>" value="<%= v %>" <%= checked ? 'checked' : '' %> />
+                <%= v %> <%= labels[v] %>
+              </label>
+            <% }); %>
+          </div>
+          <div class="field field-remark">
+            <label for="remark_<%= item.code %>">Remark <span style="font-weight:400; color: var(--text-muted);">(required if rated 3 or below)</span></label>
+            <textarea id="remark_<%= item.code %>" name="remark_<%= item.code %>" placeholder="Optional unless your rating is 3 or below…"><%= r && r.remark ? r.remark : '' %></textarea>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+  <% }); %>
+
+  <div style="display:flex; gap: 10px;">
+    <button type="submit" name="action" value="save" class="btn btn-outline">Save Progress</button>
+    <button type="submit" name="action" value="submit" class="btn btn-accent">Submit Evaluation</button>
+  </div>
+</form>
