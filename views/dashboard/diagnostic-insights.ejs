@@ -1,0 +1,172 @@
+<div class="page-title"><span class="page-title-icon page-icon-diagnostic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.2" cy="10.2" r="6.4"/><line x1="20" y1="20" x2="15.1" y2="15.1"/></svg></span><span class="page-title-text">Diagnostic insights</span></div>
+<p class="page-subtitle">Understand why performance moved — root-cause views built from correlations, comparisons, and decompositions in your own data.</p>
+<%- include('../partials/stage-pipeline', { activeStage: 'diagnostic' }) %>
+<details class="info-disclosure">
+  <summary>ⓘ How CMA-Flow analyzed this dataset</summary>
+  <p>Computed directly from this dataset's own raw uploaded columns — no Map &amp; Transform required, and no CMA Canonical Schema dependency on this page (reserved for a future extension of this study). Two of these views need the optional Phase 1 fields (<code>transaction_type</code>, <code>effective_from</code>, <code>cancellation_reason</code>) to unlock fully.</p>
+</details>
+
+<% if (!datasets || datasets.length === 0) { %>
+  <div class="placeholder-card">
+    <div class="emoji">📭</div>
+    <p>No datasets uploaded yet. <a href="/upload-dataset" style="color: var(--accent); font-weight: 600;">Upload a dataset</a> to see diagnostic insights here.</p>
+  </div>
+<% } else { %>
+
+  <form method="GET" action="/diagnostic-insights" class="dataset-picker">
+    <label for="dataset">Dataset ID</label>
+    <select id="dataset" name="dataset" onchange="this.form.submit()">
+      <% datasets.forEach(function(d) { %>
+        <option value="<%= d.id %>" <%= selectedDataset && selectedDataset.id === d.id ? 'selected' : '' %>>
+          <%= d.dataset_id %> — <%= d.dataset_name %>
+        </option>
+      <% }); %>
+    </select>
+    <input type="hidden" name="view" value="<%= activeView %>" />
+    <noscript><button type="submit" class="btn btn-ghost">Go</button></noscript>
+  </form>
+
+  <% if (!hasAnyData) { %>
+    <div class="placeholder-card">
+      <div class="emoji">🧭</div>
+      <p>
+        No file in this dataset's raw upload looks like Transaction, Entitlement, or Monetization Config data yet (auto-detected from its column names).
+        Upload a file with columns like amount, customer, and date.
+      </p>
+    </div>
+  <% } else { %>
+
+    <% if (activeView !== 'dynamic-diagnostics') { %>
+      <div class="info-box" style="margin-bottom:16px;">
+        Computed directly from <strong><%= rawInfo.sourceFileLabel || 'this dataset\'s uploaded file(s)' %></strong>'s raw uploaded columns, auto-detected and <strong>unconfirmed</strong> — <%= rawInfo.skippedRows.toLocaleString() %> row(s) with no readable amount/customer were skipped.
+      </div>
+    <% } %>
+
+    <div class="tab-nav">
+      <% views.forEach(function(v) { %>
+        <a class="tab-pill <%= activeView === v.slug ? 'active' : '' %>"
+           href="/diagnostic-insights?dataset=<%= selectedDataset.id %>&view=<%= v.slug %>">
+          <span><%= v.icon %></span> <%= v.label %>
+        </a>
+      <% }); %>
+    </div>
+
+    <% if (activeView === 'revenue-bridge') { %>
+      <% if (!cards.bridgeTable) { %>
+        <div class="info-box">Revenue bridge compares the two most recent months with transaction data (New / Expansion / Contraction / Churned revenue, per customer) — this dataset needs at least two distinct months of Transaction history to compute one.</div>
+      <% } else { %>
+        <div class="kpi-row"><%- cards.bridgeKpiRow.join('') %></div>
+        <div class="chart-card">
+          <div class="chart-title">Revenue bridge: <%= bridge.prevLabel %> → <%= bridge.currLabel %></div>
+          <div class="chart-subtitle">Per-customer revenue comparison between the two most recent months with transaction data</div>
+          <div class="table-scroll">
+            <table class="table-simple">
+              <thead><tr><th>Category</th><th>Amount</th><th>Customers</th></tr></thead>
+              <tbody>
+                <% cards.bridgeTable.forEach(function(r) { %>
+                  <tr>
+                    <td><%= r.category %></td>
+                    <td class="<%= r.isPositive ? 'variance-under' : (r.isNegative ? 'variance-over' : '') %>"><%= r.amount %></td>
+                    <td><%= r.count %></td>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% } %>
+      <%- cards.byTypeChart %>
+
+    <% } else if (activeView === 'price-impact') { %>
+      <% if (cards.priceImpactTable.length === 0) { %>
+        <div class="info-box">Price-change impact needs either a Monetization Config with two or more price points and an <code>effective_from</code> date for a product, or — failing that — Transaction history for a product that itself shows a stable price on one side of a date and a different stable price on the other (at least 5 transactions per side, at least an 8% shift). Neither is present yet for this dataset.</div>
+      <% } else { %>
+        <div class="chart-card">
+          <div class="chart-title">Revenue &amp; volume before/after each price change</div>
+          <div class="chart-subtitle">Compares transactions in the window immediately before vs. after each detected price change, by product. Rows marked "Inferred" have no Monetization Config price history — the price shift was detected directly in what customers were charged, not read from a stated price.</div>
+          <div class="table-scroll">
+            <table class="table-simple">
+              <thead><tr><th>Product</th><th>Source</th><th>Effective</th><th>Old → New price</th><th>Price Δ</th><th>Revenue Δ</th><th>Volume Δ</th><th>Elasticity</th></tr></thead>
+              <tbody>
+                <% cards.priceImpactTable.forEach(function(r) { %>
+                  <tr>
+                    <td><%= r.product %></td>
+                    <td><span class="badge <%= r.inferred ? 'badge-inactive' : 'badge-active' %>"><%= r.inferred ? 'Inferred' : 'Configured' %></span></td>
+                    <td><%= r.effectiveDate %></td>
+                    <td><%= r.oldPrice %> → <%= r.newPrice %></td>
+                    <td><%= r.pricePctChange %></td>
+                    <td class="<%= r.isRevenueUp ? 'variance-under' : (r.isRevenueDown ? 'variance-over' : '') %>"><%= r.revenuePctChange %></td>
+                    <td><%= r.volumePctChange %></td>
+                    <td><%= r.elasticity %></td>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% } %>
+
+    <% } else if (activeView === 'cancellations') { %>
+      <%- cards.cancellationsChart %>
+
+    <% } else if (activeView === 'dynamic-diagnostics') { %>
+      <p class="page-subtitle" style="margin-top:-6px;">
+        12 diagnostic questions, each answered by whichever real statistical method fits the variables involved (correlation, group comparison, chi-square, a decision-tree-style split, or an exact decomposition) — computed directly from this dataset's raw uploaded fact table, the same Automatic Dataset Intelligence engine behind the Business Metrics section of Full Descriptive Analytics. A question with a "Not applicable" reason just means this dataset doesn't (yet) carry the columns that question needs. Applicable questions below are ranked by Priority — a blend of business relevance, statistical strength, data quality, semantic confidence, actionability, and computational cost — highest first, not just listed in a fixed order.
+      </p>
+      <% if (!cards.diagnostics || !cards.diagnostics.applicable) { %>
+        <div class="info-box">
+          <%= (cards.diagnostics && cards.diagnostics.reason) || 'No uploaded file in this dataset looks like a transaction fact table yet.' %>
+        </div>
+      <% } else { %>
+        <% cards.diagnostics.findings.forEach(function(f) { %>
+          <div class="chart-card" style="margin-bottom:16px;">
+            <div class="chart-title"><%= f.label %></div>
+            <div class="chart-subtitle"><%= f.question %> · <em><%= f.method %></em></div>
+            <% if (f.applicable && typeof f.priorityScore === 'number') { %>
+              <div style="margin: 6px 0 2px;">
+                <span class="badge <%= f.priorityBand === 'High' ? 'badge-risk-low' : (f.priorityBand === 'Medium' ? 'badge-risk-medium' : 'badge-risk-high') %>">Priority: <%= f.priorityBand %> (<%= f.priorityScore.toFixed(2) %>)</span>
+                <span class="badge <%= f.confidenceBand === 'High' ? 'badge-risk-low' : (f.confidenceBand === 'Medium' ? 'badge-risk-medium' : 'badge-risk-high') %>" style="margin-left:6px;">Confidence: <%= f.confidenceBand %> (<%= f.confidence.toFixed(2) %>)</span>
+              </div>
+            <% } %>
+            <% if (!f.applicable) { %>
+              <p class="chart-empty"><%= f.reason %></p>
+            <% } else { %>
+              <% if (f.narrativeParagraphs && f.narrativeParagraphs.length) { %>
+                <% f.narrativeParagraphs.forEach(function(p) { %>
+                  <p style="margin: 10px 0;"><%= p %></p>
+                <% }); %>
+              <% } else { %>
+                <p style="margin: 10px 0;"><%= f.narrative %></p>
+              <% } %>
+              <% if (f.omittedCount) { %>
+                <p class="chart-empty" style="margin: 4px 0 10px;">+ <%= f.omittedCount %> other business statistic(s) not shown — this dataset's fact table doesn't (yet) carry the columns they need.</p>
+              <% } %>
+              <% if (f.stats && f.stats.length) { %>
+                <div class="kpi-row" style="margin-bottom:12px;"><%- f.stats.join('') %></div>
+              <% } %>
+              <% (f.tables || []).forEach(function(t) { %>
+                <div style="margin-top:12px;">
+                  <div style="font-weight:600; margin-bottom:6px;"><%= t.title %></div>
+                  <div class="table-scroll">
+                    <table class="table-simple">
+                      <thead><tr><% t.columns.forEach(function(c) { %><th><%= c %></th><% }); %></tr></thead>
+                      <tbody>
+                        <% t.rows.forEach(function(r) { %>
+                          <tr><% r.forEach(function(cell) { %><td><%- cell %></td><% }); %></tr>
+                        <% }); %>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              <% }); %>
+            <% } %>
+          </div>
+        <% }); %>
+      <% } %>
+    <% } %>
+
+    <% if (activeView !== 'dynamic-diagnostics') { %>
+      <div class="kpi-row" style="margin-top:20px;"><%- cards.coverageKpiRow.join('') %></div>
+    <% } %>
+  <% } %>
+<% } %>

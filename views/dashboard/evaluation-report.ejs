@@ -1,0 +1,210 @@
+<div class="page-title">🧪 <span class="page-title-text">Evaluation Report — <%= dataset.dataset_name %></span></div>
+<p class="page-subtitle">
+  <a href="/browse-dataset/<%= dataset.id %>/<%= fileType %>" style="color: var(--accent);">← Back to <%= label %></a>
+  &nbsp;·&nbsp; Dataset ID: <strong><%= dataset.dataset_id %></strong>
+  &nbsp;·&nbsp; File: <strong><%= label %></strong>
+  &nbsp;·&nbsp; <a href="/browse-dataset/<%= dataset.id %>/<%= fileType %>/evaluation/export.xlsx" class="btn btn-outline" style="padding:4px 12px; font-size:12.5px;">⬇ Download as Excel</a>
+</p>
+<div class="info-box" style="margin-bottom:18px;">
+  A per-file data-quality and monetization-readiness pass, run directly on this file's raw uploaded rows —
+  <strong>before</strong> Map &amp; Transform touches anything. Nothing here is validated or frozen; it's meant to
+  help decide whether this file is ready to map, and to what.
+</div>
+
+<div class="section-heading">Suitability / readiness score</div>
+<div class="chart-card" style="margin-bottom:18px;">
+  <div class="chart-title">Overall score: <%= report.suitability.score.toFixed(0) %>%</div>
+  <p class="chart-subtitle">A transparent field-availability checklist — not a claim of statistical or scientific validity.</p>
+  <div class="table-scroll">
+    <table class="table-simple">
+      <thead><tr><th>Check</th><th>Result</th></tr></thead>
+      <tbody>
+        <% report.suitability.checks.forEach(function(c) { %>
+          <tr>
+            <td><%= c.label %></td>
+            <td><span class="badge <%= c.pass ? 'badge-active' : 'badge-risk-high' %>"><%= c.pass ? 'Pass' : 'Not detected' %></span></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section-heading">Key metrics</div>
+<div class="kpi-row"><%- cards.kpiRow.join('') %></div>
+<% if (cards.mrrArrRow) { %>
+  <div class="kpi-row" style="margin-top:10px;"><%- cards.mrrArrRow.join('') %></div>
+<% } %>
+<% if (cards.churnRow) { %>
+  <div class="kpi-row" style="margin-top:10px;"><%- cards.churnRow.join('') %></div>
+<% } %>
+
+<div class="section-heading">Revenue breakdowns</div>
+<% if (!cards.byPeriod && !cards.byProduct && !cards.byCustomer && !cards.byMechanism) { %>
+  <div class="chart-card"><p class="chart-empty">No revenue/amount column detected in this file yet — revenue breakdowns need one (e.g. amount, revenue, sales, total).</p></div>
+<% } else { %>
+  <% if (cards.byPeriod) { %><%- cards.byPeriod %><% } %>
+  <div class="chart-grid-2">
+    <% if (cards.byProduct) { %><%- cards.byProduct %><% } %>
+    <% if (cards.byCustomer) { %><%- cards.byCustomer %><% } %>
+  </div>
+  <% if (cards.byMechanism) { %>
+    <div class="chart-grid-2">
+      <%- cards.byMechanism %>
+      <% if (cards.histogram) { %><%- cards.histogram %><% } %>
+    </div>
+  <% } else if (cards.histogram) { %>
+    <%- cards.histogram %>
+  <% } %>
+<% } %>
+
+<div class="section-heading">Customer growth</div>
+<% if (cards.growth) { %>
+  <%- cards.growth %>
+<% } else { %>
+  <div class="chart-card"><p class="chart-empty">No customer identifier + signup/registration/created date column detected together.</p></div>
+<% } %>
+
+<div class="section-heading">Semantic field detection</div>
+<div class="chart-card" style="margin-bottom:18px;">
+  <p class="chart-subtitle">Which normalized columns matched each semantic field type, by column-name heuristics (see the underlying field dictionary in the Evaluation Report design doc).</p>
+  <div class="table-scroll">
+    <table class="table-simple">
+      <thead><tr><th>Field type</th><th>Matched columns</th></tr></thead>
+      <tbody>
+        <% Object.keys(report.detectedFields).forEach(function(field) { %>
+          <tr>
+            <td><%= field %></td>
+            <td><%= report.detectedFields[field].length ? report.detectedFields[field].join(', ') : '—' %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section-heading">Monetization field evidence</div>
+<div class="info-box" style="margin-bottom:10px;">
+  Structural evidence only — which monetization-<em>shaped columns</em> exist in this raw file (e.g. an
+  <code>mrr_amount</code> or <code>api_calls</code> column). This is <strong>not</strong> the app's real, behavioral
+  Monetization Discovery Engine, which infers a mechanism from actual customer transaction/entitlement patterns
+  after Map &amp; Transform — see <a href="/monetization-discovery" style="color: var(--accent);">Monetization discovery</a> for that.
+</div>
+<div class="chart-card" style="margin-bottom:18px;">
+  <div class="table-scroll">
+    <table class="table-simple">
+      <thead><tr><th>Mechanism</th><th>Classification</th><th>Evidence</th></tr></thead>
+      <tbody>
+        <% report.monetizationFindings.forEach(function(f) { %>
+          <tr>
+            <td><%= f.mechanism %></td>
+            <td><%= f.classification %></td>
+            <td style="font-size:12.5px; color:var(--text-muted);"><%= f.evidence.join(', ') %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section-heading">Data profile</div>
+<p class="chart-footnote" style="margin:-4px 0 10px;">
+  <%= report.rowCount.toLocaleString() %> row(s) evaluated &nbsp;·&nbsp;
+  <%= report.duplicateCount.toLocaleString() %> duplicate row(s) (<%= report.duplicatePct.toFixed(1) %>%)
+</p>
+<div class="chart-card" style="margin-bottom:18px;">
+  <div class="table-scroll">
+    <table class="table-simple">
+      <thead><tr><th>Column</th><th>Data type</th><th>Non-null</th><th>Missing</th><th>Missing %</th><th>Unique</th></tr></thead>
+      <tbody>
+        <% report.profile.forEach(function(p) { %>
+          <tr>
+            <td><%= p.column %></td>
+            <td><%= p.dataType %></td>
+            <td><%= formatCount(p.nonNull) %></td>
+            <td><%= formatCount(p.missing) %></td>
+            <td><%= p.missingPct.toFixed(1) %>%</td>
+            <td><%= formatCount(p.unique) %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section-heading">Numeric descriptive statistics</div>
+<% if (report.describe.length === 0) { %>
+  <div class="chart-card"><p class="chart-empty">No fully-numeric columns detected in this file.</p></div>
+<% } else { %>
+  <div class="chart-card" style="margin-bottom:18px;">
+    <div class="table-scroll">
+      <table class="table-simple">
+        <thead><tr><th>Column</th><th>Count</th><th>Mean</th><th>Std</th><th>Min</th><th>P25</th><th>Median</th><th>P75</th><th>Max</th><th>Skewness</th><th>IQR outliers</th></tr></thead>
+        <tbody>
+          <% var outlierByCol = {}; report.outliers.forEach(function(o) { outlierByCol[o.column] = o.count; }); %>
+          <% report.describe.forEach(function(d) { %>
+            <tr>
+              <td><%= d.column %></td>
+              <td><%= formatCount(d.count) %></td>
+              <td><%= d.mean === null ? '—' : d.mean.toFixed(2) %></td>
+              <td><%= d.std === null ? '—' : d.std.toFixed(2) %></td>
+              <td><%= d.min === null ? '—' : d.min.toFixed(2) %></td>
+              <td><%= d.p25 === null ? '—' : d.p25.toFixed(2) %></td>
+              <td><%= d.median === null ? '—' : d.median.toFixed(2) %></td>
+              <td><%= d.p75 === null ? '—' : d.p75.toFixed(2) %></td>
+              <td><%= d.max === null ? '—' : d.max.toFixed(2) %></td>
+              <td><%= d.skewness === null ? '—' : d.skewness.toFixed(2) %></td>
+              <td><%= formatCount(outlierByCol[d.column] || 0) %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% } %>
+
+<% if (report.correlation) { %>
+  <div class="section-heading">Correlation matrix</div>
+  <div class="chart-card" style="margin-bottom:18px;">
+    <p class="chart-subtitle">Pearson correlation across numeric columns, computed pairwise over rows where both columns have a value.</p>
+    <div class="table-scroll">
+      <table class="table-simple">
+        <thead>
+          <tr><th></th><% report.correlation.columns.forEach(function(c) { %><th><%= c %></th><% }); %></tr>
+        </thead>
+        <tbody>
+          <% report.correlation.matrix.forEach(function(row, i) { %>
+            <tr>
+              <th><%= report.correlation.columns[i] %></th>
+              <% row.forEach(function(v) { %>
+                <%
+                  var bg = 'transparent';
+                  if (v !== null) {
+                    var a = Math.min(Math.abs(v), 1);
+                    bg = v >= 0 ? 'rgba(46,125,50,' + (a * 0.55).toFixed(2) + ')' : 'rgba(198,40,40,' + (a * 0.55).toFixed(2) + ')';
+                  }
+                %>
+                <td style="background: <%= bg %>; text-align:center;"><%= v === null ? '—' : v.toFixed(2) %></td>
+              <% }); %>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% } %>
+
+<div class="section-heading">Column mapping</div>
+<details class="chart-card">
+  <summary class="chart-title" style="cursor:pointer;">Original → normalized column names</summary>
+  <div class="table-scroll" style="margin-top:10px;">
+    <table class="table-simple">
+      <thead><tr><th>Original column</th><th>Normalized name</th></tr></thead>
+      <tbody>
+        <% report.columnMapping.forEach(function(m) { %>
+          <tr><td><%= m.original %></td><td><%= m.normalized %></td></tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</details>

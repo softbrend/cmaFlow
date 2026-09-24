@@ -1,0 +1,28 @@
+<%# Row fragment for the Monetization Discovery drill-down panel — no
+    <table>/<thead> here, just <tr> rows the panel's JS appends to
+    whichever tbody is currently showing (mode is swapped client-side; the
+    same URL params tell the server which shape of row to send back). %>
+<% if (rows.length === 0) { %>
+  <tr class="drilldown-empty-row"><td colspan="5">No <%= mode === 'transactions' ? 'transactions' : 'customers' %> to show.</td></tr>
+<% } else if (mode === 'transactions') { %>
+  <% rows.forEach(function(r) { %>
+    <tr>
+      <td><%= r.timestamp ? new Date(r.timestamp).toLocaleDateString() : '—' %></td>
+      <td><%= r.customerName ? r.customerName : r.customerId %></td>
+      <td><%= formatMoney(r.amount, r.currency || currency) %></td>
+      <td><%= r.quantity === null ? '—' : formatCount(r.quantity) %></td>
+    </tr>
+  <% }); %>
+<% } else { %>
+  <% rows.forEach(function(r) { %>
+    <tr>
+      <td><%= r.customerName ? r.customerName : r.customerId %></td>
+      <td><%= formatMoney(r.revenue, r.currency || currency) %></td>
+      <td><%= formatCount(r.transactionCount) %></td>
+      <td><%= r.lastTimestamp ? new Date(r.lastTimestamp).toLocaleDateString() : '—' %></td>
+    </tr>
+  <% }); %>
+<% } %>
+<% if (hasMore) { %>
+  <tr class="drilldown-sentinel-row" data-next-offset="<%= nextOffset %>"><td colspan="5" style="text-align:center; color: var(--text-muted); font-size: 12px;">Loading more…</td></tr>
+<% } %>

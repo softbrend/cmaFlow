@@ -1,0 +1,70 @@
+<div class="page-title">🧠 <span class="page-title-text">Review field roles — <%= dataset.dataset_name %></span></div>
+<p class="page-subtitle">
+  <a href="/upload-dataset" style="color: var(--accent);">← Upload New Dataset</a>
+  &nbsp;·&nbsp; Dataset ID: <strong><%= dataset.dataset_id %></strong>
+</p>
+<p class="page-subtitle" style="margin-top:-8px;">
+  CMA-Flow's Semantic Field Detection Engine combines a rule-based scorer, a word-embedding similarity check, and a Random Forest classifier to guess what business role each uploaded column plays (revenue, customer identifier, category, ...). The columns below are the ones it isn't confident about yet — everything else was resolved automatically and needs no action. Confirming or correcting a role here helps CMA-Flow recognize the same pattern with more confidence next time.
+</p>
+
+<div class="info-box" style="margin-bottom:16px;">
+  <%= confirmedCount %> field<%= confirmedCount === 1 ? '' : 's' %> already confirmed for this dataset in total.
+</div>
+
+<% if (errors && errors.length) { %>
+  <div class="alert-error"><ul><% errors.forEach(function(e) { %><li><%= e.msg %></li><% }); %></ul></div>
+<% } %>
+
+<% if (items.length === 0) { %>
+  <div class="form-card wide">
+    <p class="form-hint" style="margin:0;">Nothing needs review right now — every column in this dataset was either resolved with high confidence, or already confirmed.</p>
+  </div>
+<% } else { %>
+  <form method="POST" action="/dataset/<%= dataset.id %>/review-fields">
+    <div class="form-card wide">
+      <table class="table-simple">
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Column</th>
+            <th>Engine's best guess</th>
+            <th>Confidence</th>
+            <th>Why</th>
+            <th>Confirm role</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% items.forEach(function(it, i) { %>
+            <tr>
+              <td><%= it.fileLabel %></td>
+              <td><code><%= it.columnName %></code></td>
+              <td>
+                <%= it.role ? it.role.replace(/_/g, ' ') : '—' %>
+                <% if (it.isCandidateNewRole) { %><span class="badge badge-inactive" style="margin-left:6px;" title="Nothing in CMA-Flow's known role list reads as a close match by name — this may be a genuinely new kind of field.">Possibly new role</span><% } %>
+              </td>
+              <td>
+                <%= (it.confidence * 100).toFixed(0) %>%
+                <div style="font-size:11px; color: var(--text-muted);"><%= it.band %> — <%= it.confirmationAction === 'ask-sme' ? 'needs your input' : 'flagged for a quick check' %></div>
+              </td>
+              <td style="max-width:260px; font-size:12px; color: var(--text-muted);">
+                <% (it.evidence || []).forEach(function(e) { %><div><%= e %></div><% }); %>
+              </td>
+              <td>
+                <select name="items[<%= i %>][confirmedRole]" class="form-select">
+                  <% roleOptions.forEach(function(opt) { %>
+                    <option value="<%= opt.value %>" <%= opt.value === it.role ? 'selected' : '' %>><%= opt.label %></option>
+                  <% }); %>
+                </select>
+                <input type="hidden" name="items[<%= i %>][fileType]" value="<%= it.fileType %>" />
+                <input type="hidden" name="items[<%= i %>][columnName]" value="<%= it.columnName %>" />
+                <input type="hidden" name="items[<%= i %>][suggestedRole]" value="<%= it.role || '' %>" />
+                <input type="hidden" name="items[<%= i %>][suggestedConfidence]" value="<%= it.confidence %>" />
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <button type="submit" class="btn btn-accent" style="margin-top:14px;">Save confirmations</button>
+  </form>
+<% } %>

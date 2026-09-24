@@ -1,0 +1,61 @@
+# Render Blueprint — deploys CMA-Flow as a web service backed by a managed
+# PostgreSQL database. Create this by connecting your GitHub repo in the
+# Render dashboard under "New > Blueprint" — Render reads this file and
+# provisions both resources together, with the web service's DATABASE_URL
+# wired to the database automatically.
+#
+# PLAN TIERS — read before deploying:
+# The Semantic Field Detection Engine (Round 22) loads a 341k-word
+# pretrained embeddings package into memory at server startup. Measured
+# live in development: the process settles around ~1 GB RSS just to boot,
+# before handling a single request. Render's Free and Starter web-service
+# plans are BOTH capped at 512 MB RAM — this app will not finish booting
+# on either one; it needs at least the plan below (1 CPU / 2 GB RAM,
+# "Standard" in the Render dashboard) to run reliably. See the deployment
+# guide for a lower-cost path that trades away the embeddings layer if
+# that cost isn't the right call for this deployment.
+services:
+  - type: web
+    name: cma-flow
+    runtime: node
+    plan: 1c-2g # "Standard" in the Render dashboard — see the note above
+    region: oregon # pick whichever region is closest to your evaluators
+    buildCommand: npm install
+    startCommand: npm start
+    # schema.sql is fully idempotent (CREATE TABLE IF NOT EXISTS
+    # throughout — verified), so applying it before every deploy is safe:
+    # it's a no-op once the schema already exists, and it means a fresh
+    # database is initialized automatically on first deploy without a
+    # manual shell step.
+    preDeployCommand: npm run db:init
+    healthCheckPath: /healthz
+    # Persists the raw uploaded-CSV archive (uploads/datasets/) across
+    # restarts and deploys. Not required for the app to function — every
+    # analytics screen reads from Postgres, never from this archive — but
+    # keeps the original files around instead of losing them on every
+    # restart. A disk pins the service to a single instance (no
+    # autoscaling) and deploys lose zero-downtime rollover; both are fine
+    # for a single-instance dissertation deployment.
+    disk:
+      name: cma-flow-uploads
+      mountPath: /opt/render/project/src/uploads
+      sizeGB: 1 # ~$0.25/month at this size; resize later in the dashboard
+        # if the archive grows past it
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true # Render generates and stores a random secret
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cma-flow-db
+          property: connectionString
+      # DB_SSL is intentionally NOT set here — db/pool.js already enables
+      # SSL automatically whenever DATABASE_URL is present.
+
+databases:
+  - name: cma-flow-db
+    plan: 0.1c-256mb # cheapest paid Postgres tier — see the deployment
+      # guide for why the Free Postgres plan (expires 30 days after
+      # creation) is not a good fit for a live dissertation deployment
+    region: oregon # match the web service's region to keep DB latency low

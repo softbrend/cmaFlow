@@ -1,0 +1,91 @@
+<%
+function qs(overrides) {
+  var params = Object.assign({}, query, overrides);
+  return Object.keys(params)
+    .filter(function(k) { return params[k] !== undefined && params[k] !== null && params[k] !== ''; })
+    .map(function(k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); })
+    .join('&');
+}
+%>
+<div class="page-title">🔎 <span class="page-title-text"><%= dataset.dataset_name %></span></div>
+<p class="page-subtitle">
+  <a href="/browse-dataset" style="color: var(--accent);">← All datasets</a>
+  &nbsp;·&nbsp; Dataset ID: <strong><%= dataset.dataset_id %></strong>
+  &nbsp;·&nbsp; File: <strong><%= label %></strong>
+  &nbsp;·&nbsp; <a href="/browse-dataset/<%= dataset.id %>/<%= fileType %>/evaluation" style="color: var(--accent); font-weight:600;">🧪 Evaluation Report</a>
+</p>
+
+<div class="form-card wide" style="margin-bottom: 18px;">
+  <div class="form-title">Filters</div>
+  <% if (columns.length === 0) { %>
+    <p style="color: var(--text-muted);">This file has no columns to filter on.</p>
+  <% } else { %>
+    <form method="GET" action="/browse-dataset/<%= dataset.id %>/<%= fileType %>">
+      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px 16px;">
+        <% columnMeta.forEach(function(meta) { %>
+          <div class="field" style="margin-bottom:0;">
+            <label><%= meta.name %></label>
+            <% if (meta.type === 'select') { %>
+              <select name="f_<%= meta.name %>">
+                <option value="">All</option>
+                <% meta.options.forEach(function(opt) { %>
+                  <option value="<%= opt %>" <%= query['f_' + meta.name] === opt ? 'selected' : '' %>><%= opt %></option>
+                <% }); %>
+              </select>
+            <% } else if (meta.type === 'number') { %>
+              <div style="display:flex; gap:6px;">
+                <input type="number" name="fmin_<%= meta.name %>" placeholder="Min (<%= meta.min %>)" value="<%= query['fmin_' + meta.name] || '' %>" style="width:50%;" />
+                <input type="number" name="fmax_<%= meta.name %>" placeholder="Max (<%= meta.max %>)" value="<%= query['fmax_' + meta.name] || '' %>" style="width:50%;" />
+              </div>
+            <% } else { %>
+              <input type="text" name="f_<%= meta.name %>" placeholder="Contains…" value="<%= query['f_' + meta.name] || '' %>" />
+            <% } %>
+          </div>
+        <% }); %>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top: 18px;">
+        <button type="submit" class="btn btn-accent">Apply filters</button>
+        <a href="/browse-dataset/<%= dataset.id %>/<%= fileType %>" class="btn btn-ghost">Clear filters</a>
+      </div>
+    </form>
+  <% } %>
+</div>
+
+<div class="form-card wide">
+  <div class="form-title">Records</div>
+  <p class="form-hint">
+    Showing <%= pageRows.length === 0 ? 0 : (page - 1) * pageSize + 1 %>–<%= (page - 1) * pageSize + pageRows.length %>
+    of <%= filteredCount %> matching row<%= filteredCount === 1 ? '' : 's' %>
+    <% if (filteredCount !== totalRows) { %> (<%= totalRows %> total)<% } %>
+  </p>
+
+  <% if (pageRows.length === 0) { %>
+    <p style="color: var(--text-muted);">No rows match the current filters.</p>
+  <% } else { %>
+    <div style="overflow-x:auto;">
+      <table class="table-simple">
+        <thead>
+          <tr><% columns.forEach(function(c) { %><th><%= c %></th><% }); %></tr>
+        </thead>
+        <tbody>
+          <% pageRows.forEach(function(row) { %>
+            <tr><% columns.forEach(function(c) { %><td><%= row[c] %></td><% }); %></tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:16px; flex-wrap:wrap; gap:10px;">
+      <div style="font-size:13px; color:var(--text-muted);">Page <%= page %> of <%= totalPages %></div>
+      <div style="display:flex; gap:8px;">
+        <% if (page > 1) { %>
+          <a class="btn btn-ghost" href="?<%= qs({ page: page - 1 }) %>">← Prev</a>
+        <% } %>
+        <% if (page < totalPages) { %>
+          <a class="btn btn-ghost" href="?<%= qs({ page: page + 1 }) %>">Next →</a>
+        <% } %>
+      </div>
+    </div>
+  <% } %>
+</div>

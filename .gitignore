@@ -1,0 +1,14 @@
+node_modules/
+.env
+npm-debug.log*
+*.log
+log
+.DS_Store
+uploads/
+
+# This folder also holds deliverables and scratch that aren't app source —
+# keep the repo scoped to the actual CMA-Flow codebase.
+docs/
+sample-data/
+Claude outputs/
+cma-flow-app/

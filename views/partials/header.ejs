@@ -1,0 +1,41 @@
+<header class="app-header-bar">
+  <div class="header-brand">
+    <span class="header-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
+    <img class="brand-badge" src="/img/cma-flow-icon.png" alt="CMA-Flow" />
+    <div>
+      <div class="brand-name">CMA-FLOW</div>
+      <div class="brand-sub">Data → Insight → Decision</div>
+    </div>
+  </div>
+
+  <div class="header-top">
+    <div class="header-crumb">
+      <span class="header-crumb-root">CMA-Flow</span>
+      <% if (typeof title !== 'undefined' && title) { %>
+        <span class="header-crumb-sep">/</span>
+        <span class="header-crumb-current"><%= title %></span>
+      <% } %>
+    </div>
+
+    <div class="header-actions">
+      <span class="header-divider"></span>
+
+      <% if (currentUser.business_name) { %>
+        <div class="header-sme">
+          <div class="header-sme-name"><%= currentUser.business_name %></div>
+          <div class="header-sme-tag">SME Account</div>
+        </div>
+        <span class="header-divider header-sme-divider"></span>
+      <% } %>
+
+      <div class="header-account">
+        <div class="header-avatar"><%= (currentUser.owner_name || currentUser.username || '?').charAt(0).toUpperCase() %></div>
+        <div class="header-account-text">
+          <div class="header-account-name"><%= currentUser.owner_name || currentUser.username %></div>
+          <div class="header-account-sub"><%= currentUser.email || currentUser.role %></div>
+        </div>
+        <a class="header-signout" href="/logout" title="Sign out" aria-label="Sign out">⏻</a>
+      </div>
+    </div>
+  </div>
+</header>

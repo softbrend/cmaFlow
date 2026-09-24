@@ -1,0 +1,411 @@
+<div class="page-title"><span class="page-title-icon page-icon-descriptive" aria-hidden="true"><svg viewBox="0 0 24 24" fill="#fff"><rect x="3" y="13" width="4.2" height="8" rx="1.2"/><rect x="9.9" y="8" width="4.2" height="13" rx="1.2"/><rect x="16.8" y="3" width="4.2" height="18" rx="1.2"/></svg></span><span class="page-title-text">Descriptive analytics</span></div>
+<p class="page-subtitle">Understand what happened in your business data through automatically generated KPIs, trends, distributions, and patterns.</p>
+<%- include('../partials/stage-pipeline', { activeStage: 'descriptive' }) %>
+<details class="info-disclosure">
+  <summary>ⓘ How CMA-Flow analyzed this dataset</summary>
+  <p>Every tab here — Full descriptive analytics, Revenue &amp; growth, and Dataset analysis — reads directly from your raw uploaded dataset(s). No Map &amp; Transform step is required, and there's no dependency on the CMA Canonical Schema on this page (that pathway is reserved for a future extension of this study).</p>
+</details>
+<% if (!datasets || datasets.length === 0) { %>
+  <div class="placeholder-card">
+    <div class="emoji">📭</div>
+    <p>No datasets uploaded yet. <a href="/upload-dataset" style="color: var(--accent); font-weight: 600;">Upload a dataset</a> to see descriptive analytics here.</p>
+  </div>
+<% } else { %>
+
+  <form method="GET" action="/descriptive-analytics" class="dataset-picker">
+    <label for="dataset">Dataset ID</label>
+    <select id="dataset" name="dataset" onchange="this.form.submit()">
+      <% datasets.forEach(function(d) { %>
+        <option value="<%= d.id %>" <%= selectedDataset && selectedDataset.id === d.id ? 'selected' : '' %>>
+          <%= d.dataset_id %> — <%= d.dataset_name %>
+        </option>
+      <% }); %>
+    </select>
+    <input type="hidden" name="view" value="<%= activeView %>" />
+    <input type="hidden" name="source" value="<%= dataSource %>" />
+    <noscript><button type="submit" class="btn btn-ghost">Go</button></noscript>
+  </form>
+
+  <% var showRawRevenueGrowth = activeView === 'revenue-growth'; %>
+  <% var showFullDescriptive = activeView === 'full-descriptive'; %>
+  <% var showDatasetAnalysis = activeView === 'dataset-analysis'; %>
+  <%# Every tab on this page is raw-native as of Round 7 (Full descriptive,
+      Revenue & growth, and now Dataset analysis too) — each handles its
+      own "nothing to show yet" empty state inline below, so there's no
+      page-level canonical-data gate here any more. %>
+
+    <div class="tab-nav">
+      <% views.forEach(function(v) { %>
+        <a class="tab-pill <%= activeView === v.slug ? 'active' : '' %>"
+           href="/descriptive-analytics?dataset=<%= selectedDataset.id %>&view=<%= v.slug %>">
+          <span><%= v.icon %></span> <%= v.label %>
+        </a>
+      <% }); %>
+    </div>
+
+    <% if (activeView === 'full-descriptive') { %>
+      <p class="page-subtitle" style="margin-bottom: 10px;">Every uploaded file profiled automatically — column types, distributions, trends, and cross-file relationships — computed directly from your raw upload. No Map &amp; Transform step required, and the sections below are entirely dynamic: they're built from whatever columns this dataset actually has, not a fixed template.</p>
+
+      <% if (!fullDescriptiveHasData) { %>
+        <div class="placeholder-card">
+          <div class="emoji">📭</div>
+          <p><strong><%= selectedDataset.dataset_id %></strong> has no uploaded files yet. <a href="/upload-dataset" style="color: var(--accent); font-weight: 600;">Upload a dataset</a> to see its full descriptive analytics here.</p>
+        </div>
+      <% } else { %>
+
+        <div class="kpi-row"><%- fullDescriptive.executiveKpiRow.join('') %></div>
+
+        <% if (businessMetrics && businessMetrics.applicable) { %>
+          <div class="chart-card">
+            <div class="chart-title">Business metrics <span style="font-weight:400; color: var(--text-muted); font-size: 12.5px;">— computed from <%= businessMetrics.factFileLabel %>, automatically identified as this dataset's transaction fact table</span></div>
+            <div class="chart-subtitle">Reasoned across every uploaded file, not read from one file alone — only metrics with a real computed value are shown below; a metric CMA-FLOW couldn't validly compute is never shown as a fabricated zero.</div>
+
+            <% if (businessMetrics.financialProfile && businessMetrics.financialProfile.applicable) { %>
+              <div class="callout" style="margin: 10px 0 14px; padding: 10px 12px; border-radius: 8px; background: var(--bg-subtle, rgba(127,127,127,0.08)); font-size: 13px;">
+                <strong><%= businessMetrics.financialProfile.datasetType %></strong> (<%= businessMetrics.financialProfile.businessDomain %>) —
+                primary financial measure: <strong><%= businessMetrics.financialProfile.primaryFinancialMeasure.label %></strong>.
+                <% if (!businessMetrics.financialProfile.directRevenuePresent.value) { %>
+                  No direct SME customer revenue was identified in this dataset — figures below are cost/expenditure or usage, not customer sales.
+                <% } %>
+              </div>
+            <% } %>
+
+            <% var shownMetrics = businessMetrics.simpleMetrics.filter(function(m) { return m.applicable; }); %>
+            <% var hiddenMetrics = businessMetrics.simpleMetrics.filter(function(m) { return !m.applicable; }); %>
+
+            <% if (shownMetrics.length > 0) { %>
+              <div class="metric-grid">
+                <% shownMetrics.forEach(function(m) { %>
+                  <div class="metric-tile">
+                    <div class="stat-label"><%= m.label %></div>
+                    <div class="stat-value"><%= m.value %></div>
+                    <% if (m.sublabel) { %><div class="metric-sublabel"><%= m.sublabel %></div><% } %>
+                    <details class="metric-provenance">
+                      <summary><span class="badge badge-risk-<%= m.confidenceBand.toLowerCase() %>"><%= m.confidenceBand %> confidence</span></summary>
+                      <p><%= m.provenanceNote %><% if (m.sourceColumns) { %> Source: <%= m.sourceFile %>.<%= m.sourceColumns %>.<% } %></p>
+                    </details>
+                  </div>
+                <% }); %>
+              </div>
+            <% } else { %>
+              <p class="chart-empty">None of this dataset's business metrics could be computed yet — see below for why.</p>
+            <% } %>
+
+            <% if (hiddenMetrics.length > 0) { %>
+              <details class="chart-table-toggle" style="margin-top: 10px;">
+                <summary>+ <%= hiddenMetrics.length %> metric<%= hiddenMetrics.length > 1 ? 's' : '' %> not shown — not enough evidence in this dataset to compute <%= hiddenMetrics.length > 1 ? 'them' : 'it' %></summary>
+                <div class="table-scroll">
+                  <table class="table-simple">
+                    <thead><tr><th>Metric</th><th>Why not applicable</th></tr></thead>
+                    <tbody>
+                      <% hiddenMetrics.forEach(function(m) { %>
+                        <tr>
+                          <td><%= m.label %></td>
+                          <td style="font-size: 12.5px; color: var(--text-muted);"><%= m.reason %></td>
+                        </tr>
+                      <% }); %>
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            <% } %>
+
+            <% (businessMetrics.trendCharts || []).forEach(function(tc) { %><%- tc %><% }); %>
+
+            <% if (businessMetrics.breakdownCharts.length > 0) { %>
+              <div class="chart-grid-2">
+                <% businessMetrics.breakdownCharts.forEach(function(c) { %><%- c %><% }); %>
+              </div>
+            <% } %>
+
+            <% if (businessMetrics.dimensionsUsed.length > 0) { %>
+              <p class="chart-footnote" style="margin-top: 14px;">Joined dimension files:
+                <% businessMetrics.dimensionsUsed.forEach(function(d, i) { %><%= i > 0 ? ', ' : '' %><%= d.fileLabel %> (<%= d.role.replace('_id', '').replace('_', ' ') %>, <%= d.overlapPct %> id overlap)<% }); %>
+              </p>
+            <% } %>
+
+            <details class="chart-table-toggle">
+              <summary>How each file was classified (<%= businessMetrics.fileRoles.length %> files)</summary>
+              <div class="table-scroll">
+                <table class="table-simple">
+                  <thead><tr><th>File</th><th>Identified business role</th><th>Confidence</th><th>Why</th></tr></thead>
+                  <tbody>
+                    <% businessMetrics.fileRoles.forEach(function(f) { %>
+                      <tr>
+                        <td><%= f.fileLabel %><% if (f.isFact) { %> <span class="badge badge-active" style="margin-left:4px;">fact table</span><% } %></td>
+                        <td><%= f.roleLabel %></td>
+                        <td><span class="badge badge-risk-<%= f.band.toLowerCase() %>"><%= f.confidencePct %></span></td>
+                        <td style="font-size: 12.5px; color: var(--text-muted);"><%= f.evidence.join('; ') %></td>
+                      </tr>
+                    <% }); %>
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </div>
+        <% } else if (businessMetrics && !businessMetrics.applicable) { %>
+          <div class="chart-card">
+            <div class="chart-title">Business metrics</div>
+            <p class="chart-subtitle" style="margin-bottom: 4px;"><%= businessMetrics.reason %></p>
+            <% if (businessMetrics.fileRoles.length > 0) { %>
+              <details class="chart-table-toggle">
+                <summary>How each file was classified (<%= businessMetrics.fileRoles.length %> files)</summary>
+                <div class="table-scroll">
+                  <table class="table-simple">
+                    <thead><tr><th>File</th><th>Identified business role</th><th>Confidence</th><th>Why</th></tr></thead>
+                    <tbody>
+                      <% businessMetrics.fileRoles.forEach(function(f) { %>
+                        <tr>
+                          <td><%= f.fileLabel %></td>
+                          <td><%= f.roleLabel %></td>
+                          <td><span class="badge badge-risk-<%= f.band.toLowerCase() %>"><%= f.confidencePct %></span></td>
+                          <td style="font-size: 12.5px; color: var(--text-muted);"><%= f.evidence.join('; ') %></td>
+                        </tr>
+                      <% }); %>
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            <% } %>
+          </div>
+        <% } %>
+
+        <% if (fullDescriptive.relationshipRows.length > 0) { %>
+          <div class="chart-card">
+            <div class="chart-title">Detected relationships between files</div>
+            <div class="chart-subtitle">Matched by column name, then confirmed with an exact overlap count over the actual uploaded values — not a guess from the names alone.</div>
+            <div class="table-scroll">
+              <table class="table-simple">
+                <thead><tr><th>From</th><th>To</th><th>Overlap</th><th>Matched values</th></tr></thead>
+                <tbody>
+                  <% fullDescriptive.relationshipRows.forEach(function(r) { %>
+                    <tr>
+                      <td><%= r.from %></td>
+                      <td><%= r.to %></td>
+                      <td><%= r.overlapPct %></td>
+                      <td><%= r.matched %> / <%= r.fromDistinct %></td>
+                    </tr>
+                  <% }); %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        <% } %>
+
+        <% fullDescriptive.fileSections.forEach(function(section) { %>
+          <details class="chart-card file-section" open>
+            <summary class="chart-title"><%= section.fileLabel %> <span style="font-weight:400; color: var(--text-muted); font-size: 12.5px;">(<%= section.rowCount %> rows, <%= section.columns.length %> columns)</span></summary>
+
+            <div class="kpi-row" style="margin-top: 14px;"><%- section.kpiRow.join('') %></div>
+
+            <% if (section.trendChart) { %>
+              <%- section.trendChart %>
+            <% } %>
+
+            <% if (section.categoryCharts.length > 0) { %>
+              <div class="chart-grid-2">
+                <% section.categoryCharts.forEach(function(c) { %><%- c %><% }); %>
+              </div>
+            <% } %>
+
+            <% if (section.numericCharts.length > 0) { %>
+              <div class="chart-grid-2">
+                <% section.numericCharts.forEach(function(c) { %><%- c %><% }); %>
+              </div>
+            <% } %>
+
+            <% if (section.correlations.length > 0) { %>
+              <div class="chart-card">
+                <div class="chart-title">Correlations</div>
+                <div class="chart-subtitle">Descriptive associations only — not causation.</div>
+                <div class="table-scroll">
+                  <table class="table-simple">
+                    <thead><tr><th>Column A</th><th>Column B</th><th>r</th><th>Sample size</th></tr></thead>
+                    <tbody>
+                      <% section.correlations.forEach(function(c) { %>
+                        <tr><td><%= c.a %></td><td><%= c.b %></td><td><%= c.r %></td><td><%= c.sampleSize %></td></tr>
+                      <% }); %>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            <% } %>
+
+            <% if (section.scatterCharts && section.scatterCharts.length > 0) { %>
+              <div class="chart-grid-2">
+                <% section.scatterCharts.forEach(function(c) { %><%- c %><% }); %>
+              </div>
+            <% } %>
+
+            <% if (section.dataQuality.length > 0) { %>
+              <details class="chart-table-toggle">
+                <summary>Data quality notes (<%= section.dataQuality.length %> column<%= section.dataQuality.length === 1 ? '' : 's' %>)</summary>
+                <table class="table-simple">
+                  <thead><tr><th>Column</th><th>Missing</th><th>Duplicates</th><th>Zero</th><th>Negative</th></tr></thead>
+                  <tbody>
+                    <% section.dataQuality.forEach(function(q) { %>
+                      <tr><td><%= q.name %></td><td><%= q.missingPct %></td><td><%= q.duplicateCount || '—' %></td><td><%= q.zeroCount || '—' %></td><td><%= q.negativeCount || '—' %></td></tr>
+                    <% }); %>
+                  </tbody>
+                </table>
+              </details>
+            <% } %>
+
+            <details class="chart-table-toggle">
+              <summary>Column-level descriptive statistics (<%= section.columns.length %>)</summary>
+              <div class="table-scroll">
+                <table class="table-simple">
+                  <thead><tr><th>Column</th><th>Semantic type</th><th>Statistics</th></tr></thead>
+                  <tbody>
+                    <% section.columns.forEach(function(c) { %>
+                      <tr>
+                        <td><%= c.name %></td>
+                        <td><span class="column-kind-pill"><%= c.kind %></span></td>
+                        <td>
+                          <% if (c.statLines.length > 0) { %>
+                            <div class="column-stat-lines">
+                              <% c.statLines.forEach(function(s) { %>
+                                <span class="column-stat-line"><strong><%= s.label %>:</strong> <%= s.value %></span>
+                              <% }); %>
+                            </div>
+                          <% } else { %>
+                            <span class="chart-subtitle" style="margin: 0;">—</span>
+                          <% } %>
+                        </td>
+                      </tr>
+                    <% }); %>
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </details>
+        <% }); %>
+
+        <%# Shared right-side drill-down panel for every category/numeric
+            breakdown chart's 🔍 row buttons above — one instance for the
+            whole tab; JS swaps its title/columns/contents to whichever
+            row was clicked. Reads a raw file's own dataset_records
+            directly (no Map & Transform required), so its columns are
+            never fixed ahead of time — see public/js/raw-row-
+            drilldown.js. %>
+        <div id="raw-drilldown-backdrop" class="drilldown-backdrop" hidden></div>
+        <aside id="raw-drilldown-panel" class="drilldown-panel" hidden aria-hidden="true">
+          <div class="drilldown-panel-header">
+            <div>
+              <div class="drilldown-panel-title" id="raw-drilldown-title">—</div>
+              <div class="drilldown-panel-sub" id="raw-drilldown-sub"></div>
+            </div>
+            <button type="button" class="drilldown-close" id="raw-drilldown-close" aria-label="Close">✕</button>
+          </div>
+          <div class="drilldown-panel-body" id="raw-drilldown-body">
+            <div class="table-scroll">
+              <table class="table-simple" id="raw-drilldown-table">
+                <thead id="raw-drilldown-thead"></thead>
+                <tbody id="raw-drilldown-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </aside>
+        <script src="/js/raw-row-drilldown.js" defer></script>
+
+      <% } %>
+
+    <% } else if (activeView === 'revenue-growth') { %>
+      <p class="page-subtitle" style="margin-bottom: 10px;">Revenue, growth, and mechanism metrics for this dataset — Revenue, revenue by mechanism/customer/product/period, ARPU, MRR/ARR, customer growth, usage, conversion, and churn, in one place. Computed directly from this dataset's own raw uploaded columns, no Map &amp; Transform required.</p>
+
+      <% if (!rawRevenueGrowth || !rawRevenueGrowth.hasTransactionSignal) { %>
+        <div class="info-box">
+          No file in this dataset's raw upload looks like transaction/usage data yet (auto-detected from its column names) — upload a file with columns like amount, customer, and date.
+        </div>
+      <% } else { %>
+
+        <div class="info-box" style="margin-bottom:16px;">
+          Computed directly from <strong><%= rawRevenueGrowth.sourceFileLabel %></strong>'s raw uploaded columns, auto-detected and <strong>unconfirmed</strong> — <%= rawRevenueGrowth.rowCounts.skippedRows.toLocaleString() %> row(s) with no readable amount/customer were skipped.
+        </div>
+
+        <% var rgCards = cards.revenueGrowthRaw; %>
+        <div class="kpi-row"><%- rgCards.kpiRow.join('') %></div>
+        <% if (rawRevenueGrowth.arr !== null) { %>
+          <p class="chart-footnote" style="margin: -8px 0 16px;">ARR (annualized): <strong><%= rgCards.arrValue %></strong> — <%= rawRevenueGrowth.mrrMonthLabel %>'s Subscription-classified revenue × 12.</p>
+        <% } %>
+
+        <%- rgCards.byPeriod %>
+        <div class="chart-grid-2">
+          <%- rgCards.byProduct %>
+          <%- rgCards.byCustomer %>
+        </div>
+        <div class="chart-grid-2">
+          <%- rgCards.byMechanism %>
+          <%- rgCards.mechanismContribution %>
+        </div>
+
+        <div class="section-heading">Customer growth</div>
+        <div class="chart-grid-2">
+          <%- rgCards.customerGrowthActive %>
+          <%- rgCards.customerGrowthNew %>
+        </div>
+
+        <div class="section-heading">Usage</div>
+        <% if (!rgCards.usageAvailable) { %>
+          <div class="chart-card"><p class="chart-empty">No usage/quantity column detected in this dataset's transactions.</p></div>
+        <% } else { %>
+          <div class="kpi-row"><%- rgCards.usageKpiRow.join('') %></div>
+          <%- rgCards.usageByProduct %>
+        <% } %>
+
+        <div class="section-heading">Conversion (Freemium free → paid)</div>
+        <% if (!rgCards.conversionAvailable) { %>
+          <div class="chart-card"><p class="chart-empty">No free/trial entitlement cohort detected for this dataset.</p></div>
+        <% } else { %>
+          <div class="kpi-row"><%- rgCards.conversionKpiRow.join('') %></div>
+        <% } %>
+
+        <div class="section-heading">Churn</div>
+        <% if (!rgCards.churnAvailable) { %>
+          <div class="chart-card"><p class="chart-empty">No Entitlement data with an active/expired status detected for this dataset.</p></div>
+        <% } else { %>
+          <div class="kpi-row"><%- rgCards.churnKpiRow.join('') %></div>
+        <% } %>
+
+      <% } %>
+
+    <% } else if (activeView === 'dataset-analysis') { %>
+      <div class="kpi-row"><%- cards.datasetAnalysisKpiRow.join('') %></div>
+      <%- cards.domainChart %>
+      <div class="chart-card">
+        <div class="chart-title">Datasets on this account</div>
+        <div class="chart-subtitle">Every dataset this account has uploaded, grouped by domain — the selected dataset is highlighted</div>
+        <div class="table-scroll">
+          <table class="table-simple">
+            <thead><tr><th>Dataset ID</th><th>Name</th><th>Domain</th><th>Revenue</th><th>Transactions</th><th>Customers</th></tr></thead>
+            <tbody>
+              <% cards.datasetsTable.forEach(function(d) { %>
+                <tr class="<%= d.isCurrent ? 'row-current' : '' %>">
+                  <td><%= d.datasetCode %><% if (d.isCurrent) { %> <span class="badge badge-active">selected</span><% } %></td>
+                  <td><%= d.datasetName %></td>
+                  <td><%= d.domain %></td>
+                  <td><%= d.revenue %></td>
+                  <td><%= d.transactions %></td>
+                  <td><%= d.customers %></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% } %>
+
+    <% if (showFullDescriptive) { %>
+      <p class="chart-footnote">
+        Full descriptive analytics mode — every section above is computed directly from this dataset's raw uploaded file(s), profiled column-by-column, not the frozen CMA Canonical Schema.
+      </p>
+    <% } else if (showRawRevenueGrowth) { %>
+      <p class="chart-footnote">
+        Raw upload mode — the numbers above come from <%= rawRevenueGrowth.hasTransactionSignal ? rawRevenueGrowth.sourceFileLabel : 'this dataset\'s uploaded file(s)' %>'s own columns, auto-detected and unconfirmed, not the frozen CMA Canonical Schema.
+      </p>
+    <% } else if (showDatasetAnalysis) { %>
+      <p class="chart-footnote">
+        Dataset analysis mode — revenue, transactions, and customers are rolled up across every dataset this account has uploaded, each read directly from its own raw uploaded columns, auto-detected and unconfirmed, not the frozen CMA Canonical Schema.
+      </p>
+    <% } %>
+<% } %>

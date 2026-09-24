@@ -1,0 +1,65 @@
+<div class="form-card wide">
+  <div class="form-title"><img src="/img/cma-flow-icon.png" alt="CMA-Flow" style="width:28px; height:28px; border-radius:7px; background:#fff; padding:2px; vertical-align:-6px; margin-right:8px;" />Create your SME account</div>
+  <p class="form-hint">Information captured: username, owner name, business name, email, phone, business sector, region, and password.</p>
+
+  <% if (errors && errors.length) { %>
+    <div class="alert-error">
+      <ul>
+        <% errors.forEach(function(e) { %><li><%= e.msg %></li><% }); %>
+      </ul>
+    </div>
+  <% } %>
+
+  <form method="POST" action="/signup" autocomplete="off">
+    <div class="field">
+      <label for="username">Username (e.g., BUS-11)</label>
+      <input type="text" id="username" name="username" value="<%= old.username || '' %>" required />
+    </div>
+
+    <div class="field">
+      <label for="owner_name">SME owner full name</label>
+      <input type="text" id="owner_name" name="owner_name" value="<%= old.owner_name || '' %>" required />
+    </div>
+
+    <div class="field">
+      <label for="business_name">Business / SME name</label>
+      <input type="text" id="business_name" name="business_name" value="<%= old.business_name || '' %>" required />
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="email">Business email</label>
+        <input type="email" id="email" name="email" value="<%= old.email || '' %>" required />
+      </div>
+      <div class="field">
+        <label for="phone">Phone number</label>
+        <input type="text" id="phone" name="phone" value="<%= old.phone || '' %>" />
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="business_sector">Business sector</label>
+        <input type="text" id="business_sector" name="business_sector" value="<%= old.business_sector || '' %>" required />
+      </div>
+      <div class="field">
+        <label for="business_region">Business region</label>
+        <input type="text" id="business_region" name="business_region" value="<%= old.business_region || '' %>" required />
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" minlength="8" required />
+    </div>
+
+    <div class="field">
+      <label for="confirm_password">Confirm password</label>
+      <input type="password" id="confirm_password" name="confirm_password" minlength="8" required />
+    </div>
+
+    <button type="submit" class="btn btn-accent btn-block">Create account</button>
+  </form>
+
+  <div class="form-footer">Already have an account? <a href="/login">Sign in</a></div>
+</div>

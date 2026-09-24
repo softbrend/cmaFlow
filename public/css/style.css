@@ -1,0 +1,1272 @@
+:root {
+  /* ---- Brand tokens ("Research-Tech Premium" system) ----
+     Primary = deep research green (sidebar/header chrome + light-theme
+     headings); Secondary = teal; Accent = gold, reserved for CTAs and
+     highlights, never for chart data-ink; Analytics = cyan/blue, used by
+     Descriptive's stage identity below. The four --stage-* hues are each
+     a page's single chart accent (see --chart-accent) and the stage-
+     pipeline trademark's step colors — picked and validated together
+     (dataviz skill's palette validator: CVD + normal-vision separation,
+     chroma floor, contrast) so all four read apart from one another at a
+     glance, not just individually legible. */
+  --primary: #0b4037;
+  --secondary: #0f766e;
+  --gold: #e7ad28;
+  --gold-dark: #c6921e;
+  --cyan: #168aad;
+
+  --stage-descriptive: #1668a8;
+  --stage-diagnostic: #0d9488;
+  --stage-predictive: #5a45c9;
+  --stage-prescriptive: #2c8659;
+
+  --bg: #0b4037;
+  --bg-panel: #0e4a3f;
+  --bg-card: #12564a;
+  --bg-input: #f6f5f1;
+  --border: rgba(255, 255, 255, 0.12);
+  --text: #f2f2ea;
+  --text-muted: #a9c4bc;
+  --accent: var(--gold);
+  --accent-dark: var(--gold-dark);
+  --ok: #2f6f5e;
+  --warn-bg: #4c5a38;
+  --warn-text: #e9edd9;
+  --danger: #c65b4e;
+  --radius: 14px;
+
+  /* Semantic tokens for colors that used to be hardcoded — dark-theme
+     defaults here match the original look exactly; the light-theme
+     override block below (scoped to .main) redefines these same names. */
+  --badge-ok-bg: rgba(47, 111, 94, 0.4);
+  --badge-ok-text: #bdf5e2;
+  --badge-danger-bg: rgba(198, 91, 78, 0.35);
+  --badge-danger-text: #ffd9d3;
+  --badge-neutral-bg: rgba(255, 255, 255, 0.08);
+  --alert-error-bg: rgba(198, 91, 78, 0.18);
+  --alert-error-text: #ffd9d3;
+  --alert-success-bg: rgba(63, 154, 92, 0.18);
+  --alert-success-border: #3f9a5c;
+  --alert-success-text: #cdf2d9;
+  --ok-box-bg: rgba(47, 111, 94, 0.35);
+  --variance-over: #ffd9d3;
+  --variance-under: #bdf5e2;
+  --bar-other: rgba(169, 196, 188, 0.4);
+  --btn-ghost-bg: rgba(255, 255, 255, 0.06);
+  --row-current-bg: rgba(219, 165, 55, 0.08);
+  --tab-pill-bg: rgba(255, 255, 255, 0.04);
+  --tab-pill-hover-bg: rgba(255, 255, 255, 0.08);
+  --card-shadow: none;
+  --card-shadow-hover: 0 18px 40px rgba(0, 0, 0, 0.38), 0 4px 12px rgba(0, 0, 0, 0.28);
+  --radius: 18px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Plus Jakarta Sans", "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+}
+
+/* "New trends" display type: a distinct, geometric display face for
+   headings/data (Space Grotesk) layered over the Plus Jakarta Sans/Inter
+   body system — a two-tier type pairing (bold display + clean body) is
+   the current web-trend alternative to running one sans everywhere, and
+   it reads noticeably less "stock admin template" than before. */
+h1, h2, h3, .page-title, .form-title, .chart-title, .section-heading, .brand-name, .stat-value, .metric-tile .stat-value {
+  font-family: "Space Grotesk", "Plus Jakarta Sans", "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+a { color: inherit; }
+
+/* ---------------- Shell: fixed header, two independently-scrolling panes ---------------- */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ---------------- Header bar ---------------- */
+.app-header-bar {
+  display: flex;
+  flex-shrink: 0;
+  height: 64px;
+  border-bottom: 1px solid var(--border);
+}
+
+.header-brand {
+  width: 280px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+/* Thin, semi-transparent flow curve behind the wordmark — the
+   "CSV → Profiling → Analytics → Insight → Decision" motif in miniature,
+   never louder than decorative. */
+.header-brand::after {
+  content: '';
+  position: absolute;
+  inset: -20px -40px auto auto;
+  width: 160px;
+  height: 90px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cpath d='M-10 70 C 30 20, 70 90, 110 40 S 180 -10, 200 30' stroke='%23E7AD28' stroke-width='3' fill='none' opacity='0.18'/%3E%3Cpath d='M-10 40 C 30 -10, 70 60, 110 10 S 180 -30, 200 5' stroke='%23168AAD' stroke-width='2.5' fill='none' opacity='0.14'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
+.header-menu-icon {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-right: 4px;
+  cursor: pointer;
+}
+.header-menu-icon span { width: 16px; height: 2px; background: var(--text); border-radius: 2px; display: block; }
+
+.header-top {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 24px;
+  background: #ffffff;
+  color: #23301f;
+}
+
+.header-crumb { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.header-crumb-root { font-size: 13.5px; color: #6d776a; }
+.header-crumb-sep { font-size: 13.5px; color: #b7bdaa; }
+.header-crumb-current {
+  font-family: "Space Grotesk", "Plus Jakarta Sans", "Inter", sans-serif;
+  font-size: 16.5px;
+  font-weight: 700;
+  color: #23301f;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+
+.icon-btn {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+.icon-btn:hover { background: #f1f2ec; }
+.icon-btn.has-dot::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c0392b;
+  border: 1.5px solid #ffffff;
+}
+
+.header-divider { width: 1px; height: 26px; background: #e3e6dd; }
+
+/* The signed-in SME's business identity, shown to the left of the owner's
+   personal account block. The serif/small-caps treatment echoes an
+   institutional wordmark (bold serif, letter-spaced, two-tone ink) rather
+   than the app's usual sans-serif UI type, so the business reads as a
+   distinct "letterhead" next to the person's own name. */
+.header-sme { line-height: 1.15; text-align: right; max-width: 220px; }
+.header-sme-name {
+  font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.4px;
+  color: var(--primary);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.header-sme-tag {
+  font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  font-size: 10.5px;
+  letter-spacing: 1.2px;
+  color: var(--gold-dark);
+  text-transform: uppercase;
+}
+
+.header-account { display: flex; align-items: center; gap: 10px; }
+.header-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+  box-shadow: 0 3px 10px rgba(231, 173, 40, 0.4);
+  color: #23301f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14.5px;
+}
+.header-account-text { line-height: 1.25; }
+.header-account-name { font-size: 14px; font-weight: 700; color: #23301f; }
+.header-account-sub { font-size: 12px; color: #6d776a; }
+.header-signout {
+  margin-left: 4px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c0392b;
+  text-decoration: none;
+  font-size: 15px;
+  transition: background 0.15s ease;
+}
+.header-signout:hover { background: #fbe0dc; }
+
+/* ---------------- Sidebar ---------------- */
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  padding: 20px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.brand-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  object-fit: contain;
+  background: #fff;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.brand-name { font-weight: 800; line-height: 1.15; font-size: 16.5px; letter-spacing: 0.01em; position: relative; z-index: 1; }
+.brand-sub {
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  color: var(--gold);
+  text-transform: uppercase;
+  font-weight: 700;
+  position: relative;
+  z-index: 1;
+  white-space: nowrap;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 19px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: filter 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; filter: none; transform: none; }
+.btn-accent {
+  background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+  color: #1c2a20;
+  box-shadow: 0 6px 16px rgba(231, 173, 40, 0.32);
+}
+.btn-accent:hover { box-shadow: 0 9px 20px rgba(231, 173, 40, 0.4); }
+.btn-block { width: 100%; }
+.btn-outline { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
+.btn-ghost { background: var(--btn-ghost-bg); color: var(--text); }
+.btn-danger { background: linear-gradient(135deg, var(--danger) 0%, #a83e2f 100%); color: #2a1310; }
+
+/* Upload progress bar (Upload New Dataset form) — real byte-level upload
+   progress via XHR, then an indeterminate-looking "processing" hold while
+   the server parses/inserts rows, then a brief success flash before the
+   page swaps in the server's own re-rendered success/error banner. */
+.upload-progress { margin: 14px 0 6px; }
+.upload-progress-track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+.upload-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.2s ease, background 0.2s ease;
+}
+.upload-progress-fill.is-done { background: var(--alert-success-border); }
+.upload-progress-label {
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.upload-progress-label.is-done { color: var(--alert-success-text); font-weight: 600; }
+
+.nav-heading {
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 6px 0 10px;
+}
+
+.nav-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.nav-list a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--text-muted);
+  font-size: 17px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.nav-list a:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+.nav-list a.active {
+  color: var(--text);
+  font-weight: 700;
+  background: linear-gradient(90deg, rgba(231,173,40,0.22) 0%, rgba(231,173,40,0.05) 100%);
+}
+.nav-dot {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid var(--text-muted);
+  flex-shrink: 0;
+}
+.nav-list a.active .nav-dot { border-color: var(--accent); background: radial-gradient(circle, var(--accent) 0 5px, transparent 6px); }
+
+/* The four analytics-pipeline stages get their own stage-colored icon
+   chip instead of a generic gold nav-dot — the same colors/icons as the
+   .stage-pipeline trademark below, so the sidebar itself teaches the
+   DESCRIPTIVE → DIAGNOSTIC → PREDICTIVE → PRESCRIPTIVE identity every
+   time it's visible, not just on the four pages themselves. */
+.nav-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.08);
+  filter: grayscale(0.6) opacity(0.75);
+}
+.nav-list a.active .nav-icon,
+.nav-list a:hover .nav-icon { filter: none; }
+.nav-icon.stage-descriptive-analytics { background: rgba(22, 104, 168, 0.28); }
+.nav-icon.stage-diagnostic-insights { background: rgba(13, 148, 136, 0.28); }
+.nav-icon.stage-predictive-analytics { background: rgba(90, 69, 201, 0.28); }
+.nav-icon.stage-prescriptive-recommendations { background: rgba(44, 134, 89, 0.28); }
+
+.sidebar-footer { margin-top: auto; padding-top: 16px; }
+
+/* ---------------- Main content ---------------- */
+.main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 36px 44px;
+  position: relative;
+}
+
+/* Subtle background flow curves — "CSV Data → Profiling → Analytics →
+   Insight → Decision" as thin, semi-transparent lines behind the content,
+   fixed to the viewport so they read as one continuous watermark rather
+   than repeating per scroll position. Never interactive, never above
+   text (z-index 0, .main-inner sits at 1). */
+.main::before {
+  content: '';
+  position: fixed;
+  inset: 64px 0 0 280px;
+  pointer-events: none;
+  z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 800' preserveAspectRatio='xMaxYMin slice'%3E%3Cpath d='M1400 -40 C 1100 60, 1150 220, 900 260 S 620 260, 480 420 S 500 700, 200 760' stroke='%230B4037' stroke-width='2.5' fill='none' opacity='0.05'/%3E%3Cpath d='M1400 60 C 1080 150, 1160 300, 920 360 S 660 360, 540 520 S 560 760, 280 820' stroke='%23168AAD' stroke-width='2' fill='none' opacity='0.045'/%3E%3Cpath d='M1400 180 C 1060 250, 1170 380, 940 460 S 700 460, 600 620' stroke='%23E7AD28' stroke-width='2' fill='none' opacity='0.05'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.main-inner {
+  max-width: 1080px;
+  position: relative;
+  z-index: 1;
+}
+
+.page-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 10px;
+}
+/* Gradient-fill heading TEXT ONLY — the current web-trend replacement for a
+   flat solid-color page title. Progressively enhanced: browsers without
+   background-clip:text simply keep the solid `color` below. This used to be
+   applied to the whole .page-title element on the theory that a leading
+   emoji glyph would render in full color regardless of a transparent
+   text-fill-color on its parent — that assumption doesn't hold everywhere
+   (some Windows browser/font combinations paint the emoji using the same
+   transparent fill as the surrounding text, leaving a blank/solid glyph box
+   instead of a visible icon). The fix: the gradient clip now lives on
+   .page-title-text alone, and the leading icon is a sibling element
+   (.page-title-icon) that is never touched by text-fill-color at all. */
+.page-title-text {
+  color: var(--heading, var(--text));
+}
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .page-title-text {
+    background: linear-gradient(120deg, var(--heading, var(--primary)) 0%, var(--cyan) 55%, var(--secondary) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+}
+/* Colorful logo-style badge that replaces a plain emoji at the head of the
+   four core analytics-pipeline page titles. Each stage gets its own two-tone
+   gradient (matching --stage-descriptive/diagnostic/predictive/prescriptive,
+   the same identity used by the sidebar nav chips and .stage-pipeline
+   trademark) with a small white line-icon on top — a real pictorial mark
+   rather than a font glyph, so it can't be swallowed by a text-clip effect
+   or fail to render for lack of a color-emoji font. */
+.page-title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+}
+.page-title-icon svg { width: 25px; height: 25px; }
+.page-icon-descriptive { background: linear-gradient(135deg, var(--stage-descriptive) 0%, var(--cyan) 100%); }
+.page-icon-diagnostic { background: linear-gradient(135deg, var(--stage-diagnostic) 0%, var(--cyan) 100%); }
+.page-icon-predictive { background: linear-gradient(135deg, var(--stage-predictive) 0%, #8f7ae8 100%); }
+.page-icon-prescriptive { background: linear-gradient(135deg, var(--stage-prescriptive) 0%, var(--gold) 100%); }
+.page-subtitle {
+  color: var(--text-muted);
+  margin: 0 0 20px;
+  max-width: 660px;
+  line-height: 1.6;
+  font-size: 16.5px;
+}
+
+/* ---------------- Stage-pipeline trademark ----------------
+   DESCRIPTIVE → DIAGNOSTIC → PREDICTIVE → PRESCRIPTIVE, in that fixed
+   order and fixed colors, everywhere it appears (this stepper, the
+   sidebar's .nav-icon chips) — the point is that a user recognizes
+   CMA-Flow's four-stage pipeline by this shape/color sequence alone. */
+.stage-pipeline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 4px 0 22px;
+}
+.stage-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 15px 8px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-decoration: none;
+  background: transparent;
+  border: 1px solid var(--border);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.stage-step:hover { border-color: var(--stage-color, var(--border)); color: var(--stage-color, var(--text)); transform: translateY(-1px); }
+.stage-step-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11.5px;
+  background: var(--bar-other);
+  flex-shrink: 0;
+}
+.stage-step.is-active {
+  color: #ffffff;
+  background: var(--stage-color);
+  border-color: var(--stage-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--stage-color) 22%, transparent);
+}
+.stage-step.is-active .stage-step-icon { background: rgba(255, 255, 255, 0.28); }
+.stage-connector {
+  width: 22px;
+  height: 1.5px;
+  background: var(--border);
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+/* ---------------- Collapsible "How CMA-Flow analyzed this" disclosure ----------------
+   Keeps the research-methodology explanation (raw uploads, no Map &
+   Transform, canonical-schema scope note) one click away instead of
+   dominating the page the way a full paragraph under the title did — the
+   product reads as a finished analytics tool first, with the "how" on
+   demand for anyone who wants it. */
+.info-disclosure {
+  margin: 0 0 20px;
+  max-width: 640px;
+}
+.info-disclosure summary {
+  cursor: pointer;
+  list-style: revert;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--secondary);
+}
+.info-disclosure summary::marker { color: var(--secondary); }
+.info-disclosure p {
+  margin: 8px 0 0;
+  padding: 13px 15px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.info-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 14px;
+  line-height: 1.5;
+  box-shadow: var(--card-shadow);
+}
+.warn-box {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+.ok-box {
+  background: var(--ok-box-bg);
+  border: 1px solid var(--ok);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 14px;
+}
+
+/* ---------------- Forms ---------------- */
+.form-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 30px 32px;
+  max-width: 560px;
+  box-shadow: var(--card-shadow);
+}
+.form-card.wide { max-width: 760px; }
+.form-title { font-size: 26px; font-weight: 800; color: var(--heading, var(--text)); margin: 0 0 5px; }
+.form-hint { color: var(--text-muted); font-size: 13.5px; margin: 0 0 22px; }
+
+.field { margin-bottom: 17px; }
+.field label { display: block; font-size: 13.5px; font-weight: 600; margin-bottom: 7px; color: var(--text); }
+.field input,
+.field select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--bg-input);
+  color: #1c2a20;
+  font-size: 14.5px;
+  transition: outline-color 0.15s ease;
+}
+.field input:focus, .field select:focus { outline: 2px solid var(--accent); }
+.field-row { display: flex; gap: 14px; }
+.field-row .field { flex: 1; }
+
+.alert-error {
+  background: var(--alert-error-bg);
+  border: 1px solid var(--danger);
+  color: var(--alert-error-text);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 13.5px;
+}
+.alert-error ul { margin: 4px 0 0; padding-left: 18px; }
+
+.alert-success {
+  background: var(--alert-success-bg);
+  border: 1px solid var(--alert-success-border);
+  color: var(--alert-success-text);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 13.5px;
+}
+
+.form-footer { margin-top: 18px; font-size: 13.5px; color: var(--text-muted); }
+.form-footer a { color: var(--accent); font-weight: 600; text-decoration: none; }
+
+/* ---------------- Auth pages: welcome hero + sign-in/signup card ----------------
+   Previously a bare centered form on a flat fill — now a proper "welcome"
+   moment (eyebrow label, big two-tone wordmark, benefit subtitle, soft
+   radial glow + decorative flow-curve backdrop) ahead of the card itself,
+   echoing the structure of a university/product landing hero: label →
+   headline → subtitle → primary action (the sign-in form itself is the
+   action here, so no separate CTA buttons are added in the hero). */
+.auth-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 16px;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 12%, rgba(22, 138, 173, 0.22) 0%, transparent 55%),
+    radial-gradient(circle at 85% 88%, rgba(231, 173, 40, 0.16) 0%, transparent 50%),
+    linear-gradient(160deg, #0d4a3e 0%, #0b4037 55%, #093329 100%);
+}
+.auth-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 900' preserveAspectRatio='xMidYMid slice'%3E%3Ccircle cx='1300' cy='120' r='340' stroke='%23E7AD28' stroke-width='1' fill='none' opacity='0.08'/%3E%3Ccircle cx='1300' cy='120' r='240' stroke='%23E7AD28' stroke-width='1' fill='none' opacity='0.1'/%3E%3Cpath d='M-40 620 C 260 520, 420 720, 700 640 S 1120 480, 1420 560 S 1700 700, 1900 620' stroke='%23168AAD' stroke-width='2' fill='none' opacity='0.14'/%3E%3Cpath d='M-40 720 C 280 640, 440 820, 740 760 S 1160 600, 1460 680' stroke='%23FFFFFF' stroke-width='1.5' fill='none' opacity='0.06'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+.auth-shell > * { position: relative; z-index: 1; }
+
+.auth-hero { text-align: center; max-width: 620px; margin: 0 0 34px; padding: 0 8px; }
+.auth-hero-logo {
+  width: 68px;
+  height: 68px;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 7px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto 22px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+}
+.auth-eyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  margin: 0 0 16px;
+}
+.auth-eyebrow::before, .auth-eyebrow::after {
+  content: '';
+  width: 32px;
+  height: 1.5px;
+  background: var(--gold);
+  opacity: 0.55;
+}
+.auth-hero-title {
+  font-family: "Space Grotesk", "Plus Jakarta Sans", "Inter", sans-serif;
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  color: #f2f2ea;
+  margin: 0 0 6px;
+}
+.auth-hero-title .accent { color: var(--gold); }
+.auth-hero-tagline-mini {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin: 0 0 18px;
+  opacity: 0.85;
+}
+.auth-hero-subtitle {
+  font-size: 16.5px;
+  color: var(--text-muted);
+  line-height: 1.65;
+  margin: 0;
+}
+.auth-hero-subtitle strong { color: var(--gold); font-weight: 700; }
+
+/* ---------------- Placeholder / cards ---------------- */
+.placeholder-card {
+  background: var(--bg-card);
+  border: 1px dashed var(--border);
+  border-radius: 18px;
+  padding: 44px;
+  text-align: center;
+  max-width: 560px;
+  font-size: 16px;
+}
+.placeholder-card .emoji { font-size: 44px; margin-bottom: 12px; }
+
+.table-simple { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.table-simple th, .table-simple td {
+  text-align: left;
+  padding: 11px 13px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14.5px;
+}
+.table-simple th {
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 12.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.badge { display: inline-block; padding: 4px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 700; }
+.badge-active { background: var(--badge-ok-bg); color: var(--badge-ok-text); }
+.badge-inactive { background: var(--badge-neutral-bg); color: var(--text-muted); }
+.badge-risk-low { background: var(--badge-ok-bg); color: var(--badge-ok-text); }
+.badge-risk-medium { background: var(--warn-bg); color: var(--warn-text); }
+.badge-risk-high { background: var(--badge-danger-bg); color: var(--badge-danger-text); }
+.badge-risk-churned { background: var(--badge-neutral-bg); color: var(--text-muted); }
+.table-scroll { width: 100%; overflow-x: auto; }
+
+/* ---------------- Descriptive Analytics ---------------- */
+.dataset-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.dataset-picker label { font-size: 13.5px; font-weight: 600; color: var(--text-muted); }
+.dataset-picker select {
+  padding: 10px 13px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--bg-input);
+  color: #1c2a20;
+  font-size: 14.5px;
+  min-width: 260px;
+}
+.dataset-picker select:focus { outline: 2px solid var(--accent); }
+
+.section-heading {
+  font-size: 23px;
+  font-weight: 800;
+  color: var(--heading, var(--text));
+  margin: 30px 0 5px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.table-unit { color: var(--text-muted); font-size: 12px; }
+
+.tab-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 22px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  background: var(--tab-pill-bg);
+  border: 1px solid transparent;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.tab-pill:hover { color: var(--text); background: var(--tab-pill-hover-bg); transform: translateY(-1px); }
+.tab-pill.active { color: #1c2a20; background: var(--accent); font-weight: 700; }
+
+.variance-over { color: var(--variance-over); font-weight: 600; }
+.variance-under { color: var(--variance-under); font-weight: 600; }
+.row-current { background: var(--row-current-bg); }
+
+.mapping-status { margin-bottom: 22px; }
+.mapping-status summary { list-style: revert; }
+.mapping-status summary::marker { color: var(--accent); }
+.mapping-status[open] summary { margin-bottom: 4px; }
+
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.stat-tile {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px 20px;
+  box-shadow: var(--card-shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+/* A thin gradient "edge" along the top of every card — from the page's own
+   chart-accent colour (the stage identity, when one applies) into the
+   brand secondary — replacing a flat, borderless tile with the small
+   signature accent modern dashboards (Linear, Vercel, Stripe) use instead
+   of a plain rule or shadow alone. */
+.stat-tile::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--chart-accent, var(--accent)) 0%, var(--secondary) 100%);
+}
+.stat-tile:hover { transform: translateY(-3px); box-shadow: var(--card-shadow-hover); }
+.stat-label { font-size: 13px; color: var(--text-muted); margin-bottom: 7px; }
+.stat-value { font-size: 30px; font-weight: 800; line-height: 1.1; }
+.stat-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 8px;
+}
+.stat-delta.is-up { color: var(--variance-under); background: var(--badge-ok-bg); }
+.stat-delta.is-down { color: var(--variance-over); background: var(--badge-danger-bg); }
+.stat-delta-context { color: var(--text-muted); font-weight: 500; background: none; padding: 0; margin-left: 2px; }
+
+.chart-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.chart-grid-2 .chart-card, .chart-grid-2 .chart-empty { margin-bottom: 0; }
+
+.chart-card {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 24px 26px;
+  margin-bottom: 20px;
+  box-shadow: var(--card-shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.chart-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--chart-accent, var(--accent)) 0%, var(--secondary) 100%);
+}
+.chart-card:hover { transform: translateY(-3px); box-shadow: var(--card-shadow-hover); }
+.chart-title { font-size: 17.5px; font-weight: 800; margin-bottom: 3px; }
+.chart-subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 17px; }
+.chart-empty { color: var(--text-muted); font-size: 14px; margin: 4px 0 0; }
+.chart-footnote { color: var(--text-muted); font-size: 13px; line-height: 1.6; margin-top: -6px; }
+
+.bar-chart { display: flex; flex-direction: column; gap: 11px; margin-top: 14px; }
+.bar-row { display: flex; align-items: center; gap: 12px; }
+.bar-label {
+  width: 140px;
+  flex-shrink: 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bar-area { flex: 1; position: relative; height: 14px; border-left: 1px solid var(--border); }
+.bar-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: var(--chart-accent, var(--accent));
+  border-radius: 0 4px 4px 0;
+}
+.bar-fill.is-other { background: var(--bar-other); }
+.bar-value {
+  min-width: 78px;
+  text-align: right;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-table-toggle { margin-top: 16px; }
+.chart-table-toggle summary {
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--accent);
+  font-weight: 600;
+}
+.chart-table-toggle table { margin-top: 8px; }
+.chart-table-toggle table th, .chart-table-toggle table td { font-size: 12.5px; padding: 7px 10px; }
+
+/* Full Descriptive Analytics tab — one collapsible section per uploaded
+   file. Its own background (--bg-card, same shade views/dashboard/
+   descriptive-analytics.ejs already uses for placeholder-card) is
+   distinct from the --bg-panel chart-cards nested inside it, so a
+   section full of charts still reads as "charts inside a file", not one
+   flat stack. */
+.file-section { background: var(--bg-card); }
+.file-section > summary { cursor: pointer; list-style: revert; }
+.file-section > summary::marker { color: var(--accent); }
+.file-section[open] > summary { margin-bottom: 4px; }
+.file-section-columns { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+.column-kind-pill {
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--btn-ghost-bg);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Column-level descriptive-statistics table (the "Column-level descriptive
+   statistics" details block on the Full Descriptive Analytics tab) — each
+   column's stat menu (Count/Mean/Median/Mode/SD/... for Numeric, Total/
+   Mean/... for Currency, Frequency & percentage for Categorical, etc. —
+   see buildColumnStatLines() in routes/dashboard.js) renders as a wrapped
+   list of short "Label: value" fragments in the row's third cell, rather
+   than a rigid per-stat column grid — the field list genuinely differs by
+   semantic type, so a fixed set of table columns would leave most cells
+   empty for any given row. */
+.column-stat-lines { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.column-stat-line { font-size: 12.5px; color: var(--text); white-space: nowrap; }
+.column-stat-line strong { color: var(--text-muted); font-weight: 600; }
+
+/* Business Metrics section (Full Descriptive Analytics tab) — one tile
+   per Metric Registry entry. A metric the engine could compute looks
+   like a normal .stat-tile with an extra "Why" disclosure for its
+   provenance; a metric it correctly refused to fabricate (no evidence)
+   is visually muted and states its reason directly, so the two never
+   read as visually equivalent — the whole point of not showing "0". */
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin: 14px 0;
+}
+.metric-tile {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 17px 19px;
+  box-shadow: var(--card-shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.metric-tile::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--chart-accent, var(--accent)) 0%, var(--secondary) 100%);
+}
+.metric-tile:hover { transform: translateY(-3px); box-shadow: var(--card-shadow-hover); }
+.metric-tile-na { background: transparent; border-style: dashed; box-shadow: none; }
+.metric-tile-na::before { display: none; }
+.metric-tile-na:hover { transform: none; box-shadow: none; }
+.metric-tile-na .stat-value { font-size: 16px; color: var(--text-muted); font-weight: 600; }
+.metric-sublabel { font-size: 12.5px; color: var(--text-muted); margin-top: 5px; line-height: 1.5; }
+.metric-provenance { margin-top: 8px; }
+.metric-provenance summary { cursor: pointer; font-size: 12.5px; color: var(--accent); font-weight: 600; list-style: revert; }
+.metric-provenance p { font-size: 12.5px; color: var(--text-muted); margin: 6px 0 0; line-height: 1.6; }
+
+.trend-svg { width: 100%; height: auto; margin-top: 10px; }
+.viz-baseline { stroke: var(--border); stroke-width: 1; }
+.viz-axis-label { fill: var(--text-muted); font-size: 10.5px; }
+.viz-end-label { fill: var(--text); font-size: 12.5px; font-weight: 700; }
+
+/* ---------------- Light theme override for the main content pane ----------------
+   Same variable names as :root, redefined only inside .main, so every
+   component above (already written against var(--bg-panel), var(--text),
+   etc.) re-themes automatically. The sidebar, header brand cell, and
+   auth pages are outside this scope and keep the original dark theme. */
+.main {
+  --bg: #f7f8f4;
+  --bg-panel: #ffffff;
+  --bg-card: #ffffff;
+  --bg-input: #ffffff;
+  --border: rgba(11, 64, 55, 0.12);
+  --heading: #0b4037;
+  --text: #44534f;
+  --text-muted: #7c8a83;
+  --accent: #e7ad28;
+  --accent-dark: #c6921e;
+  --ok: #2f6f5e;
+  --warn-bg: #fbf1cf;
+  --warn-text: #6b5510;
+  --danger: #c0392b;
+
+  --badge-ok-bg: #dcf3e6;
+  --badge-ok-text: #1f7a52;
+  --badge-danger-bg: #fbe0dc;
+  --badge-danger-text: #b23a26;
+  --badge-neutral-bg: #eef0e8;
+  --alert-error-bg: #fbe0dc;
+  --alert-error-text: #9c2b1a;
+  --alert-success-bg: #e4f5e8;
+  --alert-success-border: #3f9a5c;
+  --alert-success-text: #256b3c;
+  --ok-box-bg: #eaf6ef;
+  --variance-over: #b23a26;
+  --variance-under: #1f7a52;
+  --bar-other: #dbe1da;
+  --btn-ghost-bg: #eef1ee;
+  --row-current-bg: #faf1dd;
+  --tab-pill-bg: #eef1ee;
+  --tab-pill-hover-bg: #e5e9e3;
+
+  --card-shadow: 0 1px 2px rgba(11, 64, 55, 0.05), 0 8px 20px rgba(11, 64, 55, 0.045);
+  --card-shadow-hover: 0 20px 44px rgba(11, 64, 55, 0.14), 0 6px 16px rgba(11, 64, 55, 0.08);
+
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Every analytics page carries its stage's single chart accent (bar
+   fills, trend lines, tab-pill highlight) instead of the shared brand
+   gold — gold stays reserved for CTAs/highlights, per the "gold reserved
+   for highlights" rule. services/charts.js reads --chart-accent with a
+   var(--accent) fallback, so any page without a stage class is
+   unaffected. */
+body.stage-descriptive-analytics .main { --chart-accent: var(--stage-descriptive); --stage-tint: rgba(22, 104, 168, 0.12); }
+body.stage-diagnostic-insights .main { --chart-accent: var(--stage-diagnostic); --stage-tint: rgba(13, 148, 136, 0.12); }
+body.stage-predictive-analytics .main { --chart-accent: var(--stage-predictive); --stage-tint: rgba(90, 69, 201, 0.12); }
+body.stage-prescriptive-recommendations .main { --chart-accent: var(--stage-prescriptive); --stage-tint: rgba(44, 134, 89, 0.12); }
+body[class*="stage-"] .main .tab-pill.active {
+  background: var(--stage-tint, var(--accent));
+  color: var(--chart-accent, #1c2a20);
+}
+
+/* ---------------- Monetization Discovery: drill-down panel ----------------
+   A slide-over from the right showing the customers/transactions behind
+   one product's card, so the confirm/correct decision doesn't have to be
+   taken on faith. Loads in pages as the panel body is scrolled (see
+   public/js/monetization-discovery.js) rather than all at once, since a
+   single product can carry tens of thousands of transactions. */
+.drilldown-trigger {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  line-height: 1.6;
+}
+.drilldown-trigger:hover { border-color: var(--accent); color: var(--accent); }
+
+.drilldown-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 40;
+}
+
+.drilldown-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(480px, 100vw);
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border);
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.25);
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+}
+/* The `display: flex` above is an author-stylesheet rule, which always
+   wins over the browser's own default `[hidden] { display: none }` (a
+   user-agent rule — author styles beat UA styles regardless of matching
+   specificity). Left as-is, that means the three drill-down panels using
+   this class (#raw-drilldown-panel, #revenue-drilldown-panel,
+   #drilldown-panel) render at full size, fixed to the right edge of every
+   page that includes them, EVEN WHILE their `hidden` attribute is set —
+   i.e. permanently, not just while a row is actually drilled into. That's
+   what was covering the rightmost ~480px of the Descriptive Analytics
+   page (and hiding whichever chart's 🔍 row-drilldown triggers happened
+   to sit there) at all times, not only when a drilldown was open. This
+   rule restores the normal hidden-attribute behavior; open/close still
+   goes through panel.hidden in each drilldown script.
+   Same override needed for the backdrop's sibling .drilldown-backdrop
+   in principle, but that rule never set its own `display`, so `[hidden]`
+   already worked correctly there — no fix needed. */
+.drilldown-panel[hidden] { display: none; }
+
+/* Any of the three drill-down panels above is fixed-position and floats
+   on top of the page rather than pushing it aside. Left alone, that means
+   a chart sitting near the right edge of the window can have its own
+   value/🔍 row-drilldown trigger render underneath the now-open panel and
+   become invisible — nothing is broken, it's just physically covered by
+   480px of panel the layout never accounted for. Each drilldown script
+   (raw-row-drilldown.js, revenue-drilldown.js, monetization-discovery.js)
+   toggles this class on <body> from its openPanel()/closePanel(), and it
+   reserves the panel's own width out of .main so chart-grid-2's columns
+   (plain `fr` tracks) reflow narrower — into whatever is still on-screen —
+   instead of rendering their rightmost content out of view. */
+body.drilldown-open .main {
+  padding-right: calc(44px + min(480px, 100vw));
+  transition: padding-right 0.15s ease;
+}
+
+.drilldown-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.drilldown-panel-title { font-size: 17px; font-weight: 800; }
+.drilldown-panel-sub { font-size: 12.5px; color: var(--text-muted); margin-top: 3px; }
+.drilldown-close {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.drilldown-close:hover { border-color: var(--accent); color: var(--accent); }
+
+.drilldown-mode-toggle {
+  display: flex;
+  gap: 8px;
+  padding: 14px 20px 0;
+}
+.drilldown-mode-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.drilldown-mode-btn.active { background: var(--accent); color: #1c2a20; border-color: var(--accent); }
+
+.drilldown-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 20px 24px;
+}
+.drilldown-panel-body .table-simple { margin-top: 4px; }
+.drilldown-panel-body th { position: sticky; top: 0; background: var(--bg-panel); }
+
+/* Per-row drill-down trigger — a small icon button renderBarChart() adds
+   next to a bar (and its "View as table" twin) when the caller opts a
+   chart into row-level drill-down (see services/charts.js drillButton()
+   and public/js/revenue-drilldown.js). Off by default; most bar charts
+   never pass `drilldown` and never render this. */
+.drilldown-row-trigger {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  line-height: 1;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+.drilldown-row-trigger:hover { border-color: var(--accent); color: var(--accent); }
+.bar-row-drilldown { margin-left: 2px; }
+
+@media (max-width: 800px) {
+  .app-shell { height: auto; overflow: visible; }
+  .app-header-bar { height: auto; flex-direction: column; }
+  .header-brand { width: 100%; }
+  .header-top { flex-wrap: wrap; padding: 10px 16px; }
+  .header-sme, .header-sme-divider { display: none; }
+  .app-body { flex-direction: column; overflow: visible; }
+  .sidebar { width: 100%; overflow-y: visible; }
+  .main { overflow-y: visible; padding: 24px; }
+  .field-row { flex-direction: column; gap: 0; }
+  .chart-grid-2 { grid-template-columns: 1fr; }
+  .bar-label { width: 100px; }
+  .drilldown-panel { width: 100vw; }
+  /* On this layout the panel already covers the full viewport width (and
+     sits behind a backdrop that makes the underlying page inert), so
+     there's nothing to reserve room for — keep .main at its normal mobile
+     padding instead of the desktop reservation above. */
+  body.drilldown-open .main { padding-right: 24px; }
+}

@@ -1,0 +1,168 @@
+<div class="page-title"><span class="page-title-icon page-icon-prescriptive" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a6 6 0 0 0-3.6 10.8c.5.4.9 1 1 1.7l.1.5h5l.1-.5c.1-.7.5-1.3 1-1.7A6 6 0 0 0 12 2Z"/></svg></span><span class="page-title-text">Prescriptive recommendations</span></div>
+<p class="page-subtitle">Get a ranked, reasoned recommendation for which revenue model to run next — every candidate always shows its reasoning, never a bare score.</p>
+<%- include('../partials/stage-pipeline', { activeStage: 'prescriptive' }) %>
+<details class="info-disclosure">
+  <summary>ⓘ How CMA-Flow analyzed this dataset</summary>
+  <p>Built directly from this dataset's own raw uploaded columns — no Map &amp; Transform required and no CMA Canonical Schema dependency on this page (reserved for a future extension of this study).</p>
+</details>
+
+<% if (!datasets || datasets.length === 0) { %>
+  <div class="placeholder-card">
+    <div class="emoji">📭</div>
+    <p>No datasets uploaded yet. <a href="/upload-dataset" style="color: var(--accent); font-weight: 600;">Upload a dataset</a> to see prescriptive recommendations here.</p>
+  </div>
+<% } else { %>
+
+  <form method="GET" action="/prescriptive-recommendations" class="dataset-picker">
+    <label for="dataset">Dataset ID</label>
+    <select id="dataset" name="dataset" onchange="this.form.submit()">
+      <% datasets.forEach(function(d) { %>
+        <option value="<%= d.id %>" <%= selectedDataset && selectedDataset.id === d.id ? 'selected' : '' %>>
+          <%= d.dataset_id %> — <%= d.dataset_name %>
+        </option>
+      <% }); %>
+    </select>
+    <input type="hidden" name="view" value="<%= activeView %>" />
+    <input type="hidden" name="source" value="<%= dataSource %>" />
+    <noscript><button type="submit" class="btn btn-ghost">Go</button></noscript>
+  </form>
+
+  <div class="tab-nav" style="margin-bottom: 14px;">
+    <a class="tab-pill <%= dataSource === 'dynamic' ? 'active' : '' %>" href="/prescriptive-recommendations?dataset=<%= selectedDataset.id %>&view=<%= activeView %>&source=dynamic">Dynamic (auto-detected fact table)</a>
+    <a class="tab-pill <%= dataSource === 'raw' ? 'active' : '' %>" href="/prescriptive-recommendations?dataset=<%= selectedDataset.id %>&view=<%= activeView %>&source=raw">Raw upload (Mechanism-based)</a>
+  </div>
+
+  <% if (dataSource === 'dynamic') { %>
+    <div class="info-box" style="margin-bottom:16px;">
+      Computed directly from this dataset's auto-detected transaction fact table — the same Automatic Dataset Intelligence engine behind Dynamic Diagnostics and Dynamic Predictive. Every recommendation below is structured as Evidence → Recommendation → Expected KPI → Confidence, and is built by reading those engines' own already-computed findings, never by re-deriving a new statistic. A decision area this fact table can't support yet is listed honestly under Data readiness instead of a guessed recommendation.
+    </div>
+
+    <% if (!cards.dynamicApplicable) { %>
+      <div class="placeholder-card">
+        <div class="emoji">🧭</div>
+        <p><%= cards.dynamicReason %></p>
+      </div>
+    <% } else { %>
+
+      <% if (cards.recommendations.length === 0) { %>
+        <div class="placeholder-card">
+          <div class="emoji">🤷</div>
+          <p>No decision area cleared the bar for a confident recommendation yet — see Data readiness below for why.</p>
+        </div>
+      <% } else { %>
+        <% cards.recommendations.forEach(function(r) { %>
+          <div class="chart-card" style="margin-bottom:16px;">
+            <div class="chart-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <span><%= r.decisionArea %></span>
+              <span class="badge <%= r.confidenceBand === 'High' ? 'badge-risk-low' : (r.confidenceBand === 'Medium' ? 'badge-risk-medium' : 'badge-risk-high') %>"><%= r.confidenceBand %> confidence (<%= r.confidencePct %>%)</span>
+            </div>
+            <div style="font-size:12px; color: var(--text-muted); margin: 2px 0 12px;">Source: <%= r.sourceLabel %></div>
+
+            <div style="margin-bottom:10px;">
+              <div style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color: var(--text-muted);">Evidence</div>
+              <p style="margin:4px 0 0; font-size:13.5px; color: var(--text-muted); line-height:1.6;"><%= r.evidence %></p>
+            </div>
+            <div style="margin-bottom:10px;">
+              <div style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color: var(--accent);">Recommendation</div>
+              <p style="margin:4px 0 0; font-size:14px; font-weight:600; line-height:1.6;"><%= r.recommendation %></p>
+            </div>
+            <div>
+              <div style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color: var(--text-muted);">Expected KPI</div>
+              <p style="margin:4px 0 0; font-size:13.5px; line-height:1.6;"><%= r.expectedKpi %></p>
+            </div>
+          </div>
+        <% }); %>
+      <% } %>
+
+      <% if (cards.dataReadiness.length > 0) { %>
+        <div class="chart-card">
+          <div class="chart-title">🧪 Data readiness</div>
+          <p class="form-hint" style="margin-bottom:10px;">These decision areas don't have enough of the right columns or history in this dataset yet to support a confident recommendation — shown honestly rather than guessed.</p>
+          <ul style="margin: 0; padding-left: 20px; color: var(--text-muted); font-size: 13px; line-height: 1.8;">
+            <% cards.dataReadiness.forEach(function(dr) { %><li><strong><%= dr.source %>:</strong> <%= dr.reason %></li><% }); %>
+          </ul>
+        </div>
+      <% } %>
+    <% } %>
+
+  <% } else if (!hasAnyData) { %>
+    <div class="placeholder-card">
+      <div class="emoji">🧭</div>
+      <p>
+        No file in this dataset's raw upload looks like transaction/usage data yet (auto-detected from its column names).
+        Upload a file with columns like amount, customer, and date.
+      </p>
+    </div>
+  <% } else { %>
+
+    <div class="info-box" style="margin-bottom:16px;">
+      Computed directly from <strong><%= rawInfo.sourceFileLabel || 'this dataset\'s uploaded file(s)' %></strong>'s raw uploaded columns, auto-detected and <strong>unconfirmed</strong> — <%= rawInfo.skippedRows.toLocaleString() %> row(s) with no readable amount/customer were skipped. Financial reconciliation and the catalog overview need reviewed pricing-tier data this auto-detection can't safely guess, so they're not shown here.
+    </div>
+
+    <div class="tab-nav">
+      <% views.forEach(function(v) { %>
+        <a class="tab-pill <%= activeView === v.slug ? 'active' : '' %>"
+           href="/prescriptive-recommendations?dataset=<%= selectedDataset.id %>&view=<%= v.slug %>&source=<%= dataSource %>">
+          <span><%= v.icon %></span> <%= v.label %>
+        </a>
+      <% }); %>
+    </div>
+
+    <% if (activeView === 'baseline') { %>
+      <div class="kpi-row"><%- cards.baselineKpiRow.join('') %></div>
+      <% if (cards.mechanismTable.length > 0) { %>
+        <div class="chart-card">
+          <div class="chart-title">Current mechanism performance</div>
+          <div class="table-scroll">
+            <table class="table-simple">
+              <thead><tr><th>Mechanism</th><th>Revenue</th><th>Transactions</th><th>% of total</th></tr></thead>
+              <tbody>
+                <% cards.mechanismTable.forEach(function(m) { %>
+                  <tr><td><%= m.label %></td><td><%= m.revenue %></td><td><%= m.count %></td><td><%= m.pctOfTotal %></td></tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% } %>
+      <% if (cards.reconciliationKpiRow) { %>
+        <div class="section-heading">Financial reconciliation baseline</div>
+        <div class="kpi-row"><%- cards.reconciliationKpiRow.join('') %></div>
+      <% } %>
+      <% if (cards.reconciliationNote) { %>
+        <div class="info-box"><%= cards.reconciliationNote %></div>
+      <% } %>
+
+    <% } else if (activeView === 'elasticity') { %>
+      <% if (!cards.elasticityAvailable) { %>
+        <div class="info-box">Price elasticity needs either a Monetization Config price history for a product, or Transaction history that itself shows a stable price on one side of a date and a different stable price on the other. Neither is present yet for this dataset.</div>
+      <% } else { %>
+        <div class="kpi-row"><%- cards.elasticityKpiRow.join('') %></div>
+        <div class="chart-card">
+          <div class="chart-title">Price-change reads used for this estimate</div>
+          <div class="chart-subtitle">Rows marked "Inferred" have no Monetization Config price history — the price shift was detected directly in what customers were charged.</div>
+          <div class="table-scroll">
+            <table class="table-simple">
+              <thead><tr><th>Product</th><th>Source</th><th>Effective</th><th>Old → New price</th><th>Volume Δ</th><th>Elasticity</th></tr></thead>
+              <tbody>
+                <% cards.elasticityTable.forEach(function(r) { %>
+                  <tr><td><%= r.product %></td><td><span class="badge <%= r.inferred ? 'badge-inactive' : 'badge-active' %>"><%= r.inferred ? 'Inferred' : 'Configured' %></span></td><td><%= r.effectiveDate %></td><td><%= r.oldPrice %> → <%= r.newPrice %></td><td><%= r.volumePctChange %></td><td><%= r.elasticity %></td></tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% } %>
+
+    <% } else if (activeView === 'recommendation') { %>
+      <% cards.candidates.forEach(function(c) { %>
+        <div class="chart-card">
+          <div class="chart-title">#<%= c.rank %> — <%= c.label %> <span style="color: var(--text-muted); font-weight: 500; font-size: 12.5px;">(score <%= c.score %>)</span></div>
+          <ul style="margin: 8px 0 0; padding-left: 20px; color: var(--text-muted); font-size: 13.5px; line-height: 1.7;">
+            <% c.reasoning.forEach(function(r) { %><li><%= r %></li><% }); %>
+          </ul>
+        </div>
+      <% }); %>
+    <% } %>
+  <% } %>
+<% } %>

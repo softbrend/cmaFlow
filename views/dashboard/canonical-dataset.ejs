@@ -1,0 +1,65 @@
+<div class="page-title">🧬 <span class="page-title-text">Canonical — <%= label %></span></div>
+<p class="page-subtitle">
+  <a href="/upload-dataset" style="color: var(--accent);">← Upload New Dataset</a>
+  &nbsp;·&nbsp; Dataset ID: <strong><%= dataset.dataset_id %></strong>
+  &nbsp;·&nbsp; Canonical entity: <strong><%= entity %></strong>
+  <% if (mappingVersion) { %>&nbsp;·&nbsp; Mapping version <strong>v<%= mappingVersion %></strong><% } %>
+</p>
+
+<% if (!mappingVersion) { %>
+  <div class="placeholder-card">
+    <div class="emoji">🧭</div>
+    <strong>This file hasn't been mapped and transformed yet.</strong>
+    <p style="color: var(--text-muted); font-size: 13.5px;">
+      <a href="/upload-dataset/<%= dataset.id %>/map#file-<%= fileType %>" style="color: var(--accent); font-weight: 600;">Map &amp; transform this dataset</a> to produce CMA Canonical Schema records from the raw upload — mapping runs for every file in this Dataset ID together, in one batch.
+    </p>
+  </div>
+<% } else { %>
+  <div class="form-card wide" style="margin-bottom: 18px;">
+    <div class="form-title">View</div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <a class="btn <%= view === 'all' ? 'btn-accent' : 'btn-outline' %>" href="?view=all">All (<%= counts.valid + counts.invalid %>)</a>
+      <a class="btn <%= view === 'valid' ? 'btn-accent' : 'btn-outline' %>" href="?view=valid">Valid (<%= counts.valid %>)</a>
+      <a class="btn <%= view === 'invalid' ? 'btn-accent' : 'btn-outline' %>" href="?view=invalid">Invalid (<%= counts.invalid %>)</a>
+      <a class="btn btn-ghost" href="/upload-dataset/<%= dataset.id %>/map#file-<%= fileType %>">Adjust mapping & re-run (whole dataset)</a>
+    </div>
+  </div>
+
+  <div class="form-card wide">
+    <div class="form-title">Frozen canonical records</div>
+    <% if (rows.length === 0) { %>
+      <p style="color: var(--text-muted);">No records in this view.</p>
+    <% } else { %>
+      <div style="overflow-x:auto;">
+        <table class="table-simple">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <% Object.keys(entitySpec.fields).forEach(function(key) { %><th><%= key %></th><% }); %>
+              <th>Source row</th>
+              <% if (view !== 'valid') { %><th>Validation errors</th><% } %>
+            </tr>
+          </thead>
+          <tbody>
+            <% rows.forEach(function(r) { %>
+              <tr>
+                <td><%= r.status === 'valid' ? '✅' : '⚠️' %></td>
+                <% Object.keys(entitySpec.fields).forEach(function(key) { %>
+                  <td><%= r.data[key] === null || r.data[key] === undefined ? '—' : r.data[key] %></td>
+                <% }); %>
+                <td style="font-size:12px; color: var(--text-muted);">#<%= r.data._lineage ? r.data._lineage.source_row_index : '—' %></td>
+                <% if (view !== 'valid') { %>
+                  <td style="font-size:12px; color:#c0392b;">
+                    <% if (r.validation_errors && r.validation_errors.length) { %>
+                      <ul style="margin:0; padding-left:16px;"><% r.validation_errors.forEach(function(e) { %><li><%= e %></li><% }); %></ul>
+                    <% } else { %>—<% } %>
+                  </td>
+                <% } %>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+<% } %>

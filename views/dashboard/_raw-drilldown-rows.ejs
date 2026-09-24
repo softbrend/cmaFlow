@@ -1,0 +1,22 @@
+<%# Row fragment for the Full Descriptive Analytics tab's raw-row
+    drill-down panel (public/js/raw-row-drilldown.js). No <table>/<thead>
+    here — the panel shell owns those, and the client builds the <thead>
+    itself from the X-Drilldown-Columns response header (see the route
+    comment in routes/dashboard.js for why that travels as a header
+    rather than inline HTML). `columns` fixes the cell order for every
+    row so it always lines up with that header, regardless of key order
+    in the underlying JSONB. %>
+<% if (rows.length === 0) { %>
+  <tr class="drilldown-empty-row"><td colspan="<%= Math.max(columns.length, 1) %>">Nothing to show.</td></tr>
+<% } else { %>
+  <% rows.forEach(function(row) { %>
+    <tr>
+      <% columns.forEach(function(col) { %>
+        <td><%= (row[col] === null || row[col] === undefined || row[col] === '') ? '—' : row[col] %></td>
+      <% }); %>
+    </tr>
+  <% }); %>
+<% } %>
+<% if (hasMore) { %>
+  <tr class="drilldown-sentinel-row" data-next-offset="<%= nextOffset %>"><td colspan="<%= Math.max(columns.length, 1) %>" style="text-align:center; color: var(--text-muted); font-size: 12px;">Loading more…</td></tr>
+<% } %>

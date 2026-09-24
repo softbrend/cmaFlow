@@ -1,0 +1,95 @@
+<div class="page-title">🧭 <span class="page-title-text">Map & Transform — <%= dataset.dataset_name %></span></div>
+<p class="page-subtitle">
+  <a href="/upload-dataset" style="color: var(--accent);">← Upload New Dataset</a>
+  &nbsp;·&nbsp; Dataset ID: <strong><%= dataset.dataset_id %></strong>
+  &nbsp;·&nbsp; <%= blocks.length %> file<%= blocks.length === 1 ? '' : 's' %> in this batch
+</p>
+<p class="page-subtitle" style="margin-top:-8px;">
+  Confirming below runs Clean → Normalize → Transform → Tag → Enrich → Validate → Freeze for every file uploaded under this Dataset ID together, in one step — not one CSV file at a time.
+</p>
+
+<% if (errors && errors.length) { %>
+  <div class="alert-error"><ul><% errors.forEach(function(e) { %><li><%= e.msg %></li><% }); %></ul></div>
+<% } %>
+
+<form method="POST" action="/upload-dataset/<%= dataset.id %>/map">
+  <% blocks.forEach(function(block) { %>
+    <div class="form-card wide" id="file-<%= block.fileType %>" style="margin-bottom: 18px;">
+      <div class="form-title">
+        <%= block.label %>
+        <span style="font-weight:400; color: var(--text-muted); font-size:12.5px;">(<%= block.rowCount.toLocaleString() %> row<%= block.rowCount === 1 ? '' : 's' %>)</span>
+      </div>
+
+      <p class="form-hint">"<%= block.label %>" is just this file's label — it doesn't determine which CMA canonical entity it becomes. Pick whichever of the four fits what the file actually contains.</p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
+        <% entityNames.forEach(function(name) { %>
+          <a class="btn <%= name === block.entity ? 'btn-accent' : 'btn-outline' %>" href="<%= entityLink(block.fileType, name) %>"><%= name %></a>
+        <% }); %>
+      </div>
+      <input type="hidden" name="entity_<%= block.fileType %>" value="<%= block.entity %>" />
+
+      <% if (block.unmappableRequired && block.unmappableRequired.length > 0) { %>
+        <div class="alert-error" style="margin-bottom:14px;">
+          <strong>No column in this file can supply <%= block.unmappableRequired.join(', ') %>.</strong>
+          <p style="margin:6px 0 0; font-size:13px;">
+            <%= block.label %>'s own headers don't contain anything matching
+            <% block.unmappableRequired.forEach(function(f, i) { %><code><%= f %></code><%= i < block.unmappableRequired.length - 1 ? ', ' : '' %><% }); %>
+            — not a naming mismatch, just not present in the source data. Rows will freeze as <strong>invalid</strong> until this is added upstream (e.g. joined in before upload), or unless <%= block.entity %> isn't the right entity for this file — try another one above if it fits better.
+          </p>
+        </div>
+      <% } %>
+
+      <p class="form-hint">
+        <% if (block.isRemap) { %>
+          This file was mapped to <%= block.entity %> before — the fields below are pre-filled from the last confirmed mapping. Change anything and re-run to freeze a new version; the previous transform stays intact for audit.
+        <% } else { %>
+          Every column below was auto-suggested by matching <%= block.label %>'s own headers against common names for each CMA canonical field — nothing is final until you confirm it. Pick "— none —" for any field this file doesn't have; a field marked <em>can be calculated</em> will be computed automatically if left unmapped and its inputs are available.
+        <% } %>
+      </p>
+
+      <table class="table-simple">
+        <thead>
+          <tr><th>CMA canonical field</th><th>Source column in this file</th><th>Suggestion confidence</th></tr>
+        </thead>
+        <tbody>
+          <% Object.keys(block.entitySpec.fields).forEach(function(key) { %>
+            <% var spec = block.entitySpec.fields[key]; var current = block.fieldMap[key] || {}; %>
+            <tr>
+              <td>
+                <strong><%= key %></strong><% if (spec.required) { %> <span style="color:#c0392b;">*</span><% } %>
+                <div style="font-size:12px; color: var(--text-muted);"><%= spec.description %><% if (spec.derivable) { %> <em>(can be calculated from <%= spec.derivable.from.join(' × ') %> if left unmapped)</em><% } %></div>
+              </td>
+              <td>
+                <select name="map_<%= block.fileType %>_<%= key %>">
+                  <option value="">— none —</option>
+                  <% block.columns.forEach(function(col) { %>
+                    <option value="<%= col %>" <%= current.source === col ? 'selected' : '' %>><%= col %></option>
+                  <% }); %>
+                </select>
+              </td>
+              <td>
+                <% if (current.source) { %>
+                  <span style="font-size:12px; color: var(--text-muted);"><%= Math.round((current.confidence || 0) * 100) %>%</span>
+                <% } else { %>
+                  <span style="font-size:12px; color: var(--text-muted);">—</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+      <p class="form-hint" style="margin-top:10px;"><span style="color:#c0392b;">*</span> required for a row to freeze as valid — rows missing it are still kept, just flagged invalid with the reason recorded.</p>
+    </div>
+  <% }); %>
+
+  <div class="form-card wide">
+    <div class="form-title">Confirm &amp; run — whole dataset</div>
+    <p class="form-hint">
+      Confirming runs every file above through Clean → Normalize → Transform → Tag → Enrich → Validate → Freeze in one batch, inside one database transaction: either the entire dataset's mapping commits together, or none of it does. The raw files you uploaded are never changed — every canonical record keeps a permanent link back to its exact original row.
+    </p>
+    <div style="display:flex; gap: 10px; margin-top: 14px;">
+      <button type="submit" class="btn btn-accent">Confirm Mapping &amp; Run Transform for all <%= blocks.length %> file<%= blocks.length === 1 ? '' : 's' %></button>
+      <a href="/upload-dataset" class="btn btn-ghost">Cancel</a>
+    </div>
+  </div>
+</form>

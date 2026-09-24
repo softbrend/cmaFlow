@@ -1,0 +1,335 @@
+<div class="page-title">📤 <span class="page-title-text">Upload New Dataset</span></div>
+<p class="page-subtitle">Register a new dataset for this SME account and upload its source CSV files. Pick any number of files at once in a single file dialog, or add more one at a time — give each one a short label (or leave it blank to use the file's own name). Files sharing the same label merge into one continuous set, e.g. several months of "Transactions" exports.</p>
+
+<div class="form-card wide" style="margin-bottom: 26px;">
+  <div class="form-title">Dataset details</div>
+  <p class="form-hint">One Dataset ID per submission, any number of CSV files, up to 500MB each. Files don't need matching columns to each other, and their labels don't need to match any fixed list — each file's own structure is used as-is, and you choose which CMA canonical entity it maps into later, on the Map &amp; Transform screen.</p>
+
+  <% if (errors && errors.length) { %>
+    <div class="alert-error">
+      <ul><% errors.forEach(function(e) { %><li><%= e.msg %></li><% }); %></ul>
+    </div>
+  <% } %>
+  <% if (success) { %>
+    <div class="alert-success"><%= success %></div>
+  <% } %>
+
+  <form method="POST" action="/upload-dataset" enctype="multipart/form-data">
+    <div class="field">
+      <label for="dataset_id">Dataset ID</label>
+      <input type="text" id="dataset_id" name="dataset_id" placeholder="e.g. SME_Retail_07" required />
+    </div>
+
+    <div class="field">
+      <label for="dataset_name">Dataset name</label>
+      <input type="text" id="dataset_name" name="dataset_name" placeholder="e.g. Retail SME Transactions" required />
+    </div>
+
+    <div class="field">
+      <label for="domain">Domain (optional)</label>
+      <input type="text" id="domain" name="domain" placeholder="e.g. Retail, Food service, Logistics" />
+    </div>
+
+    <div class="field">
+      <label>Dataset files</label>
+      <p class="form-hint" style="margin-top:-4px;">Select several CSVs at once from the file dialog (ctrl/shift-click, or drag a selection) to add them all in one go — each gets its own row with a short label describing what it contains, e.g. "Accounts", "Subscriptions", "Feature Usage", "Churn Events", "Support Tickets". The label defaults to the file's own name and is editable; it becomes that file's type in Browse Dataset and Map &amp; Transform.</p>
+      <div id="file-rows"></div>
+      <p id="no-files-hint" style="color: var(--text-muted); font-size: 13px; margin: 4px 0 10px;">No files added yet.</p>
+      <button type="button" class="btn btn-outline" id="add-file-row">+ Add files…</button>
+      <input type="file" id="bulk-file-input" accept=".csv,text/csv" multiple style="display:none;" />
+    </div>
+
+    <div id="upload-progress" class="upload-progress" hidden>
+      <div class="upload-progress-track">
+        <div class="upload-progress-fill" id="upload-progress-fill"></div>
+      </div>
+      <div class="upload-progress-label" id="upload-progress-label">Uploading… 0%</div>
+    </div>
+
+    <div style="display:flex; gap: 10px; margin-top: 6px;">
+      <button type="submit" class="btn btn-accent" id="upload-submit-btn">Upload Dataset</button>
+      <a href="/" class="btn btn-ghost" id="upload-cancel-link">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<div class="form-card wide" style="margin-bottom: 26px;">
+  <div class="form-title">Previously uploaded datasets</div>
+  <% if (!datasets || datasets.length === 0) { %>
+    <p style="color: var(--text-muted);">No datasets uploaded yet.</p>
+  <% } else { %>
+    <table class="table-simple">
+      <thead><tr><th>Dataset ID</th><th>Name</th><th>Domain</th><th>File types</th><th>Files</th><th>Rows ingested</th><th>Uploaded</th><th>Default</th><th></th></tr></thead>
+      <tbody>
+        <% datasets.forEach(function(d) { %>
+          <% var counts = recordCounts[d.id] || {}; var manifest = fileManifest[d.id] || {}; %>
+          <% var typeKeys = Object.keys(counts); %>
+          <% var fileCount = Object.keys(manifest).reduce(function(sum, k) { return sum + manifest[k].length; }, 0); %>
+          <% var totalRows = typeKeys.reduce(function(sum, k) { return sum + counts[k]; }, 0); %>
+          <tr>
+            <td><%= d.dataset_id %></td>
+            <td><%= d.dataset_name %></td>
+            <td><%= d.domain || '—' %></td>
+            <td><%= typeKeys.length %></td>
+            <td><%= fileCount %></td>
+            <td><%= totalRows.toLocaleString() %></td>
+            <td><%= new Date(d.created_at).toLocaleDateString() %></td>
+            <td style="text-align:center;">
+              <% if (defaultDatasetId === d.id) { %>
+                <span class="badge badge-active" title="This is the SME Owner Portal's default dataset for this account">★ Default</span>
+              <% } else { %>
+                <form method="POST" action="/default-dataset" style="display:inline;">
+                  <input type="hidden" name="dataset_id" value="<%= d.id %>" />
+                  <input type="hidden" name="redirect_to" value="/upload-dataset" />
+                  <button type="submit" class="btn btn-ghost" style="font-size:12px; padding:3px 8px;">Set as default</button>
+                </form>
+              <% } %>
+            </td>
+            <td style="text-align:right;">
+              <form method="POST" action="/upload-dataset/<%= d.id %>/delete" class="delete-dataset-form" style="display:inline;">
+                <button type="submit" class="btn btn-ghost" title="Delete dataset &quot;<%= d.dataset_name %>&quot; and all its uploaded files" data-dataset-name="<%= d.dataset_name %>" data-dataset-id="<%= d.dataset_id %>" style="color:#b91c1c; padding:4px 8px;">🗑️</button>
+              </form>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<div class="form-card wide">
+  <div class="form-title">Data Mapping &amp; Transformation → CMA Canonical Schema</div>
+  <p class="form-hint">
+    Raw uploads are ingested as-is (any columns, any structure, any number of files, any labels). Map &amp; Transform runs for every file uploaded under one Dataset ID together, as a single batch — not one CSV file at a time — mapping each file's merged columns onto the CMA Canonical Schema (Customers, Transactions, Entitlements, or Monetization Config) through Clean → Normalize → Transform → Tag → Enrich → Validate → Freeze, without ever altering the raw upload. You choose which canonical entity each file becomes, per file, on the Map &amp; Transform screen — a file's label is just a label.
+  </p>
+  <% if (!datasets || datasets.length === 0) { %>
+    <p style="color: var(--text-muted);">No datasets uploaded yet.</p>
+  <% } else { %>
+    <% datasets.forEach(function(d) { %>
+      <% var counts = recordCounts[d.id] || {}; var status = canonicalStatus[d.id] || {}; %>
+      <% var typeKeys = Object.keys(counts); %>
+      <% var totalRows = typeKeys.reduce(function(sum, k) { return sum + counts[k]; }, 0); %>
+      <% var mappedKeys = typeKeys.filter(function(k) { return !!status[k]; }); %>
+      <% var allMapped = typeKeys.length > 0 && mappedKeys.length === typeKeys.length; %>
+      <div style="border-top: 1px solid var(--border); padding: 14px 0;">
+        <div style="font-weight:600; margin-bottom:8px;"><%= d.dataset_name %> <span style="font-weight:400; color: var(--text-muted); font-size:12.5px;">(<%= d.dataset_id %>)</span></div>
+        <% if (typeKeys.length === 0) { %>
+          <p style="color: var(--text-muted); font-size:13px; margin:0;">No files uploaded yet.</p>
+        <% } else if (!allMapped) { %>
+          <a class="btn btn-outline" href="/upload-dataset/<%= d.id %>/map">Map &amp; Transform entire dataset (<%= typeKeys.length %> file<%= typeKeys.length === 1 ? '' : 's' %>, <%= totalRows.toLocaleString() %> rows)</a>
+          <a class="btn btn-ghost" href="/dataset/<%= d.id %>/review-fields" style="font-size:12.5px;">🧠 Review field roles</a>
+        <% } else { %>
+          <% var totalValid = mappedKeys.reduce(function(s, k) { return s + status[k].valid; }, 0); %>
+          <% var totalInvalid = mappedKeys.reduce(function(s, k) { return s + status[k].invalid; }, 0); %>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
+            <span style="font-size:13px; color:var(--text-muted);">Mapped — <%= totalValid.toLocaleString() %> valid<% if (totalInvalid) { %>, <%= totalInvalid.toLocaleString() %> invalid<% } %> across <%= typeKeys.length %> file<%= typeKeys.length === 1 ? '' : 's' %></span>
+            <a class="btn btn-outline" href="/upload-dataset/<%= d.id %>/map">Adjust mapping &amp; re-run</a>
+            <a class="btn btn-ghost" href="/dataset/<%= d.id %>/review-fields" style="font-size:12.5px;">🧠 Review field roles</a>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:8px;">
+            <% typeKeys.forEach(function(key) { %>
+              <a class="btn btn-ghost" href="/canonical-dataset/<%= d.id %>/<%= key %>" style="font-size:12.5px;"><%= humanizeFileType(key) %>: v<%= status[key].mappingVersion %></a>
+            <% }); %>
+          </div>
+        <% } %>
+      </div>
+    <% }); %>
+  <% } %>
+</div>
+
+<script>
+// Files are still submitted as one file_<n>/label_<n> pair per row (the
+// server's own contract — see FILE_FIELD_RE in middleware/upload.js), but
+// the picker itself supports choosing many CSVs in a single file dialog:
+// "+ Add files…" opens a hidden multi-select <input>, and each file it
+// returns is handed off to its own new row's file input via the
+// DataTransfer trick below (the only way to assign an already-picked File
+// object to a *different* <input type="file"> without re-choosing it) —
+// so N files picked at once become N rows in one step, each pre-labeled
+// from its own filename but still individually editable/removable.
+(function () {
+  var container = document.getElementById('file-rows');
+  var addBtn = document.getElementById('add-file-row');
+  var bulkInput = document.getElementById('bulk-file-input');
+  var noFilesHint = document.getElementById('no-files-hint');
+  var rowCount = 0;
+
+  function updateEmptyHint() {
+    noFilesHint.style.display = container.children.length === 0 ? '' : 'none';
+  }
+
+  // "olist_customers_dataset.csv" -> "Olist Customers Dataset" — just a
+  // friendlier default starting point than the raw filename; the SME
+  // owner can always retype it to whatever label they actually want.
+  function humanizeFilename(name) {
+    return name
+      .replace(/\.csv$/i, '')
+      .replace(/[_-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/\S+/g, function (w) { return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); });
+  }
+
+  function addRow(file) {
+    rowCount += 1;
+    var n = rowCount;
+    var row = document.createElement('div');
+    row.className = 'file-row';
+    row.style.cssText = 'display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap;';
+
+    var fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.name = 'file_' + n;
+    fileInput.accept = '.csv,text/csv';
+    fileInput.required = true;
+    fileInput.style.cssText = 'flex:1 1 220px;';
+
+    if (file && typeof DataTransfer !== 'undefined') {
+      var dt = new DataTransfer();
+      dt.items.add(file);
+      fileInput.files = dt.files;
+    }
+
+    var labelInput = document.createElement('input');
+    labelInput.type = 'text';
+    labelInput.name = 'label_' + n;
+    labelInput.placeholder = 'Label, e.g. Accounts';
+    labelInput.style.cssText = 'flex:1 1 180px;';
+    if (file) labelInput.value = humanizeFilename(file.name);
+
+    var removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn btn-ghost remove-row';
+    removeBtn.style.cssText = 'flex:0 0 auto;';
+    removeBtn.textContent = 'Remove';
+    removeBtn.addEventListener('click', function () {
+      row.remove();
+      updateEmptyHint();
+    });
+
+    row.appendChild(fileInput);
+    row.appendChild(labelInput);
+    row.appendChild(removeBtn);
+    container.appendChild(row);
+    updateEmptyHint();
+  }
+
+  addBtn.addEventListener('click', function () {
+    bulkInput.value = ''; // so picking the same file(s) again still fires 'change'
+    bulkInput.click();
+  });
+
+  bulkInput.addEventListener('change', function () {
+    Array.prototype.slice.call(bulkInput.files || []).forEach(function (f) { addRow(f); });
+  });
+
+  updateEmptyHint();
+})();
+
+// Upload progress bar — intercepts the form's normal submit so we can
+// drive it with XMLHttpRequest instead of a plain browser POST. Fetch has
+// no way to observe request-body upload progress, so XHR's
+// xhr.upload.onprogress is what actually makes a real (not fake/timed)
+// progress bar possible here, which matters: CSV files can run up to
+// 500MB each and several can be attached at once.
+//
+// The endpoint always responds with the FULL re-rendered page (layout,
+// sidebar, updated dataset list, and its own success/error banner) rather
+// than JSON — see routes/dashboard.js's renderUploadForm(). So once the
+// response lands, the whole document is swapped in with
+// document.open()/write()/close(), which — unlike setting innerHTML —
+// re-executes the page's own <script> tags, giving a clean "soft reload"
+// straight onto the fresh, server-rendered result (including this same
+// script, so a second upload works exactly the same way).
+(function () {
+  var form = document.querySelector('form[action="/upload-dataset"]');
+  if (!form) return;
+
+  var progressWrap = document.getElementById('upload-progress');
+  var fill = document.getElementById('upload-progress-fill');
+  var label = document.getElementById('upload-progress-label');
+  var submitBtn = document.getElementById('upload-submit-btn');
+  var cancelLink = document.getElementById('upload-cancel-link');
+
+  function setProgress(pct, text, done) {
+    fill.style.width = pct + '%';
+    fill.classList.toggle('is-done', !!done);
+    label.textContent = text;
+    label.classList.toggle('is-done', !!done);
+  }
+
+  function swapInResponse(html) {
+    document.open();
+    document.write(html);
+    document.close();
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', form.getAttribute('action') || '/upload-dataset');
+
+    submitBtn.disabled = true;
+    cancelLink.setAttribute('aria-disabled', 'true');
+    cancelLink.style.pointerEvents = 'none';
+    cancelLink.style.opacity = '0.55';
+    progressWrap.hidden = false;
+    setProgress(0, 'Uploading… 0%');
+
+    xhr.upload.addEventListener('progress', function (evt) {
+      if (!evt.lengthComputable) return;
+      var pct = Math.round((evt.loaded / evt.total) * 100);
+      setProgress(pct, 'Uploading… ' + pct + '%');
+    });
+
+    // All bytes are on the wire, but the server still has to parse every
+    // CSV and insert every row before it can respond — keep the bar full
+    // and say so, rather than leaving it looking "done" while nothing
+    // visible is happening for what can be several seconds on a big file.
+    xhr.upload.addEventListener('load', function () {
+      setProgress(100, 'Processing your files…');
+    });
+
+    xhr.onload = function () {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        setProgress(100, '✅ Upload successful!', true);
+        setTimeout(function () { swapInResponse(xhr.responseText); }, 700);
+      } else {
+        // Validation/parse errors still come back as a normal re-rendered
+        // page (with its own alert-error banner) — swap straight in
+        // rather than flashing a false "successful" message first.
+        swapInResponse(xhr.responseText);
+      }
+    };
+
+    xhr.onerror = function () {
+      submitBtn.disabled = false;
+      cancelLink.style.pointerEvents = '';
+      cancelLink.style.opacity = '';
+      cancelLink.removeAttribute('aria-disabled');
+      progressWrap.hidden = true;
+      window.alert('The upload failed — check your connection and try again.');
+    };
+
+    xhr.send(new FormData(form));
+  });
+})();
+
+// Every delete form asks for confirmation first — deleting a dataset
+// removes its uploaded CSVs and everything derived from them (mapped
+// canonical records, monetization classifications, etc.), and that
+// can't be undone.
+document.querySelectorAll('.delete-dataset-form').forEach(function (form) {
+  form.addEventListener('submit', function (e) {
+    var btn = form.querySelector('button[type="submit"]');
+    var name = btn.getAttribute('data-dataset-name');
+    var id = btn.getAttribute('data-dataset-id');
+    var ok = window.confirm(
+      'Delete dataset "' + name + '" (' + id + ')?\n\n' +
+      'This permanently removes all its uploaded CSV files and any data mapped from them. This cannot be undone.'
+    );
+    if (!ok) e.preventDefault();
+  });
+});
+</script>

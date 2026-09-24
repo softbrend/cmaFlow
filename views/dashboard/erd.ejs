@@ -1,0 +1,85 @@
+<div class="page-title">🗺️ <span class="page-title-text">Entity-Relationship Diagram — <%= dataset.dataset_name %></span></div>
+<p class="page-subtitle">
+  <a href="/browse-dataset" style="color: var(--accent);">← All datasets</a>
+  &nbsp;·&nbsp; Dataset ID: <strong><%= dataset.dataset_id %></strong>
+</p>
+<div class="info-box" style="margin-bottom:18px;">
+  Every box below is one uploaded file, and every line is a relationship CMA-FLOW actually confirmed by
+  measuring how much two columns' real values overlap — not a guess from column names alone (the same
+  detection behind Full Descriptive Analytics' relationship table). Primary/foreign keys and cardinality
+  (one-to-one, one-to-many, many-to-many) are read directly off each column's own uniqueness, so this
+  diagram regenerates automatically whenever this dataset's files change — nothing here is drawn by hand,
+  and no AI model guesses the structure.
+</div>
+
+<% if (!erd.mermaid) { %>
+  <div class="placeholder-card">
+    <div class="emoji">📭</div>
+    <p>This dataset has no uploaded files yet. <a href="/upload-dataset" style="color: var(--accent); font-weight: 600;">Upload files</a> to this dataset to see its diagram here.</p>
+  </div>
+<% } else { %>
+
+  <div class="chart-card">
+    <div class="chart-title">
+      <%= erd.entityCount %> file<%= erd.entityCount === 1 ? '' : 's' %>
+      <% if (erd.relationshipCount > 0) { %>
+        · <%= erd.relationshipCount %> relationship<%= erd.relationshipCount === 1 ? '' : 's' %> detected
+      <% } %>
+    </div>
+    <div class="chart-subtitle">
+      <strong>PK</strong> = primary key (values never repeat in that file) · <strong>FK</strong> = foreign key
+      (the "many" side of a detected relationship) · <code>||</code> = exactly one · <code>o{</code> = many ·
+      each relationship line is labeled with its measured value-overlap percentage.
+    </div>
+    <% if (erd.relationshipCount === 0 && erd.entityCount > 1) { %>
+      <p class="chart-subtitle" style="margin-top:-4px;">
+        No relationship cleared the minimum confidence overlap between any two of this dataset's files yet —
+        the boxes below still show every file's own fields.
+      </p>
+    <% } %>
+
+    <div id="erd-container" style="overflow:auto; margin-top: 14px; min-height: 120px;">
+      <div id="erd-loading" style="color: var(--text-muted); font-size: 13px;">Rendering diagram…</div>
+      <div id="erd-error" class="placeholder-card" hidden>
+        <div class="emoji">⚠️</div>
+        <p>The diagram couldn't be rendered. The raw definition is below if you'd like to check it yourself.</p>
+      </div>
+    </div>
+
+    <details class="chart-table-toggle" style="margin-top: 14px;">
+      <summary>Diagram source (Mermaid ER syntax)</summary>
+      <pre style="white-space: pre-wrap; font-size: 12px; background: var(--btn-ghost-bg); padding: 10px; border-radius: 8px; overflow:auto;"><%= erd.mermaid %></pre>
+    </details>
+  </div>
+
+  <script src="/vendor/mermaid.min.js"></script>
+  <script>
+    (function () {
+      var definition = <%- JSON.stringify(erd.mermaid) %>;
+      var container = document.getElementById('erd-container');
+      var loading = document.getElementById('erd-loading');
+      var errorBox = document.getElementById('erd-error');
+
+      if (typeof mermaid === 'undefined') {
+        loading.hidden = true;
+        errorBox.hidden = false;
+        return;
+      }
+
+      mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'strict' });
+
+      mermaid.render('erd-diagram-svg', definition)
+        .then(function (out) {
+          loading.remove();
+          var wrap = document.createElement('div');
+          wrap.innerHTML = out.svg;
+          container.appendChild(wrap);
+        })
+        .catch(function () {
+          loading.hidden = true;
+          errorBox.hidden = false;
+        });
+    })();
+  </script>
+
+<% } %>

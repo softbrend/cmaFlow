@@ -1,0 +1,56 @@
+<div class="page-title">🔎 <span class="page-title-text">Browse Dataset</span></div>
+<p class="page-subtitle">Pick one of your uploaded datasets and a file to browse and filter its records.</p>
+
+<% if (!datasets || datasets.length === 0) { %>
+  <div class="placeholder-card">
+    <div class="emoji">📭</div>
+    <strong>No datasets uploaded yet.</strong>
+    <p style="color: var(--text-muted); font-size: 13.5px;">
+      <a href="/upload-dataset" style="color: var(--accent); font-weight: 600;">Upload a dataset</a> first, then come back here to browse its records.
+    </p>
+  </div>
+<% } else { %>
+  <% datasets.forEach(function(d) { %>
+    <div class="form-card wide" style="margin-bottom: 18px;">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px;">
+        <div class="form-title"><%= d.dataset_name %></div>
+        <span style="display:inline-flex; gap:8px;">
+          <a class="btn btn-outline" href="/browse-dataset/<%= d.id %>/erd">🗺️ ERD</a>
+          <a class="btn btn-outline" href="/browse-dataset/<%= d.id %>/report-catalog">📋 Report Catalog</a>
+        </span>
+      </div>
+      <p class="form-hint">
+        Dataset ID: <strong><%= d.dataset_id %></strong><% if (d.domain) { %> · Domain: <%= d.domain %><% } %>
+      </p>
+      <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top: 6px;">
+        <% var counts = recordCounts[d.id] || {}; %>
+        <% var typeKeys = Object.keys(counts); %>
+        <% if (typeKeys.length === 0) { %>
+          <span style="color: var(--text-muted); font-size:13px;">No files uploaded yet.</span>
+        <% } else { %>
+          <% var fields = fieldSummaries[d.id] || {}; %>
+          <% typeKeys.forEach(function(key) { %>
+            <% var rowCount = counts[key] || 0; %>
+            <% var cols = fields[key] || []; %>
+            <div style="width:100%;">
+              <span style="display:inline-flex; gap:6px; align-items:center;">
+                <a class="btn btn-outline" href="/browse-dataset/<%= d.id %>/<%= key %>"><%= humanizeFileType(key) %> (<%= rowCount.toLocaleString() %> rows)</a>
+                <a class="btn btn-ghost" title="Evaluation Report" href="/browse-dataset/<%= d.id %>/<%= key %>/evaluation">🧪</a>
+              </span>
+              <% if (cols.length > 0) { %>
+                <details class="chart-table-toggle" style="margin-top: 6px; margin-left: 2px;">
+                  <summary>Fields (<%= cols.length %>)</summary>
+                  <div class="file-section-columns">
+                    <% cols.forEach(function(c) { %>
+                      <span class="column-kind-pill"><%= c.name %><%= c.kind ? ' · ' + c.kind : '' %></span>
+                    <% }); %>
+                  </div>
+                </details>
+              <% } %>
+            </div>
+          <% }); %>
+        <% } %>
+      </div>
+    </div>
+  <% }); %>
+<% } %>

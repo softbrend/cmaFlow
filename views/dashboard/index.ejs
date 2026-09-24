@@ -1,0 +1,57 @@
+<div class="page-title">🏪 <span class="page-title-text">SME Owner Portal</span></div>
+<p class="page-subtitle">AD-CMA decision support for the SME account in the assigned dataset: descriptive, diagnostic, predictive, and prescriptive monetization intelligence in one place.</p>
+
+<% if (!datasets || datasets.length === 0) { %>
+  <div class="warn-box">
+    No dataset is currently assigned to this account.
+    &nbsp;<a href="/upload-dataset" style="color: var(--accent); text-decoration:underline;">Upload a dataset →</a>
+  </div>
+<% } else { %>
+  <div class="info-box">
+    <% if (defaultDataset) { %>
+      Default dataset: <strong><%= defaultDataset.dataset_name %></strong>
+      (<%= defaultDataset.dataset_id %><%= defaultDataset.domain ? ', ' + defaultDataset.domain : '' %>)
+    <% } %>
+    <% if (datasets.length > 1) { %>
+      <form method="POST" action="/default-dataset" style="margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <input type="hidden" name="redirect_to" value="/" />
+        <label for="default-dataset-select" style="font-size:13px; color: var(--text-muted);">
+          This account has <%= datasets.length %> uploaded datasets — switch the default:
+        </label>
+        <select id="default-dataset-select" name="dataset_id">
+          <% datasets.forEach(function(d) { %>
+            <option value="<%= d.id %>" <%= defaultDataset && d.id === defaultDataset.id ? 'selected' : '' %>>
+              <%= d.dataset_name %> (<%= d.dataset_id %>)
+            </option>
+          <% }); %>
+        </select>
+        <button type="submit" class="btn btn-outline" style="padding:4px 10px; font-size:12.5px;">Set as default</button>
+      </form>
+    <% } %>
+  </div>
+<% } %>
+
+<% if (configs && configs.length > 0) { %>
+  <div class="ok-box">
+    <strong><%= configs.length %></strong> active monetization configuration<%= configs.length === 1 ? '' : 's' %> for this account.
+    <table class="table-simple">
+      <thead><tr><th>Name</th><th>Model</th><th>Source</th><th>Created</th></tr></thead>
+      <tbody>
+        <% configs.forEach(function(c) { %>
+          <tr>
+            <td><%= c.config_name %></td>
+            <td><%= c.model_type.replace(/_/g, ' ') %></td>
+            <td>
+              <% if (c.details && (c.details.source === 'raw_import' || c.details.source === 'canonical_import')) { %>
+                <span class="badge" style="background: rgba(219,165,55,0.2); color: var(--accent);">Derived from data</span>
+              <% } else { %>
+                <span style="color: var(--text-muted); font-size: 12px;">Manual</span>
+              <% } %>
+            </td>
+            <td><%= new Date(c.created_at).toLocaleDateString() %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+<% } %>

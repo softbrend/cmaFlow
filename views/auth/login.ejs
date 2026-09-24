@@ -1,0 +1,32 @@
+<div class="auth-hero">
+  <img class="auth-hero-logo" src="/img/cma-flow-icon.png" alt="CMA-Flow" />
+  <div class="auth-eyebrow">Welcome to</div>
+  <div class="auth-hero-title">CMA-<span class="accent">Flow</span></div>
+  <div class="auth-hero-tagline-mini">Data &rarr; Insight &rarr; Decision</div>
+  <p class="auth-hero-subtitle">See how your business makes money today, forecast where it's headed, and get a reasoned recommendation for what to run next &mdash; built entirely from <strong>your own raw business data</strong>.</p>
+</div>
+
+<div class="form-card">
+  <div class="form-title">Sign in</div>
+  <p class="form-hint">BUS-01 (SME Owner / Manager) portal</p>
+
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="alert-error"><%= error %></div>
+  <% } %>
+
+  <form method="POST" action="/login" autocomplete="off">
+    <div class="field">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" value="<%= old.username || '' %>" required autofocus />
+    </div>
+
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required />
+    </div>
+
+    <button type="submit" class="btn btn-accent btn-block">Sign in</button>
+  </form>
+
+  <div class="form-footer">New SME account? <a href="/signup">Create one</a></div>
+</div>

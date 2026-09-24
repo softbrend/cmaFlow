@@ -1,0 +1,102 @@
+<div class="page-title">📋 <span class="page-title-text">Report Catalog — <%= dataset.dataset_name %></span></div>
+<p class="page-subtitle">
+  <a href="/browse-dataset" style="color: var(--accent);">← All datasets</a>
+  &nbsp;·&nbsp; Dataset ID: <strong><%= dataset.dataset_id %></strong>
+</p>
+<div class="info-box" style="margin-bottom:18px;">
+  A schema-driven report selector across <strong>every raw file this dataset has</strong> (before Map &amp; Transform),
+  joined on shared key columns the same way Olist's orders/items/products/customers/sellers/payments/reviews files
+  link together. Whatever columns are actually present decides which of a standard catalog of 30 e-commerce-style
+  descriptive reports can be computed correctly right now — every upload gets the richest set its own columns
+  support, and is told exactly which single column would unlock each report it's one step away from.
+</div>
+
+<% if (!analysis.hasFiles) { %>
+  <div class="placeholder-card">
+    <div class="emoji">📭</div>
+    <p>This dataset has no uploaded files yet. <a href="/upload-dataset" style="color: var(--accent); font-weight: 600;">Upload files</a> to this dataset to see which reports they unlock.</p>
+  </div>
+<% } else { %>
+
+  <div class="section-heading">Files in this dataset</div>
+  <div class="chart-card" style="margin-bottom:18px;">
+    <p class="chart-subtitle">Which canonical roles each raw file supplies (≥70% non-null coverage, and a valid date/numeric format where relevant) — the same detection Section 6 of the framework describes for Olist's own eight files.</p>
+    <div class="table-scroll">
+      <table class="table-simple">
+        <thead><tr><th>File</th><th>Rows</th><th>Roles supplied</th></tr></thead>
+        <tbody>
+          <% analysis.files.forEach(function(f) { %>
+            <tr>
+              <td><%= humanizeFileType(f.fileType) %><% if (f.isBase) { %> <span class="badge badge-active">base grain</span><% } %></td>
+              <td><%= f.rowCount.toLocaleString() %></td>
+              <td style="font-size:12.5px; color:var(--text-muted);">
+                <%= f.rolesSupplied.length ? f.rolesSupplied.map(function(rk) { return CANONICAL_ROLES[rk].label; }).join(', ') : '—' %>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <p class="chart-footnote" style="margin-top:10px;">
+      Joined into <%= analysis.factCount.toLocaleString() %> enriched fact row<%= analysis.factCount === 1 ? '' : 's' %>,
+      based on <strong><%= humanizeFileType(analysis.baseFileType) %></strong>.
+      Roles present after joining: <%= [...analysis.presentRoles].map(function(rk) { return CANONICAL_ROLES[rk].label; }).join(', ') || '—' %>.
+    </p>
+  </div>
+
+  <div class="kpi-row" style="margin-bottom:18px;"><%- summaryKpiRow %></div>
+
+  <% if (analysis.nearMiss.length > 0) { %>
+    <div class="section-heading">One field away</div>
+    <div class="chart-card" style="margin-bottom:18px;">
+      <p class="chart-subtitle">Add a column supplying the missing field below to unlock each of these — a guided data-collection checklist as well as a report selector.</p>
+      <div class="table-scroll">
+        <table class="table-simple">
+          <thead><tr><th>Report</th><th>Category</th><th>Missing field</th></tr></thead>
+          <tbody>
+            <% analysis.nearMiss.forEach(function(r) { %>
+              <tr><td>#<%= r.id %> <%= r.title %></td><td><%= r.category %></td><td><strong><%= r.missingLabel %></strong></td></tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% } %>
+
+  <% if (analysis.enabled.length === 0) { %>
+    <div class="placeholder-card">
+      <div class="emoji">🧭</div>
+      <p>No reports could be unlocked from this dataset's current columns yet — see "One field away" above for the fastest path to your first report.</p>
+    </div>
+  <% } else { %>
+    <% categoryOrder.forEach(function(category) { %>
+      <% var items = categorized[category]; %>
+      <% if (!items || items.length === 0) return; %>
+      <div class="section-heading"><%= category %></div>
+      <% items.forEach(function(item) { %>
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin: 14px 0 2px;">
+          <div style="font-weight:600; font-size:13.5px;">#<%= item.report.id %> <%= item.report.title %></div>
+          <span class="badge badge-inactive"><%= item.report.tier %></span>
+        </div>
+        <p class="chart-footnote" style="margin: 0 0 6px;"><%= item.report.measures %></p>
+        <%- item.html %>
+      <% }); %>
+    <% }); %>
+  <% } %>
+
+  <div class="section-heading">Canonical field roles reference</div>
+  <details class="chart-card">
+    <summary class="chart-title" style="cursor:pointer;">The 17 roles every raw column gets matched against</summary>
+    <div class="table-scroll" style="margin-top:10px;">
+      <table class="table-simple">
+        <thead><tr><th>Role</th><th>Canonical field</th><th>Typical raw column name(s)</th></tr></thead>
+        <tbody>
+          <% Object.keys(CANONICAL_ROLES).forEach(function(rk) { %>
+            <tr><td><%= rk %></td><td><%= CANONICAL_ROLES[rk].label %></td><td style="font-size:12.5px; color:var(--text-muted);"><%= CANONICAL_ROLES[rk].aliases.join(', ') %></td></tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+<% } %>

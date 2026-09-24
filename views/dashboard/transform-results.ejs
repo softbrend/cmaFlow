@@ -1,0 +1,54 @@
+<div class="page-title">✅ <span class="page-title-text">Transform results — <%= dataset.dataset_name %></span></div>
+<p class="page-subtitle">
+  <a href="/upload-dataset" style="color: var(--accent);">← Upload New Dataset</a>
+  &nbsp;·&nbsp; Dataset ID: <strong><%= dataset.dataset_id %></strong>
+  &nbsp;·&nbsp; <%= perFileResults.length %> file<%= perFileResults.length === 1 ? '' : 's' %> transformed together as one batch
+</p>
+
+<div class="form-card wide" style="margin-bottom: 18px;">
+  <div class="form-title">Reconciliation — whole dataset</div>
+  <p class="form-hint">Every raw row across every file uploaded under this Dataset ID is accounted for below — none are ever silently dropped by the pipeline.</p>
+  <div style="display:flex; gap: 28px; flex-wrap: wrap; margin-top: 10px;">
+    <div><div style="font-size: 26px; font-weight: 700;"><%= totals.total.toLocaleString() %></div><div style="font-size:12.5px; color: var(--text-muted);">Raw rows processed</div></div>
+    <div><div style="font-size: 26px; font-weight: 700; color: #1f8a4c;"><%= totals.valid.toLocaleString() %></div><div style="font-size:12.5px; color: var(--text-muted);">Frozen as valid</div></div>
+    <div><div style="font-size: 26px; font-weight: 700; color: #c0392b;"><%= totals.invalid.toLocaleString() %></div><div style="font-size:12.5px; color: var(--text-muted);">Frozen as invalid</div></div>
+  </div>
+  <% if (totals.total !== totals.valid + totals.invalid) { %>
+    <div class="alert-error" style="margin-top:14px;">Reconciliation mismatch — this should never happen; please report it.</div>
+  <% } %>
+</div>
+
+<div class="form-card wide" style="margin-bottom: 18px;">
+  <div class="form-title">Per-file breakdown</div>
+  <div style="overflow-x:auto;">
+    <table class="table-simple">
+      <thead><tr><th>File</th><th>Canonical entity</th><th>Version</th><th>Rows</th><th>Valid</th><th>Invalid</th><th></th></tr></thead>
+      <tbody>
+        <% perFileResults.forEach(function(r) { %>
+          <tr>
+            <td><%= r.label %></td>
+            <td><%= r.entity %></td>
+            <td>v<%= r.mappingVersion %></td>
+            <td><%= r.summary.total.toLocaleString() %></td>
+            <td style="color:#1f8a4c;"><%= r.summary.valid.toLocaleString() %></td>
+            <td style="color:#c0392b;"><%= r.summary.invalid.toLocaleString() %></td>
+            <td><a href="/canonical-dataset/<%= dataset.id %>/<%= r.fileType %>" style="color: var(--accent);">View records</a></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="form-card wide">
+  <div class="form-title">Next steps</div>
+  <div style="display:flex; gap: 10px; flex-wrap: wrap;">
+    <a class="btn btn-outline" href="/upload-dataset/<%= dataset.id %>/map">Adjust mapping &amp; re-run (whole dataset)</a>
+    <a class="btn btn-ghost" href="/upload-dataset">Back to Upload New Dataset</a>
+  </div>
+  <% if (totals.invalid > 0) { %>
+    <p class="form-hint" style="margin-top:14px;">
+      <%= totals.invalid.toLocaleString() %> row<%= totals.invalid === 1 ? '' : 's' %> across this batch were frozen as <strong>invalid</strong> (usually a required field with no matching column) rather than dropped — open a file's canonical view above and switch to the invalid view to see exactly why, then adjust the mapping and re-run if a better column match exists.
+    </p>
+  <% } %>
+</div>

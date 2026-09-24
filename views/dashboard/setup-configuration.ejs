@@ -1,0 +1,162 @@
+<%
+// Sub-cent per-unit prices are common in pay-per-use configs (e.g.
+// $0.002/API call) — a flat 2-decimal format would silently round those
+// to "0.00" and hide the actual price from the SME owner reviewing an
+// import, so small values get more decimal places.
+function fmtPrice(n) {
+  if (n === null || n === undefined) return '';
+  const decimals = Math.abs(n) < 1 ? 4 : 2;
+  return n.toFixed(decimals);
+}
+%>
+<div class="page-title">⚙️ <span class="page-title-text">Set-up monetization configuration</span></div>
+<p class="page-subtitle">Define the revenue-model configuration this SME account should run under.</p>
+
+<% if (errors && errors.length) { %>
+  <div class="alert-error">
+    <ul><% errors.forEach(function(e) { %><li><%= e.msg %></li><% }); %></ul>
+  </div>
+<% } %>
+
+<div class="form-card wide" style="margin-bottom: 26px;">
+  <div class="form-title">Import from raw uploaded datasets</div>
+  <p style="color: var(--text-muted); margin-top: -6px; margin-bottom: 16px;">
+    Candidate configurations detected directly in your raw uploaded files — no Map &amp; Transform required.
+    CMA-Flow scans every dataset on this account for a file whose columns look like pricing/catalog data
+    (product, price, tier, currency — the same content-aware detection Monetization Discovery uses) and
+    aggregates it here, one row per product/service. Nothing here becomes an active configuration until you
+    review it and confirm the import.
+  </p>
+
+  <% if (!candidates || candidates.length === 0) { %>
+    <p style="color: var(--text-muted);">
+      No file in this account's raw uploads looks like pricing/catalog data yet. Upload a file with columns like
+      product, price, and tier — candidates will appear here automatically. Until then, use
+      <strong>New configuration</strong> below to set one up manually.
+    </p>
+  <% } else { %>
+    <form method="POST" action="/setup-configuration/import">
+      <div class="table-scroll">
+        <table class="table-simple">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Configuration name</th>
+              <th>Revenue model</th>
+              <th>Price range</th>
+              <th>Tiers</th>
+              <th>Rows</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% candidates.forEach(function(cand) { %>
+              <tr>
+                <td>
+                  <input type="checkbox" id="select_<%= cand.key %>" name="select_<%= cand.key %>" />
+                </td>
+                <td>
+                  <input type="text" name="name_<%= cand.key %>" value="<%= cand.productService %>"
+                    style="width: 180px;" />
+                </td>
+                <td>
+                  <select name="model_type_<%= cand.key %>" style="width: 170px;">
+                    <option value="" disabled <%= !cand.suggestedModelType ? 'selected' : '' %>>Choose a model…</option>
+                    <% modelTypes.forEach(function(mt) { %>
+                      <option value="<%= mt %>" <%= cand.suggestedModelType === mt ? 'selected' : '' %>>
+                        <%= mt.replace(/_/g, ' ') %>
+                      </option>
+                    <% }); %>
+                  </select>
+                  <% if (cand.rawModelTypes && cand.rawModelTypes.length > 0) { %>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                      from data: <%= cand.rawModelTypes.join(', ') %>
+                    </div>
+                  <% } %>
+                </td>
+                <td>
+                  <% if (cand.minPrice !== null) { %>
+                    <%= cand.currency || '' %> <%= fmtPrice(cand.minPrice) %><% if (cand.maxPrice !== cand.minPrice) { %> – <%= fmtPrice(cand.maxPrice) %><% } %>
+                    <div style="font-size: 11px; color: var(--text-muted);">avg <%= fmtPrice(cand.avgPrice) %></div>
+                  <% } else { %>
+                    —
+                  <% } %>
+                </td>
+                <td><%= cand.tierCount %></td>
+                <td><%= cand.rowCount %></td>
+                <td style="font-size: 12px; color: var(--text-muted);">
+                  <%= cand.datasetIds.join(', ') %><br />
+                  <%= cand.fileTypes.join(', ') %>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+      <button type="submit" class="btn btn-accent" style="margin-top: 14px;">Import selected as configurations</button>
+    </form>
+  <% } %>
+</div>
+
+<div class="form-card wide" style="margin-bottom: 26px;">
+  <div class="form-title">New configuration</div>
+  <p style="color: var(--text-muted); margin-top: -6px; margin-bottom: 16px;">
+    Manual fallback — always available, and the way forward if this account has no raw pricing/catalog data to
+    import from above.
+  </p>
+
+  <form method="POST" action="/setup-configuration">
+    <div class="field">
+      <label for="config_name">Configuration name</label>
+      <input type="text" id="config_name" name="config_name" value="<%= old.config_name || '' %>" placeholder="e.g. Standard tiered subscription" required />
+    </div>
+
+    <div class="field">
+      <label for="model_type">Revenue model</label>
+      <select id="model_type" name="model_type" required>
+        <option value="" disabled <%= !old.model_type ? 'selected' : '' %>>Choose a model…</option>
+        <option value="subscription" <%= old.model_type === 'subscription' ? 'selected' : '' %>>📅 Subscription</option>
+        <option value="freemium" <%= old.model_type === 'freemium' ? 'selected' : '' %>>🎁 Freemium</option>
+        <option value="pay_per_use" <%= old.model_type === 'pay_per_use' ? 'selected' : '' %>>📈 Pay-per-use</option>
+        <option value="data_as_a_service" <%= old.model_type === 'data_as_a_service' ? 'selected' : '' %>>🗄️ Data-as-a-Service</option>
+      </select>
+    </div>
+
+    <button type="submit" class="btn btn-accent">Save configuration</button>
+  </form>
+</div>
+
+<div class="form-card wide">
+  <div class="form-title">Existing configurations</div>
+  <% if (!configs || configs.length === 0) { %>
+    <p style="color: var(--text-muted);">No configurations yet — create one above.</p>
+  <% } else { %>
+    <table class="table-simple">
+      <thead><tr><th>Name</th><th>Model</th><th>Source</th><th>Status</th><th>Created</th><th></th></tr></thead>
+      <tbody>
+        <% configs.forEach(function(c) { %>
+          <tr>
+            <td><%= c.config_name %></td>
+            <td><%= c.model_type.replace(/_/g, ' ') %></td>
+            <td>
+              <% if (c.details && (c.details.source === 'raw_import' || c.details.source === 'canonical_import')) { %>
+                <span class="badge" style="background: rgba(219,165,55,0.2); color: var(--accent);">Derived from data</span>
+              <% } else { %>
+                <span style="color: var(--text-muted); font-size: 12px;">Manual</span>
+              <% } %>
+            </td>
+            <td><span class="badge <%= c.is_active ? 'badge-active' : 'badge-inactive' %>"><%= c.is_active ? 'Active' : 'Inactive' %></span></td>
+            <td><%= new Date(c.created_at).toLocaleDateString() %></td>
+            <td>
+              <% if (c.is_active) { %>
+                <form method="POST" action="/setup-configuration/<%= c.id %>/deactivate" style="margin:0;">
+                  <button type="submit" class="btn btn-ghost" style="padding: 5px 12px; font-size: 12px;">Deactivate</button>
+                </form>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  <% } %>
+</div>

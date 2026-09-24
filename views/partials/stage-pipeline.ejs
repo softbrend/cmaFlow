@@ -1,0 +1,23 @@
+<%
+// CMA-Flow's visual trademark: the four analytics stages, always in this
+// order, always these colors/icons — DESCRIPTIVE (blue, 📊) → DIAGNOSTIC
+// (teal, 🔍) → PREDICTIVE (violet, 📈) → PRESCRIPTIVE (green, 💡). Included
+// near the top of each of the four analytics pages with `activeStage` set
+// to that page's own stage, so a user sees the whole pipeline and exactly
+// where the current page sits in it before reading anything else.
+// Locals: activeStage ('descriptive'|'diagnostic'|'predictive'|'prescriptive')
+var stages = [
+  { key: 'descriptive', label: 'Descriptive', icon: '📊', href: '/descriptive-analytics', color: 'var(--stage-descriptive)' },
+  { key: 'diagnostic', label: 'Diagnostic', icon: '🔍', href: '/diagnostic-insights', color: 'var(--stage-diagnostic)' },
+  { key: 'predictive', label: 'Predictive', icon: '📈', href: '/predictive-analytics', color: 'var(--stage-predictive)' },
+  { key: 'prescriptive', label: 'Prescriptive', icon: '💡', href: '/prescriptive-recommendations', color: 'var(--stage-prescriptive)' },
+];
+%>
+<nav class="stage-pipeline" aria-label="CMA-Flow analytics pipeline">
+  <% stages.forEach(function(s, i) { %>
+    <a class="stage-step<%= activeStage === s.key ? ' is-active' : '' %>" href="<%= s.href %>" style="--stage-color: <%= s.color %>;">
+      <span class="stage-step-icon"><%= s.icon %></span><%= s.label %>
+    </a>
+    <% if (i < stages.length - 1) { %><span class="stage-connector"></span><% } %>
+  <% }); %>
+</nav>

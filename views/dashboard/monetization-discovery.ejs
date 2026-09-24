@@ -1,0 +1,188 @@
+<div class="page-title">🧭 <span class="page-title-text">Monetization discovery</span></div>
+<p class="page-subtitle">CMA-Flow doesn't ask which revenue model this business uses, and it doesn't just read a label off the pricing data either — it infers each product's mechanism from how customers are actually behaving, reading directly off this dataset's own raw uploaded columns (content-aware: it looks for fields related to revenue or income, no Map &amp; Transform required), then asks you to confirm or correct it. Every analytics page below reads from what's confirmed (or, until then, the live inference) here.</p>
+
+<% if (!datasets || datasets.length === 0) { %>
+  <div class="placeholder-card">
+    <div class="emoji">📭</div>
+    <p>No datasets uploaded yet. <a href="/upload-dataset" style="color: var(--accent); font-weight: 600;">Upload a dataset</a> to run monetization discovery here.</p>
+  </div>
+<% } else { %>
+
+  <form method="GET" action="/monetization-discovery" class="dataset-picker">
+    <label for="dataset">Dataset ID</label>
+    <select id="dataset" name="dataset" onchange="this.form.submit()">
+      <% datasets.forEach(function(d) { %>
+        <option value="<%= d.id %>" <%= selectedDataset && selectedDataset.id === d.id ? 'selected' : '' %>>
+          <%= d.dataset_id %> — <%= d.dataset_name %>
+        </option>
+      <% }); %>
+    </select>
+    <noscript><button type="submit" class="btn btn-ghost">Go</button></noscript>
+  </form>
+
+  <%# Dataset classification — computed automatically from this dataset's
+      raw uploaded files (services/businessSemantics.js + services/
+      datasetClassifier.js), independent of whether Map & Transform has
+      run yet. This is the concrete answer to "is this a customer-sales
+      dataset or a cost/billing export like a GCP Cloud Billing extract" —
+      the classification every mechanism inference below is labeled
+      against, so a usage-based billing pattern found in cost data reads
+      as "Observed billing mechanism," never as this organization's own
+      revenue. %>
+  <% if (financialProfile && financialProfile.applicable) { %>
+    <div class="form-card wide" style="margin-bottom: 18px; border-left: 4px solid var(--accent);">
+      <div class="form-title">📊 Dataset classification</div>
+      <p class="form-hint" style="margin-bottom: 10px;">
+        Computed automatically from this dataset's uploaded files — before any revenue number is trusted, CMA-Flow first works out what kind of financial data this actually is.
+      </p>
+      <div class="kpi-row" style="margin-bottom: 10px; flex-wrap: wrap;">
+        <div class="stat-tile"><div class="stat-label">Business domain</div><div class="stat-value" style="font-size:15px;"><%= financialProfile.businessDomain %></div></div>
+        <div class="stat-tile"><div class="stat-label">Dataset type</div><div class="stat-value" style="font-size:15px;"><%= financialProfile.datasetType %></div></div>
+        <div class="stat-tile"><div class="stat-label">Primary financial measure</div><div class="stat-value" style="font-size:15px;"><%= financialProfile.primaryFinancialMeasure.label %></div></div>
+        <div class="stat-tile"><div class="stat-label">Likely usage measure</div><div class="stat-value" style="font-size:15px;"><%= financialProfile.likelyUsageMeasure.column || 'None identified' %></div></div>
+        <div class="stat-tile">
+          <div class="stat-label">Direct SME customer revenue present</div>
+          <div class="stat-value" style="font-size:15px;">
+            <%= financialProfile.directRevenuePresent.value ? 'Yes' : 'No' %>
+          </div>
+        </div>
+      </div>
+      <ul style="margin: 6px 0 0; padding-left: 20px; color: var(--text-muted); font-size: 13px; line-height: 1.7;">
+        <% financialProfile.evidence.forEach(function(ev) { %><li><%= ev %></li><% }); %>
+        <% financialProfile.likelyUsageMeasure.evidence.forEach(function(ev) { %><li><%= ev %></li><% }); %>
+        <% financialProfile.directRevenuePresent.evidence.forEach(function(ev) { %><li><%= ev %></li><% }); %>
+      </ul>
+    </div>
+  <% } else if (financialProfile && !financialProfile.applicable) { %>
+    <div class="placeholder-card" style="margin-bottom: 18px; padding: 12px 16px;">
+      <p style="margin:0; font-size: 13px; color: var(--text-muted);"><%= financialProfile.reason %></p>
+    </div>
+  <% } %>
+
+  <% if (errors && errors.length) { %>
+    <div class="alert-error"><ul><% errors.forEach(function(e) { %><li><%= e.msg %></li><% }); %></ul></div>
+  <% } %>
+
+  <% if (!hasAnyData) { %>
+    <div class="placeholder-card">
+      <div class="emoji">🧭</div>
+      <p>
+        No file in <strong><%= selectedDataset.dataset_id %></strong>'s raw upload looks like transaction/usage data yet (auto-detected from its column names) — upload a file with columns like amount, customer, product, and date.
+      </p>
+    </div>
+  <% } else if (discoveries.length === 0) { %>
+    <div class="placeholder-card">
+      <div class="emoji">🤷</div>
+      <p>No product/service is named anywhere in this dataset's auto-detected Transaction, Entitlement, or Monetization Config columns, so there's nothing to classify yet.</p>
+    </div>
+  <% } else { %>
+
+    <% if (rawInfo && rawInfo.hasTransactionSignal) { %>
+      <div class="info-box" style="margin-bottom:16px;">
+        Computed directly from <strong><%= rawInfo.sourceFileLabel || "this dataset's uploaded file(s)" %></strong>'s raw uploaded columns, auto-detected and <strong>unconfirmed</strong><% if (rawInfo.skippedRows > 0) { %> — <%= rawInfo.skippedRows.toLocaleString() %> row(s) with no readable amount/customer were skipped<% } %>. Confirming a mechanism below is what makes it authoritative, not the source of the data.
+      </div>
+    <% } %>
+
+    <form method="POST" action="/monetization-discovery">
+      <input type="hidden" name="dataset_id" value="<%= selectedDataset.id %>" />
+
+      <% discoveries.forEach(function(d) { %>
+        <div class="form-card wide" style="margin-bottom: 18px;">
+          <div class="form-title" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <%= d.productService %>
+            <% if (d.confirmedModelType) { %>
+              <span class="badge badge-active">Confirmed: <%= modelTypeLabels[d.confirmedModelType] || d.confirmedModelType %></span>
+            <% } else { %>
+              <span class="badge badge-inactive">Inferred — not yet confirmed</span>
+            <% } %>
+            <% if (d.isHybrid) { %>
+              <span class="badge badge-risk-medium">Possible hybrid</span>
+            <% } %>
+            <% if (d.isCostData) { %>
+              <span class="badge badge-risk-medium" title="This dataset's monetary measure reads as cost/expenditure, not confirmed customer revenue">Cost / vendor billing — not customer revenue</span>
+            <% } %>
+            <button type="button" class="drilldown-trigger"
+              data-dataset="<%= selectedDataset.id %>"
+              data-product="<%= d.productService %>"
+              data-summary="<%= d.revenue.toLocaleString(undefined, {maximumFractionDigits: 2}) %> <%= d.isCostData ? 'cost' : 'revenue' %> · <%= d.transactionCount.toLocaleString() %> transactions · <%= d.customerCount.toLocaleString() %> customers"
+              title="See the customers and transactions behind this card">
+              🔍 Details
+            </button>
+          </div>
+
+          <div class="kpi-row" style="margin: 10px 0;">
+            <div class="stat-tile"><div class="stat-label"><%= d.isCostData ? 'Cost' : 'Revenue' %></div><div class="stat-value"><%= d.revenue.toLocaleString(undefined, {maximumFractionDigits: 2}) %></div></div>
+            <div class="stat-tile"><div class="stat-label">Transactions</div><div class="stat-value"><%= d.transactionCount.toLocaleString() %></div></div>
+            <div class="stat-tile"><div class="stat-label">Customers</div><div class="stat-value"><%= d.customerCount.toLocaleString() %></div></div>
+          </div>
+
+          <p class="form-hint" style="margin-bottom: 6px;">
+            <strong>Inferred mechanism:</strong>
+            <% if (d.inferredModelType) { %>
+              <%= modelTypeLabels[d.inferredModelType] || d.inferredModelType %>
+              <span class="badge <%= d.confidence >= 0.7 ? 'badge-risk-low' : (d.confidence >= 0.4 ? 'badge-risk-medium' : 'badge-risk-high') %>" style="margin-left:6px;">
+                <%= d.confidence >= 0.7 ? 'High' : (d.confidence >= 0.4 ? 'Medium' : 'Low') %> confidence
+              </span>
+            <% } else { %>
+              None of the four mechanisms have a clear signal yet.
+            <% } %>
+          </p>
+
+          <ul style="margin: 6px 0 14px; padding-left: 20px; color: var(--text-muted); font-size: 13px; line-height: 1.7;">
+            <% d.evidence.forEach(function(ev) { %><li><%= ev %></li><% }); %>
+          </ul>
+
+          <input type="hidden" name="product_<%= d.index %>" value="<%= d.productService %>" />
+          <label style="font-size:13px; font-weight:600;">
+            Confirm or correct this product's <%= d.isCostData ? 'observed vendor billing pattern' : 'mechanism' %>
+          </label>
+          <% if (d.isCostData) { %>
+            <p class="form-hint" style="margin: 2px 0 6px;">This dataset reads as cost/expenditure, not confirmed customer revenue — confirming a mechanism here records how this organization is billed by a vendor, not this organization's own monetization model.</p>
+          <% } %>
+          <select name="confirm_<%= d.index %>">
+            <option value="">— use the live inference above, not yet confirmed —</option>
+            <% modelTypes.forEach(function(mt) { %>
+              <option value="<%= mt %>" <%= d.confirmedModelType === mt ? 'selected' : '' %>><%= modelTypeLabels[mt] || mt %></option>
+            <% }); %>
+          </select>
+        </div>
+      <% }); %>
+
+      <div class="form-card wide">
+        <div class="form-title">Save confirmations</div>
+        <p class="form-hint">Only products you set to something other than "— use the live inference —" are saved. Anything left unconfirmed keeps using the live inference shown above, recomputed fresh every time this page or the analytics pages are loaded.</p>
+        <div style="display:flex; gap: 10px; margin-top: 14px;">
+          <button type="submit" class="btn btn-accent">Save confirmations for <%= discoveries.length %> product<%= discoveries.length === 1 ? '' : 's' %></button>
+          <a href="/descriptive-analytics?dataset=<%= selectedDataset.id %>&view=revenue-growth" class="btn btn-ghost">View mechanism performance →</a>
+        </div>
+      </div>
+    </form>
+
+    <%# Drill-down panel — one shared instance for every card on this page;
+        public/js/monetization-discovery.js swaps its title/contents to
+        whichever product's 🔍 Details button was clicked. Starts hidden. %>
+    <div id="drilldown-backdrop" class="drilldown-backdrop" hidden></div>
+    <aside id="drilldown-panel" class="drilldown-panel" hidden aria-hidden="true">
+      <div class="drilldown-panel-header">
+        <div>
+          <div class="drilldown-panel-title" id="drilldown-product-name">—</div>
+          <div class="drilldown-panel-sub" id="drilldown-product-sub"></div>
+        </div>
+        <button type="button" class="drilldown-close" id="drilldown-close" aria-label="Close">✕</button>
+      </div>
+      <div class="drilldown-mode-toggle">
+        <button type="button" class="drilldown-mode-btn active" data-mode="customers">By customer</button>
+        <button type="button" class="drilldown-mode-btn" data-mode="transactions">Raw transactions</button>
+      </div>
+      <div class="drilldown-panel-body" id="drilldown-panel-body">
+        <table class="table-simple" id="drilldown-table">
+          <thead id="drilldown-thead">
+            <tr><th>Customer</th><th>Revenue</th><th>Transactions</th><th>Last purchase</th></tr>
+          </thead>
+          <tbody id="drilldown-tbody"></tbody>
+        </table>
+      </div>
+    </aside>
+    <script src="/js/monetization-discovery.js" defer></script>
+  <% } %>
+<% } %>

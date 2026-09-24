@@ -1,0 +1,298 @@
+<div class="page-title"><span class="page-title-icon page-icon-predictive" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,17 9,11 13,15 21,5"/><polyline points="15,5 21,5 21,11"/></svg></span><span class="page-title-text">Predictive analytics</span></div>
+<p class="page-subtitle">See where your business is headed — churn risk, lifecycle stage, revenue forecasts, and price what-if scenarios, every score explainable by its own rule.</p>
+<%- include('../partials/stage-pipeline', { activeStage: 'predictive' }) %>
+<details class="info-disclosure">
+  <summary>ⓘ How CMA-Flow analyzed this dataset</summary>
+  <p>Rules-based forecasts computed directly from this dataset's own raw uploaded columns, one Dataset ID at a time — no Map &amp; Transform required and no CMA Canonical Schema dependency on this page (reserved for a future extension of this study). Every score here is explainable by its own rule, never a black-box model.</p>
+</details>
+
+<% if (!datasets || datasets.length === 0) { %>
+  <div class="placeholder-card">
+    <div class="emoji">📭</div>
+    <p>No datasets uploaded yet. <a href="/upload-dataset" style="color: var(--accent); font-weight: 600;">Upload a dataset</a> to see predictive analytics here.</p>
+  </div>
+<% } else { %>
+
+  <form method="GET" action="/predictive-analytics" class="dataset-picker">
+    <label for="dataset">Dataset ID</label>
+    <select id="dataset" name="dataset" onchange="this.form.submit()">
+      <% datasets.forEach(function(d) { %>
+        <option value="<%= d.id %>" <%= selectedDataset && selectedDataset.id === d.id ? 'selected' : '' %>>
+          <%= d.dataset_id %> — <%= d.dataset_name %>
+        </option>
+      <% }); %>
+    </select>
+    <input type="hidden" name="view" value="<%= activeView %>" />
+    <input type="hidden" name="source" value="<%= dataSource %>" />
+    <noscript><button type="submit" class="btn btn-ghost">Go</button></noscript>
+  </form>
+
+  <div class="tab-nav" style="margin-bottom: 14px;">
+    <a class="tab-pill <%= dataSource === 'dynamic' ? 'active' : '' %>" href="/predictive-analytics?dataset=<%= selectedDataset.id %>&view=<%= activeView %>&source=dynamic">Dynamic (auto-detected fact table)</a>
+    <a class="tab-pill <%= dataSource === 'raw' ? 'active' : '' %>" href="/predictive-analytics?dataset=<%= selectedDataset.id %>&view=<%= activeView %>&source=raw">Raw upload (Customer-file detection)</a>
+  </div>
+  <% if (dataSource === 'dynamic') { %>
+    <div class="info-box" style="margin-bottom:16px;">
+      Computed directly from this dataset's auto-detected transaction fact table — the same Automatic Dataset Intelligence engine behind Dynamic Diagnostics and the Business Descriptive Summary. Each view below degrades honestly, per question, when this specific fact table doesn't carry the column it needs (e.g. a customer id that lives on a separate, un-joined file) — switch to Raw upload above for a dataset whose Customer-shaped file needs a dedicated entitlement/auto_renew read instead.
+    </div>
+  <% } %>
+
+  <% if (!hasAnyData) { %>
+    <div class="placeholder-card">
+      <div class="emoji">🧭</div>
+      <p>
+        No file in this dataset's raw upload looks like Customer data yet (auto-detected from its column names).
+        Upload a file with a customer identifier column, or switch to Dynamic above.
+      </p>
+    </div>
+  <% } else { %>
+
+    <% if (dataSource === 'raw') { %>
+      <div class="info-box" style="margin-bottom:16px;">
+        Computed directly from <strong><%= rawInfo.sourceFileLabel || 'this dataset\'s uploaded file(s)' %></strong>'s raw uploaded columns, auto-detected and <strong>unconfirmed</strong> — <%= rawInfo.skippedRows.toLocaleString() %> row(s) with no readable customer ID were skipped.
+      </div>
+    <% } %>
+
+    <div class="tab-nav">
+      <% views.forEach(function(v) { %>
+        <a class="tab-pill <%= activeView === v.slug ? 'active' : '' %>"
+           href="/predictive-analytics?dataset=<%= selectedDataset.id %>&view=<%= v.slug %>&source=<%= dataSource %>">
+          <span><%= v.icon %></span> <%= v.label %>
+        </a>
+      <% }); %>
+    </div>
+
+    <% if (activeView === 'customer-risk') { %>
+      <% if (dataSource === 'dynamic' && !cards.dynRiskApplicable) { %>
+        <div class="info-box"><%= cards.dynRiskReason %></div>
+      <% } else { %>
+        <div class="kpi-row"><%- cards.riskKpiRow.join('') %></div>
+      <% } %>
+      <%- cards.riskChart %>
+      <% if (cards.riskTable.length > 0) { %>
+        <div class="chart-card">
+          <div class="chart-title">Highest-risk customers</div>
+          <div class="chart-subtitle">Ranked by rules-based churn-risk score — recency<%= dataSource === 'dynamic' ? '' : ', entitlement status, auto_renew,' %> and transaction frequency (top 25 shown)</div>
+          <div class="table-scroll">
+            <table class="table-simple">
+              <thead><tr><th>Customer</th><th>Tenure (days)</th><th>Recency (days)</th><th>Transactions</th><th>Revenue</th><th>Risk band</th><th>Basis</th></tr></thead>
+              <tbody>
+                <% cards.riskTable.forEach(function(f) { %>
+                  <tr>
+                    <td><%= f.name %> <% if (f.highValue) { %><span class="badge badge-active" title="Top-quartile revenue in this dataset">High value</span><% } %></td>
+                    <td><%= f.tenureDays %></td>
+                    <td><%= f.recencyDays %></td>
+                    <td><%= f.frequency %></td>
+                    <td><%= f.monetary %></td>
+                    <td><span class="badge badge-risk-<%= f.band.toLowerCase().replace(' ', '-') %>"><%= f.band %></span></td>
+                    <td>
+                      <% if (f.basisInferred) { %><span class="badge badge-inactive">Inferred</span> <% } %>
+                      <span style="color: var(--text-muted); font-size: 12.5px;"><%= f.basis %></span>
+                    </td>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% } %>
+
+      <% if (dataSource === 'dynamic' && cards.deliveryDelayRisk) { %>
+        <div class="chart-card" style="margin-top: 16px;">
+          <div class="chart-title">🚚 Delivery-delay risk</div>
+          <div class="chart-subtitle">Explainable, not a fitted model — see method note below the table.</div>
+          <% if (!cards.deliveryDelayRisk.applicable) { %>
+            <div class="info-box"><%= cards.deliveryDelayRisk.reason %></div>
+          <% } else { %>
+            <div class="kpi-row"><%- cards.deliveryDelayRiskKpiRow.join('') %></div>
+            <p style="font-size: 13.5px; color: var(--text-muted); margin: 8px 0 14px;"><%= cards.deliveryDelayRisk.narrative %></p>
+            <% (cards.deliveryDelayRisk.segments || []).forEach(function(seg) { %>
+              <div class="table-scroll" style="margin-bottom: 14px;">
+                <table class="table-simple">
+                  <thead><tr><th style="text-transform: capitalize;"><%= seg.dimensionLabel %></th><th>Orders</th><th>Late</th><th>Late rate</th><th>Risk</th></tr></thead>
+                  <tbody>
+                    <% seg.rows.forEach(function(r) { %>
+                      <tr>
+                        <td><%= r.label %></td>
+                        <td><%= r.total.toLocaleString() %></td>
+                        <td><%= r.bad.toLocaleString() %></td>
+                        <td><%= r.ratePct.toFixed(1) %>%</td>
+                        <td><span class="badge badge-risk-<%= r.band.toLowerCase() %>"><%= r.band %></span></td>
+                      </tr>
+                    <% }); %>
+                  </tbody>
+                </table>
+              </div>
+            <% }); %>
+            <details class="metric-provenance">
+              <summary>Method note</summary>
+              <p>Late-delivery risk is never a fitted classifier here — this app has no ML library or iterative solver. Each segment's risk band (High/Medium/Low) is its own historical late-delivery rate, ranked and banded against the top/bottom quartile of this dataset's own segment rates — a real, computed rate, not a probability estimate for a hypothetical new order.</p>
+            </details>
+          <% } %>
+        </div>
+      <% } %>
+
+    <% } else if (activeView === 'lifecycle') { %>
+      <% if (dataSource === 'dynamic' && !cards.dynRiskApplicable) { %>
+        <div class="info-box"><%= cards.dynRiskReason %></div>
+      <% } %>
+      <%- cards.lifecycleChart %>
+
+      <% if (dataSource === 'dynamic' && cards.reviewScoreOutlook) { %>
+        <div class="chart-card" style="margin-top: 16px;">
+          <div class="chart-title">⭐ Review-score outlook</div>
+          <div class="chart-subtitle">Expected rating by segment, grounded in this dataset's own historical averages — not a fitted regression coefficient.</div>
+          <% if (!cards.reviewScoreOutlook.applicable) { %>
+            <div class="info-box"><%= cards.reviewScoreOutlook.reason %></div>
+          <% } else { %>
+            <div class="kpi-row"><%- cards.reviewScoreOutlookKpiRow.join('') %></div>
+            <p style="font-size: 13.5px; color: var(--text-muted); margin: 8px 0 14px;"><%= cards.reviewScoreOutlook.narrative %></p>
+            <% if (cards.reviewScoreOutlook.outlookSegments && cards.reviewScoreOutlook.outlookSegments.rows.length) { %>
+              <div class="table-scroll">
+                <table class="table-simple">
+                  <thead><tr><th style="text-transform: capitalize;"><%= cards.reviewScoreOutlook.outlookSegments.dimensionLabel %></th><th>Expected rating</th><th>Rows</th></tr></thead>
+                  <tbody>
+                    <% cards.reviewScoreOutlook.outlookSegments.rows.forEach(function(r) { %>
+                      <tr><td><%= r.label %></td><td><%= r.expectedRating.toFixed(2) %></td><td><%= r.count.toLocaleString() %></td></tr>
+                    <% }); %>
+                  </tbody>
+                </table>
+              </div>
+            <% } %>
+          <% } %>
+        </div>
+      <% } %>
+
+    <% } else if (activeView === 'forecast') { %>
+      <%- cards.trend %>
+      <% if (!cards.forecastAvailable) { %>
+        <div class="info-box"><%= cards.forecastNotApplicableReason || 'A revenue-trend projection needs at least 3 months of transaction history to fit a trend line. This dataset doesn\'t have that yet.' %></div>
+      <% } else { %>
+        <div class="kpi-row"><%- cards.forecastKpiRow.join('') %></div>
+        <% if (cards.forecastReliabilityNote) { %>
+          <div class="info-box" style="margin-bottom: 14px;"><%= cards.forecastReliabilityNote %></div>
+        <% } %>
+        <div class="chart-card">
+          <div class="chart-title">Projected revenue, next 3 months</div>
+          <div class="chart-subtitle">
+            Straight-line trend fit over this dataset's own monthly revenue history (primary method), shown with an 80% prediction interval<% if (cards.forecastHasCrossCheck) { %>, alongside an independent recent-momentum cross-check (Holt's linear smoothing)<% } %><% if (cards.forecastHasHoltWinters) { %> and a seasonal cross-check (Holt-Winters/ETS)<% } %> — not a fitted time-series model, shown as a straightforward projection
+          </div>
+          <div class="table-scroll">
+            <table class="table-simple">
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th>Projected revenue (trend line)</th>
+                  <th>80% interval</th>
+                  <% if (cards.forecastHasCrossCheck) { %><th>Cross-check (recent momentum)</th><% } %>
+                  <% if (cards.forecastHasHoltWinters) { %><th>Seasonal cross-check (Holt-Winters)</th><% } %>
+                </tr>
+              </thead>
+              <tbody>
+                <% cards.forecastTable.forEach(function(p) { %>
+                  <tr>
+                    <td><%= p.label %></td>
+                    <td><%= p.value %></td>
+                    <td><%= p.interval || '—' %></td>
+                    <% if (cards.forecastHasCrossCheck) { %><td><%= p.crossCheck %></td><% } %>
+                    <% if (cards.forecastHasHoltWinters) { %><td><%= p.holtWinters || '—' %></td><% } %>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <% if (cards.forecastValidationTable && cards.forecastValidationTable.length) { %>
+          <div class="chart-card" style="margin-top: 14px;">
+            <div class="chart-title">Backtested accuracy</div>
+            <div class="chart-subtitle">Each method fit on everything before this dataset's own most recent <%= cards.forecastValidationHoldout %> month(s), then compared against what actually happened in those held-out months — a genuine out-of-sample check, not an in-sample fit statistic.</div>
+            <div class="table-scroll">
+              <table class="table-simple">
+                <thead><tr><th>Method</th><th>MAE</th><th>RMSE</th><th>MAPE</th></tr></thead>
+                <tbody>
+                  <% cards.forecastValidationTable.forEach(function(v) { %>
+                    <tr>
+                      <td><%= v.method %></td>
+                      <td><%= v.mae.toFixed(2) %></td>
+                      <td><%= v.rmse.toFixed(2) %></td>
+                      <td><%= v.mape === null ? '—' : v.mape.toFixed(1) + '%' %></td>
+                    </tr>
+                  <% }); %>
+                </tbody>
+              </table>
+            </div>
+            <% if (cards.forecastValidationExcludedNote) { %>
+              <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 8px;"><%= cards.forecastValidationExcludedNote %></p>
+            <% } %>
+          </div>
+        <% } %>
+      <% } %>
+
+    <% } else if (activeView === 'what-if') { %>
+      <% const whatIfGroupNounLower = (cards.whatIfGroupLabel || 'product').toLowerCase(); %>
+      <p class="page-subtitle" style="margin-bottom: 14px;"><%= whatIfGroupNounLower === 'all products/services' ? 'Pick a hypothetical price change' : `Pick a ${whatIfGroupNounLower} and a hypothetical price change` %> to see the projected revenue impact — grounded in this dataset's own elasticity read wherever one exists, shown as baseline vs. scenario side-by-side.</p>
+
+      <% if (cards.whatIfIsDynamic && cards.whatIfNotApplicableReason) { %>
+        <div class="info-box"><%= cards.whatIfNotApplicableReason %></div>
+      <% } else if (!cards.whatIfProducts || cards.whatIfProducts.length === 0) { %>
+        <div class="info-box"><% if (cards.whatIfIsDynamic) { %>This fact table has no category/group column to run a price what-if scenario against.<% } else { %>No product/service is named on any transaction in this dataset yet — the what-if scenario needs a <code>product_service</code> value to project against.<% } %></div>
+      <% } else { %>
+        <form method="GET" action="/predictive-analytics" class="dataset-picker" style="margin-bottom: 18px;">
+          <input type="hidden" name="dataset" value="<%= selectedDataset.id %>" />
+          <input type="hidden" name="view" value="what-if" />
+          <input type="hidden" name="source" value="<%= dataSource %>" />
+          <label for="whatif-product"><%= cards.whatIfGroupLabel || 'Product' %></label>
+          <select id="whatif-product" name="product">
+            <% cards.whatIfProducts.forEach(function(p) { %>
+              <option value="<%= p %>" <%= cards.whatIfSelectedProduct === p ? 'selected' : '' %>><%= p %></option>
+            <% }); %>
+          </select>
+          <label for="whatif-price" style="margin-left: 12px;">Price change %</label>
+          <input id="whatif-price" name="pricePct" type="number" step="0.5" value="<%= cards.whatIfPricePctInput %>" style="width: 90px;" />
+          <button type="submit" class="btn btn-accent" style="margin-left: 12px;">Run scenario</button>
+        </form>
+
+        <% if (!cards.whatIfAvailable) { %>
+          <div class="info-box">
+            <% if (cards.whatIfReason === 'invalid-input') { %>
+              Enter a price change greater than -99% to run a scenario.
+            <% } else { %>
+              <strong><%= cards.whatIfSelectedProduct %></strong> has no transaction history to project a baseline from yet.
+            <% } %>
+          </div>
+        <% } else { %>
+          <div class="chart-subtitle" style="margin-bottom: 10px;">
+            Baseline drawn from <strong><%= cards.whatIf.baselineMonthLabel %></strong>, the most recent month with transaction data<%= cards.whatIfSelectedProduct === 'All products/services' ? '' : ` for ${cards.whatIfSelectedProduct}` %>.
+          </div>
+          <div class="kpi-row"><%- cards.whatIf.kpiRow.join('') %></div>
+          <div class="chart-card">
+            <div class="chart-title">
+              Baseline vs. scenario: <%= cards.whatIfSelectedProduct %> at <%= cards.whatIf.pricePctChange >= 0 ? '+' : '' %><%= cards.whatIf.pricePctChange %>% price
+              <% if (cards.whatIf.revenueIsEstimatedOccupancy) { %><span class="badge badge-inactive" style="margin-left:6px;" title="No dedicated revenue field exists in this dataset — figures are derived from booked rows priced at the listed rate, not observed transaction amounts.">Estimated Revenue</span><% } %>
+            </div>
+            <div class="chart-subtitle">
+              Elasticity used: <%= cards.whatIf.elasticityLabel %>
+              <% if (cards.whatIf.elasticityAssumed) { %><span class="badge badge-inactive" style="margin-left:6px;">Assumption</span><% } %>
+            </div>
+            <% if (cards.whatIf.catalogPrice) { %>
+              <div class="chart-subtitle" style="margin-top: 4px;">
+                Current price uses the catalog/listed price from <strong><%= cards.whatIf.catalogPrice.sourceLabel %></strong> (<%= cards.whatIf.catalogPrice.price %><%= cards.whatIf.catalogPrice.scopedToGroup ? '' : ', averaged across all items — no category-level match available' %>), shown separately from the observed average transaction price (<%= cards.whatIf.catalogPrice.empiricalPrice %>).
+              </div>
+            <% } %>
+            <div class="table-scroll">
+              <table class="table-simple">
+                <thead><tr><th>Metric</th><th>Baseline</th><th>Scenario</th><th>Change</th></tr></thead>
+                <tbody>
+                  <% cards.whatIf.table.forEach(function(r) { %>
+                    <tr><td><%= r.metric %></td><td><%= r.baseline %></td><td><%= r.scenario %></td><td><%= r.change %></td></tr>
+                  <% }); %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        <% } %>
+      <% } %>
+    <% } %>
+  <% } %>
+<% } %>

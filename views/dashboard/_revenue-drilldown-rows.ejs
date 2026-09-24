@@ -1,0 +1,41 @@
+<%# Row fragment for the Revenue & Growth drill-down panel. `mode` is
+    whichever buildRevenueDrillDown() actually returned — 'customers'
+    (rolled up, from a product row), 'products' (rolled up, from a
+    customer row), or 'transactions' (the raw log, either direction) —
+    not requested directly, so the client can't get this out of sync with
+    what the server chose to send. No <table>/<thead> here; the panel
+    shell owns those and swaps the header text itself. %>
+<% if (rows.length === 0) { %>
+  <tr class="drilldown-empty-row"><td colspan="5">Nothing to show.</td></tr>
+<% } else if (mode === 'transactions') { %>
+  <% rows.forEach(function(r) { %>
+    <tr>
+      <td><%= r.timestamp ? new Date(r.timestamp).toLocaleDateString() : '—' %></td>
+      <td><%= r.customerName ? r.customerName : r.customerId %></td>
+      <td><%= r.productService %></td>
+      <td><%= formatMoney(r.amount, r.currency || currency) %></td>
+      <td><%= r.quantity === null ? '—' : formatCount(r.quantity) %></td>
+    </tr>
+  <% }); %>
+<% } else if (mode === 'products') { %>
+  <% rows.forEach(function(r) { %>
+    <tr>
+      <td><%= r.label %></td>
+      <td><%= formatMoney(r.revenue, r.currency || currency) %></td>
+      <td><%= formatCount(r.transactionCount) %></td>
+      <td><%= r.lastTimestamp ? new Date(r.lastTimestamp).toLocaleDateString() : '—' %></td>
+    </tr>
+  <% }); %>
+<% } else { %>
+  <% rows.forEach(function(r) { %>
+    <tr>
+      <td><%= r.label %></td>
+      <td><%= formatMoney(r.revenue, r.currency || currency) %></td>
+      <td><%= formatCount(r.transactionCount) %></td>
+      <td><%= r.lastTimestamp ? new Date(r.lastTimestamp).toLocaleDateString() : '—' %></td>
+    </tr>
+  <% }); %>
+<% } %>
+<% if (hasMore) { %>
+  <tr class="drilldown-sentinel-row" data-next-offset="<%= nextOffset %>"><td colspan="5" style="text-align:center; color: var(--text-muted); font-size: 12px;">Loading more…</td></tr>
+<% } %>
