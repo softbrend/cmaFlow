@@ -129,6 +129,16 @@ router.post('/login', redirectIfAuthed, async (req, res, next) => {
 
     delete account.password_hash;
 
+    // An Admin account has no datasets of its own to land on — send it
+    // straight to the admin section instead of the SME Owner Portal home
+    // page (which would just render empty). Everything below this branch
+    // (default-dataset bookkeeping) is SME-owner-only and skipped for Admin.
+    if (account.role === 'Admin') {
+      req.session.userId = account.id;
+      req.session.user = account;
+      return res.redirect('/admin');
+    }
+
     // "Always have a dataset assigned to the SME owner upon successful
     // log-in if there were already uploaded datasets" — this is where
     // that happens. Never overwrites a default the SME owner already

@@ -48,6 +48,7 @@ const {
 } = require('../services/fullDescriptiveAnalytics');
 const { buildErdDefinition } = require('../services/erdDiagram');
 const { ensureDefaultDataset, setDefaultDataset } = require('../services/accountDatasets');
+const { getOrCompute: getOrComputeAnalyticsCache, getOrComputeInProcess: getOrComputeAnalyticsCacheInProcess } = require('../services/analyticsCache');
 const { ROLE_ONTOLOGY } = require('../services/semanticFieldOntology'); // Round 22 — role dropdown options for GET/POST /dataset/:id/review-fields
 // Only ACTUAL_DATE_NAME_RE is needed here (to pick the "delivered/actual"
 // date-pair duration out of buildBusinessSummaryCard()'s KPI resolution
@@ -225,6 +226,16 @@ router.use((req, res, next) => {
 router.get('/', async (req, res, next) => {
   try {
     const accountId = req.session.userId;
+
+    // An Admin account has no datasets/analytics of its own — this whole
+    // portal home page (and everything else this router serves) is
+    // SME-owner-facing, so send an Admin straight to its own section. Same
+    // redirect already happens right after login (routes/auth.js); this
+    // catches an Admin navigating back to "/" directly (bookmark, browser
+    // back button, typed URL).
+    if (req.session.user && req.session.user.role === 'Admin') {
+      return res.redirect('/admin');
+    }
 
     // Self-healing net alongside the assignment that already happened at
     // login (routes/auth.js): covers a session that predates the
@@ -1963,20 +1974,52 @@ router.get('/diagnostic-insights', async (req, res, next) => {
     // claude/cma-flow-app-conceptual-framework-audit.md in the project docs.
     const dataSource = 'raw';
 
-    const rawByFileType = await getRawRecordsByFileType(accountId, selectedDataset.id);
-    const txnPick = pickRawEntityRows(rawByFileType, 'Transaction');
-    const entPick = pickRawEntityRows(rawByFileType, 'Entitlement');
-    const monPick = pickRawEntityRows(rawByFileType, 'MonetizationConfig');
-    const cleanTxns = txnPick.rows.filter((t) => t.amount !== null && !Number.isNaN(Number(t.amount)) && t.customer_id);
-    const transactionRows = cleanTxns;
-    const entitlementRows = entPick.rows;
-    const monetizationRows = monPick.rows;
-    let hasAnyData = cleanTxns.length > 0 || entPick.rows.length > 0 || monPick.rows.length > 0;
-    const rawInfo = {
-      hasTransactionSignal: cleanTxns.length > 0,
-      sourceFileLabel: txnPick.fileType ? humanizeFileType(txnPick.fileType) : null,
-      skippedRows: txnPick.rows.length - cleanTxns.length,
-    };
+    // Routed through the analytics result cache (services/
+    // analyticsCache.js) — the 4 non-dynamic tabs on this page (revenue
+    // bridge, revenue-by-type, price-change impact, cancellations) used
+    // to re-fetch EVERY row of this dataset's uploaded files from
+    // Postgres and re-run the full computation on every single page
+    // load, regardless of which tab was open — real cost on a large
+    // upload, paid again on every click between tabs. A cache hit here
+    // costs two small indexed queries instead; a miss costs exactly what
+    // this route always did, plus one upsert to save the result for next
+    // time. Invalidates itself automatically the moment a new file lands
+    // on this dataset (see getOrCompute()'s freshness check).
+    const diagRaw = await getOrComputeAnalyticsCache(selectedDataset.id, accountId, 'diagnostic-raw', async () => {
+      const rawByFileType = await getRawRecordsByFileType(accountId, selectedDataset.id);
+      const txnPick = pickRawEntityRows(rawByFileType, 'Transaction');
+      const entPick = pickRawEntityRows(rawByFileType, 'Entitlement');
+      const monPick = pickRawEntityRows(rawByFileType, 'MonetizationConfig');
+      const cleanTxns = txnPick.rows.filter((t) => t.amount !== null && !Number.isNaN(Number(t.amount)) && t.customer_id);
+      const transactionRows = cleanTxns;
+      const entitlementRows = entPick.rows;
+      const monetizationRows = monPick.rows;
+      const computedHasAnyData = cleanTxns.length > 0 || entPick.rows.length > 0 || monPick.rows.length > 0;
+      const computedRawInfo = {
+        hasTransactionSignal: cleanTxns.length > 0,
+        sourceFileLabel: txnPick.fileType ? humanizeFileType(txnPick.fileType) : null,
+        skippedRows: txnPick.rows.length - cleanTxns.length,
+      };
+
+      if (!computedHasAnyData) {
+        return { hasAnyData: false, rawInfo: computedRawInfo, currency: '', bridge: null, byType: null, priceImpacts: [], cancellations: null, coverage: null };
+      }
+
+      const computedCurrency = mode(transactionRows.map((t) => t.currency)) || mode(monetizationRows.map((m) => m.currency)) || '';
+      return {
+        hasAnyData: true,
+        rawInfo: computedRawInfo,
+        currency: computedCurrency,
+        bridge: revenueBridge(transactionRows),
+        byType: revenueByTransactionType(transactionRows),
+        priceImpacts: combinedPriceChangeImpact(transactionRows, monetizationRows),
+        cancellations: cancellationReasonsRanked(entitlementRows),
+        coverage: diagnosticCoverage(transactionRows, entitlementRows, monetizationRows),
+      };
+    });
+
+    let hasAnyData = diagRaw.hasAnyData;
+    const rawInfo = diagRaw.rawInfo;
 
     // The Dynamic diagnostics tab reads the fact-table business-
     // intelligence ctx (services/fullDescriptiveAnalytics.js), not the
@@ -2004,12 +2047,7 @@ router.get('/diagnostic-insights', async (req, res, next) => {
       });
     }
 
-    const currency = mode(transactionRows.map((t) => t.currency)) || mode(monetizationRows.map((m) => m.currency)) || '';
-    const bridge = revenueBridge(transactionRows);
-    const byType = revenueByTransactionType(transactionRows);
-    const priceImpacts = combinedPriceChangeImpact(transactionRows, monetizationRows);
-    const cancellations = cancellationReasonsRanked(entitlementRows);
-    const coverage = diagnosticCoverage(transactionRows, entitlementRows, monetizationRows);
+    const { currency, bridge, byType, priceImpacts, cancellations, coverage } = diagRaw;
 
     const cards = {};
     cards.coverageKpiRow = [
@@ -2226,23 +2264,55 @@ router.get('/predictive-analytics', async (req, res, next) => {
         forecast = trendResult.applicable ? revenueForecast(trend) : null;
       }
     } else {
-      const rawByFileType = await getRawRecordsByFileType(accountId, selectedDataset.id);
-      const custPick = pickRawEntityRows(rawByFileType, 'Customer');
-      const txnPick = pickRawEntityRows(rawByFileType, 'Transaction');
-      const entPick = pickRawEntityRows(rawByFileType, 'Entitlement');
-      const monPick = pickRawEntityRows(rawByFileType, 'MonetizationConfig');
-      const cleanCust = custPick.rows.filter((c) => c.customer_id);
-      const cleanTxns = txnPick.rows.filter((t) => t.amount !== null && !Number.isNaN(Number(t.amount)) && t.customer_id);
-      const customerRows = cleanCust;
-      const transactionRows = cleanTxns;
-      const entitlementRows = entPick.rows;
-      const monetizationRows = monPick.rows;
-      hasAnyData = cleanCust.length > 0;
-      rawInfo = {
-        hasTransactionSignal: cleanCust.length > 0,
-        sourceFileLabel: custPick.fileType ? humanizeFileType(custPick.fileType) : null,
-        skippedRows: custPick.rows.length - cleanCust.length,
-      };
+      // Routed through the analytics result cache's in-process variant —
+      // this branch used to re-fetch every row of the dataset's uploaded
+      // files and rebuild customer features (an O(rows) aggregation) on
+      // EVERY load of this page, for ANY tab, even lifecycle/forecast
+      // which don't need the raw rows themselves, just these derived
+      // results. The in-process variant (not the Postgres-backed one
+      // Diagnostic/Prescriptive use just below/above) because this
+      // bundle is one object per CUSTOMER — on a large customer base
+      // that can run several MB, and round-tripping that much JSON
+      // through Postgres on every "hit" would undercut the point; see
+      // services/analyticsCache.js's header on getOrComputeInProcess.
+      const predRaw = await getOrComputeAnalyticsCacheInProcess(selectedDataset.id, accountId, 'predictive-raw', async () => {
+        const rawByFileType = await getRawRecordsByFileType(accountId, selectedDataset.id);
+        const custPick = pickRawEntityRows(rawByFileType, 'Customer');
+        const txnPick = pickRawEntityRows(rawByFileType, 'Transaction');
+        const entPick = pickRawEntityRows(rawByFileType, 'Entitlement');
+        const cleanCust = custPick.rows.filter((c) => c.customer_id);
+        const cleanTxns = txnPick.rows.filter((t) => t.amount !== null && !Number.isNaN(Number(t.amount)) && t.customer_id);
+        const customerRows = cleanCust;
+        const transactionRows = cleanTxns;
+        const entitlementRows = entPick.rows;
+        const computedHasAnyData = cleanCust.length > 0;
+        const computedRawInfo = {
+          hasTransactionSignal: cleanCust.length > 0,
+          sourceFileLabel: custPick.fileType ? humanizeFileType(custPick.fileType) : null,
+          skippedRows: custPick.rows.length - cleanCust.length,
+        };
+
+        if (!computedHasAnyData) {
+          return { hasAnyData: false, rawInfo: computedRawInfo, currency: '', features: [], riskDist: [], lifecycleDist: [], trend: [], forecast: null };
+        }
+
+        const computedCurrency = mode(transactionRows.map((t) => t.currency)) || '';
+        const computedFeatures = buildCustomerFeatures(customerRows, transactionRows, entitlementRows);
+        const computedTrend = revenueTrend(transactionRows);
+        return {
+          hasAnyData: true,
+          rawInfo: computedRawInfo,
+          currency: computedCurrency,
+          features: computedFeatures,
+          riskDist: churnRiskDistribution(computedFeatures),
+          lifecycleDist: lifecycleStageDistribution(computedFeatures),
+          trend: computedTrend,
+          forecast: revenueForecast(computedTrend),
+        };
+      });
+
+      hasAnyData = predRaw.hasAnyData;
+      rawInfo = predRaw.rawInfo;
 
       if (!hasAnyData) {
         return res.render('dashboard/predictive-analytics', {
@@ -2259,18 +2329,25 @@ router.get('/predictive-analytics', async (req, res, next) => {
         });
       }
 
-      currency = mode(transactionRows.map((t) => t.currency)) || '';
-      features = buildCustomerFeatures(customerRows, transactionRows, entitlementRows);
-      riskDist = churnRiskDistribution(features);
-      lifecycleDist = lifecycleStageDistribution(features);
-      trend = revenueTrend(transactionRows);
-      forecast = revenueForecast(trend);
+      currency = predRaw.currency;
+      features = predRaw.features;
+      riskDist = predRaw.riskDist;
+      lifecycleDist = predRaw.lifecycleDist;
+      trend = predRaw.trend;
+      forecast = predRaw.forecast;
 
-      // What-if scenario below still needs these two raw-picked arrays —
-      // the existing raw what-if block (unchanged) reads them off the
-      // outer-scope names declared above.
-      rawWhatIfTransactionRows = transactionRows;
-      rawWhatIfMonetizationRows = monetizationRows;
+      // What-if scenario needs the actual raw transaction/monetization-
+      // config rows, not the cached aggregates above — fetched on its
+      // own, only when that tab is actually open (same "pay for it only
+      // when open" discipline as delivery-delay-risk/review-score-
+      // outlook below), rather than unconditionally on every load of
+      // this page the way the pre-cache version of this route did.
+      if (activeView === 'what-if') {
+        const whatIfByFileType = await getRawRecordsByFileType(accountId, selectedDataset.id);
+        rawWhatIfTransactionRows = pickRawEntityRows(whatIfByFileType, 'Transaction').rows
+          .filter((t) => t.amount !== null && !Number.isNaN(Number(t.amount)) && t.customer_id);
+        rawWhatIfMonetizationRows = pickRawEntityRows(whatIfByFileType, 'MonetizationConfig').rows;
+      }
     }
 
     const cards = {};
@@ -2700,31 +2777,50 @@ router.get('/prescriptive-recommendations', async (req, res, next) => {
 
     // ---- dataSource === 'raw': original Phase 4 roadmap engine, unchanged
     // behavior from before this round (services/prescriptiveAnalytics.js).
-    let mechanismTable = [];
-    const reconciliation = null;
-    const catalog = null;
-    let totalRevenue = 0;
-    let currency = '';
-    let transactionRows = [];
-    let monetizationRows = [];
-    let rawInfo = null;
+    // Routed through the analytics result cache — this branch used to do
+    // TWO separate full row-fetches of the dataset's uploaded files
+    // (buildRawRevenueGrowthAnalytics's own internal fetch, plus a second
+    // explicit getRawRecordsByFileType call right after it) and rebuild
+    // the elasticity/ranking analysis, on every single page load. See
+    // services/analyticsCache.js and the matching comment on Diagnostic
+    // Insights' raw pathway above.
+    const prescRaw = await getOrComputeAnalyticsCache(selectedDataset.id, accountId, 'prescriptive-raw', async () => {
+      const rawGrowth = await buildRawRevenueGrowthAnalytics(accountId, selectedDataset.id);
+      const computedHasAnyData = !!rawGrowth.hasTransactionSignal;
+      const computedRawInfo = {
+        hasTransactionSignal: computedHasAnyData,
+        sourceFileLabel: rawGrowth.sourceFileType ? humanizeFileType(rawGrowth.sourceFileType) : null,
+        skippedRows: computedHasAnyData ? rawGrowth.rowCounts.skippedRows : 0,
+      };
 
-    const rawGrowth = await buildRawRevenueGrowthAnalytics(accountId, selectedDataset.id);
-    const hasAnyData = !!rawGrowth.hasTransactionSignal;
-    rawInfo = {
-      hasTransactionSignal: hasAnyData,
-      sourceFileLabel: rawGrowth.sourceFileType ? humanizeFileType(rawGrowth.sourceFileType) : null,
-      skippedRows: hasAnyData ? rawGrowth.rowCounts.skippedRows : 0,
-    };
-    if (hasAnyData) {
-      mechanismTable = rawGrowth.mechanismTable;
-      totalRevenue = rawGrowth.totalRevenue;
-      currency = rawGrowth.currency;
+      if (!computedHasAnyData) {
+        return { hasAnyData: false, rawInfo: computedRawInfo, mechanismTable: [], totalRevenue: 0, currency: '', candidates: [], reconciliationNote: null, elasticityAvailable: false, elasticity: null };
+      }
+
       const rawByFileType = await getRawRecordsByFileType(accountId, selectedDataset.id);
-      transactionRows = pickRawEntityRows(rawByFileType, 'Transaction').rows
+      const transactionRows = pickRawEntityRows(rawByFileType, 'Transaction').rows
         .filter((t) => t.amount !== null && !Number.isNaN(Number(t.amount)) && t.customer_id);
-      monetizationRows = pickRawEntityRows(rawByFileType, 'MonetizationConfig').rows;
-    }
+      const monetizationRows = pickRawEntityRows(rawByFileType, 'MonetizationConfig').rows;
+
+      const elasticity = elasticitySummary(transactionRows, monetizationRows);
+      const { candidates, reconciliationNote } = rankConfigurationRecommendations({
+        mechanismTable: rawGrowth.mechanismTable, reconciliation: null, elasticity, catalog: null,
+      });
+
+      return {
+        hasAnyData: true,
+        rawInfo: computedRawInfo,
+        mechanismTable: rawGrowth.mechanismTable,
+        totalRevenue: rawGrowth.totalRevenue,
+        currency: rawGrowth.currency,
+        candidates,
+        reconciliationNote,
+        elasticity,
+      };
+    });
+
+    const hasAnyData = prescRaw.hasAnyData;
+    const rawInfo = prescRaw.rawInfo;
 
     if (!hasAnyData) {
       return res.render('dashboard/prescriptive-recommendations', {
@@ -2741,10 +2837,10 @@ router.get('/prescriptive-recommendations', async (req, res, next) => {
       });
     }
 
-    const elasticity = elasticitySummary(transactionRows, monetizationRows);
-    const { candidates, reconciliationNote } = rankConfigurationRecommendations({
-      mechanismTable, reconciliation, elasticity, catalog,
-    });
+    const {
+      mechanismTable, totalRevenue, currency, candidates, reconciliationNote, elasticity,
+    } = prescRaw;
+    const reconciliation = null;
 
     const cards = {};
     cards.baselineKpiRow = [

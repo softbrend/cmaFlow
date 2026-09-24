@@ -2,17 +2,26 @@
   <div class="nav-heading">Navigation</div>
 
   <ul class="nav-list">
-    <%# The four analytics stages carry a stage-colored icon chip instead
-        of the plain gold nav-dot — the same DESCRIPTIVE → DIAGNOSTIC →
-        PREDICTIVE → PRESCRIPTIVE identity as the .stage-pipeline trademark
-        on their own pages (see views/partials/stage-pipeline.ejs). %>
-    <% (navSections || []).forEach(function(s) { %>
-      <li><a href="/<%= s.slug %>" class="<%= active === s.slug ? 'active' : '' %>"><span class="nav-icon stage-<%= s.slug %>"><%= s.icon %></span><%= s.label %></a></li>
-    <% }); %>
-    <li><a href="/upload-dataset" class="<%= active === 'upload-new-dataset' ? 'active' : '' %>"><span class="nav-dot"></span>Upload New Dataset</a></li>
-    <li><a href="/browse-dataset" class="<%= active === 'browse-dataset' ? 'active' : '' %>"><span class="nav-dot"></span>Browse Dataset</a></li>
-    <li><a href="/monetization-discovery" class="<%= active === 'monetization-discovery' ? 'active' : '' %>"><span class="nav-dot"></span>Monetization discovery</a></li>
-    <li><a href="/evaluation" class="<%= active === 'evaluation' ? 'active' : '' %>"><span class="nav-dot"></span>End-User Evaluation</a></li>
+    <% if (currentUser && currentUser.role === 'Admin') { %>
+      <%# An Admin account has no datasets/analytics of its own — a
+          completely separate nav for the admin section (routes/admin.js)
+          instead of the six-stage SME Owner Portal list below. %>
+      <li><a href="/admin" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'home') ? 'active' : '' %>"><span class="nav-dot"></span>Admin home</a></li>
+      <li><a href="/admin/accounts" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'accounts') ? 'active' : '' %>"><span class="nav-dot"></span>Manage accounts</a></li>
+      <li><a href="/admin/evaluations" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'evaluations') ? 'active' : '' %>"><span class="nav-dot"></span>Evaluations</a></li>
+    <% } else { %>
+      <%# The four analytics stages carry a stage-colored icon chip instead
+          of the plain gold nav-dot — the same DESCRIPTIVE → DIAGNOSTIC →
+          PREDICTIVE → PRESCRIPTIVE identity as the .stage-pipeline trademark
+          on their own pages (see views/partials/stage-pipeline.ejs). %>
+      <% (navSections || []).forEach(function(s) { %>
+        <li><a href="/<%= s.slug %>" class="<%= active === s.slug ? 'active' : '' %>"><span class="nav-icon stage-<%= s.slug %>"><%= s.icon %></span><%= s.label %></a></li>
+      <% }); %>
+      <li><a href="/upload-dataset" class="<%= active === 'upload-new-dataset' ? 'active' : '' %>"><span class="nav-dot"></span>Upload New Dataset</a></li>
+      <li><a href="/browse-dataset" class="<%= active === 'browse-dataset' ? 'active' : '' %>"><span class="nav-dot"></span>Browse Dataset</a></li>
+      <li><a href="/monetization-discovery" class="<%= active === 'monetization-discovery' ? 'active' : '' %>"><span class="nav-dot"></span>Monetization discovery</a></li>
+      <li><a href="/evaluation" class="<%= active === 'evaluation' ? 'active' : '' %>"><span class="nav-dot"></span>End-User Evaluation</a></li>
+    <% } %>
   </ul>
 
   <div class="sidebar-footer">

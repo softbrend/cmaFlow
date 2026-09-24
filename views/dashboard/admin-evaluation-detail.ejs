@@ -1,0 +1,70 @@
+<div class="page-title">📋 <span class="page-title-text">Evaluation — <%= account.owner_name %></span></div>
+<p class="page-subtitle"><%= account.username %> · <%= account.business_name %></p>
+
+<p style="margin-bottom: 18px;"><a href="/admin/evaluations">← Back to evaluations</a></p>
+
+<% if (!session) { %>
+  <div class="placeholder-card">
+    <div class="emoji">🧭</div>
+    <p>This account hasn't started the evaluation yet — nothing to show.</p>
+  </div>
+<% } else { %>
+
+  <div class="ok-box">
+    Status: <strong>
+      <% if (session.status === 'completed') { %>Completed <%= session.completed_at ? new Date(session.completed_at).toLocaleString() : '' %>
+      <% } else if (session.status === 'questionnaire') { %>Walkthrough done, questionnaire in progress
+      <% } else { %>Walkthrough in progress (task <%= session.current_task %> of 6)
+      <% } %>
+    </strong>
+  </div>
+
+  <div class="form-card wide" style="margin-bottom: 22px;">
+    <div class="form-title" style="font-size: 18px;">Walkthrough</div>
+    <table class="table-simple">
+      <thead><tr><th>#</th><th>Module</th><th>Time on task</th><th>Assistance</th><th>Error</th></tr></thead>
+      <tbody>
+        <% tasks.forEach(function(t) {
+             var l = taskLogs.find(function(x) { return x.task_number === t.number; });
+             var secs = l ? (l.time_on_task_seconds || 0) : 0;
+             var mins = Math.floor(secs / 60); %>
+          <tr>
+            <td><%= t.number %></td>
+            <td><%= t.moduleLabel %></td>
+            <td><%= l && l.completed_at ? mins + 'm ' + (secs % 60) + 's' : (l ? 'In progress' : 'Not reached yet') %></td>
+            <td><%= l ? (l.needed_assistance ? 'Yes' : 'No') : '—' %></td>
+            <td><%= l ? (l.had_error ? 'Yes' : 'No') : '—' %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (session.status === 'walkthrough') { %>
+    <div class="placeholder-card">
+      <div class="emoji">🧭</div>
+      <p>The questionnaire unlocks once this account finishes all six walkthrough tasks — nothing to show yet.</p>
+    </div>
+  <% } else { %>
+    <% domains.forEach(function(d) { %>
+      <div class="form-card wide" style="margin-bottom: 22px;">
+        <div class="form-title" style="font-size: 18px;"><%= d.label %> (<%= d.domain %>)</div>
+        <table class="table-simple">
+          <thead><tr><th>Item</th><th>Statement</th><th>Rating</th><th>Remark</th></tr></thead>
+          <tbody>
+            <% d.items.forEach(function(item) {
+                 var r = responses.get(item.code); %>
+              <tr>
+                <td><%= item.code %></td>
+                <td><%= item.text %></td>
+                <td><%= r && r.rating ? r.rating + ' / 5' : 'Not yet answered' %></td>
+                <td><%= r && r.remark ? r.remark : '' %></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% }); %>
+  <% } %>
+
+<% } %>

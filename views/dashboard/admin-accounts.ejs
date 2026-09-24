@@ -1,0 +1,68 @@
+<div class="page-title">👤 <span class="page-title-text">Manage accounts</span></div>
+<p class="page-subtitle">Every account registered in CMA-Flow. Use Change password to reset an SME owner's password on their behalf — no need to know the old one.</p>
+
+<% if (passwordReset) { %>
+  <div class="alert-success">Password updated for <strong><%= passwordReset %></strong>.</div>
+<% } %>
+<% if (created) { %>
+  <div class="alert-success">Admin account <strong><%= created %></strong> created.</div>
+<% } %>
+<% if (promoted) { %>
+  <div class="alert-success"><strong><%= promoted %></strong> is now an admin.</div>
+<% } %>
+<% if (demoted) { %>
+  <div class="alert-success"><strong><%= demoted %></strong> is now a regular SME owner account.</div>
+<% } %>
+
+<div style="display: flex; gap: 10px; margin-bottom: 18px; justify-content: space-between; flex-wrap: wrap;">
+  <form method="GET" action="/admin/accounts" style="display: flex; gap: 10px; max-width: 520px; flex: 1;">
+    <input type="text" name="q" value="<%= q %>" placeholder="Search username, owner, business, or email"
+           style="flex: 1; padding: 11px 14px; border-radius: 10px; border: 1px solid transparent; background: var(--bg-input); color: #1c2a20; font-size: 14.5px;" />
+    <button type="submit" class="btn btn-ghost">Search</button>
+    <% if (q) { %><a class="btn btn-ghost" href="/admin/accounts">Clear</a><% } %>
+  </form>
+  <a class="btn btn-accent" href="/admin/accounts/new">+ Add admin</a>
+</div>
+
+<div class="form-card wide" style="max-width: none;">
+  <div class="table-scroll">
+    <table class="table-simple">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Owner</th>
+          <th>Business</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Joined</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (accounts.length === 0) { %>
+          <tr><td colspan="7" style="color: var(--text-muted);">No accounts match "<%= q %>".</td></tr>
+        <% } %>
+        <% accounts.forEach(function(a) { %>
+          <tr>
+            <td><%= a.username %></td>
+            <td><%= a.owner_name %></td>
+            <td><%= a.business_name %></td>
+            <td><%= a.email %></td>
+            <td><span class="badge <%= a.role === 'Admin' ? 'badge-active' : 'badge-inactive' %>"><%= a.role %></span></td>
+            <td><%= new Date(a.created_at).toLocaleDateString() %></td>
+            <td style="text-align: right; white-space: nowrap;">
+              <a class="btn btn-ghost btn-sm" href="/admin/accounts/<%= a.id %>/password">Change password</a>
+              <% if (a.role === 'Admin') { %>
+                <% if (a.id !== currentAdminId) { %>
+                  <a class="btn btn-ghost btn-sm" href="/admin/accounts/<%= a.id %>/remove-admin">Remove admin</a>
+                <% } %>
+              <% } else { %>
+                <a class="btn btn-ghost btn-sm" href="/admin/accounts/<%= a.id %>/make-admin">Make admin</a>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>

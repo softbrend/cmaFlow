@@ -23,7 +23,7 @@
       <% if (currentUser.business_name) { %>
         <div class="header-sme">
           <div class="header-sme-name"><%= currentUser.business_name %></div>
-          <div class="header-sme-tag">SME Account</div>
+          <div class="header-sme-tag"><%= currentUser.role === 'Admin' ? 'Administrator' : 'SME Account' %></div>
         </div>
         <span class="header-divider header-sme-divider"></span>
       <% } %>

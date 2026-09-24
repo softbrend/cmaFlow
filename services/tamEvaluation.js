@@ -10,6 +10,7 @@
 // off, across logins and devices, rather than losing progress to a
 // closed tab.
 const pool = require('../db/pool');
+const { quantile, mean } = require('./statsUtils');
 
 // ------------------------------------------------------------------
 // The six-task walkthrough (Table 1) — one task per in-scope module, in
@@ -264,6 +265,103 @@ async function markCompleted(sessionId) {
   return rows[0];
 }
 
+// ------------------------------------------------------------------
+// Admin browsing — read-only, never mutates state
+// ------------------------------------------------------------------
+
+// Same shape as getEvaluationState(), but for an Admin looking at
+// SOMEONE ELSE's account. Unlike getEvaluationState(), this never creates
+// a session row as a side effect: an admin opening an account that hasn't
+// started its evaluation yet should see "not started", not silently
+// enroll that account into the walkthrough. session is null when the
+// account has never visited /evaluation.
+async function getEvaluationStateReadOnly(accountId) {
+  const { rows } = await pool.query(
+    `SELECT * FROM evaluation_sessions WHERE account_id = $1`,
+    [accountId]
+  );
+  const session = rows[0] || null;
+  if (!session) return { session: null, taskLogs: [], responses: new Map() };
+  const [taskLogs, responses] = await Promise.all([
+    getTaskLogs(session.id),
+    getResponses(session.id),
+  ]);
+  return { session, taskLogs, responses };
+}
+
+// One row per sme_owner account (Admin accounts excluded — this
+// evaluation is end-user/SME-owner-facing only), left-joined to that
+// account's evaluation session if it has one, for the admin Evaluations
+// list: who's done, who's mid-walkthrough/questionnaire, who hasn't
+// started at all.
+async function listAllEvaluationStatuses() {
+  const { rows } = await pool.query(
+    `SELECT a.id AS account_id, a.username, a.owner_name, a.business_name,
+            s.status, s.current_task, s.started_at,
+            s.walkthrough_completed_at, s.completed_at,
+            (SELECT COUNT(*)::int FROM evaluation_task_logs tl
+              WHERE tl.session_id = s.id AND tl.completed_at IS NOT NULL) AS tasks_done,
+            (SELECT COUNT(*)::int FROM evaluation_responses r
+              WHERE r.session_id = s.id AND r.rating IS NOT NULL) AS items_answered
+       FROM sme_accounts a
+       LEFT JOIN evaluation_sessions s ON s.account_id = a.id
+      WHERE a.role != 'Admin'
+      ORDER BY a.created_at DESC`
+  );
+  return rows;
+}
+
+// Cross-respondent descriptive summary of the 17-item questionnaire —
+// the instrument's own Section 6 scoring/analysis plan (median/IQR per
+// item and domain, %agree; see claude/tam-instrument-end-user-evaluation.md
+// in the project docs), computed here instead of by hand from an export.
+// Only FULLY COMPLETED evaluations are included (status = 'completed'),
+// so a still-in-progress respondent's partial ratings never skew the
+// reported figures — matches the same "final data only" discipline the
+// instrument's own scoring plan assumes. %agree = the share of ratings
+// that are 4 or 5 (Agree/Strongly Agree on the 5-point scale), the
+// standard TAM reporting convention.
+async function getCompletedResponseSummary() {
+  const { rows } = await pool.query(
+    `SELECT r.item_code, r.domain, r.rating
+       FROM evaluation_responses r
+       JOIN evaluation_sessions s ON s.id = r.session_id
+      WHERE s.status = 'completed' AND r.rating IS NOT NULL`
+  );
+  const { rows: completedCountRows } = await pool.query(
+    `SELECT COUNT(*)::int AS n FROM evaluation_sessions WHERE status = 'completed'`
+  );
+
+  function summarize(values) {
+    const sorted = [...values].sort((a, b) => a - b);
+    const n = sorted.length;
+    if (n === 0) return {
+      n: 0, mean: null, median: null, q1: null, q3: null, percentAgree: null,
+    };
+    const agree = sorted.filter((v) => v >= 4).length;
+    return {
+      n,
+      mean: mean(sorted),
+      median: quantile(sorted, 0.5),
+      q1: quantile(sorted, 0.25),
+      q3: quantile(sorted, 0.75),
+      percentAgree: (agree / n) * 100,
+    };
+  }
+
+  const byItem = TAM_ITEMS.map((item) => {
+    const values = rows.filter((r) => r.item_code === item.code).map((r) => r.rating);
+    return { code: item.code, domain: item.domain, text: item.text, ...summarize(values) };
+  });
+
+  const byDomain = ['PU', 'PEOU', 'BI'].map((domain) => {
+    const values = rows.filter((r) => r.domain === domain).map((r) => r.rating);
+    return { domain, label: DOMAIN_LABELS[domain], ...summarize(values) };
+  });
+
+  return { byItem, byDomain, completedCount: completedCountRows[0].n };
+}
+
 module.exports = {
   WALKTHROUGH_TASKS,
   TAM_ITEMS,
@@ -276,4 +374,7 @@ module.exports = {
   saveResponses,
   validateQuestionnaire,
   markCompleted,
+  getEvaluationStateReadOnly,
+  listAllEvaluationStatuses,
+  getCompletedResponseSummary,
 };

@@ -1,0 +1,37 @@
+<% var isPromote = mode === 'promote'; %>
+<div class="page-title"><%= isPromote ? '⬆️' : '⬇️' %> <span class="page-title-text"><%= isPromote ? 'Make admin' : 'Remove admin' %></span></div>
+<p class="page-subtitle">
+  <%= account.owner_name %> (<%= account.username %> — <%= account.business_name %>)
+</p>
+
+<div class="form-card">
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="alert-error"><%= error %></div>
+  <% } %>
+
+  <% if (isPromote) { %>
+    <div class="form-title" style="font-size: 18px;">Grant Admin access?</div>
+    <p class="form-hint">
+      This account will be able to sign in to the admin section — manage every account's password and browse all evaluation data.
+      They'll keep signing in with their existing username and password.
+    </p>
+    <form method="POST" action="/admin/accounts/<%= account.id %>/make-admin" style="display: flex; gap: 10px;">
+      <button type="submit" class="btn btn-accent">Yes, make <%= account.owner_name %> an admin</button>
+      <a class="btn btn-ghost" href="/admin/accounts">Cancel</a>
+    </form>
+  <% } else { %>
+    <div class="form-title" style="font-size: 18px;">Remove Admin access?</div>
+    <% if (typeof isSelf !== 'undefined' && isSelf) { %>
+      <p class="form-hint">You can't remove your own admin access — sign in as a different admin to do this.</p>
+      <a class="btn btn-ghost" href="/admin/accounts">← Back to accounts</a>
+    <% } else { %>
+      <p class="form-hint">
+        This account goes back to being a regular SME owner — it'll lose access to the admin section, but keeps everything else (its own datasets, evaluation progress, etc. are untouched).
+      </p>
+      <form method="POST" action="/admin/accounts/<%= account.id %>/remove-admin" style="display: flex; gap: 10px;">
+        <button type="submit" class="btn btn-danger">Yes, remove admin access</button>
+        <a class="btn btn-ghost" href="/admin/accounts">Cancel</a>
+      </form>
+    <% } %>
+  <% } %>
+</div>

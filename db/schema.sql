@@ -35,6 +35,22 @@ CREATE TABLE IF NOT EXISTS sme_accounts (
     created_at       TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
+-- Restricts role to the two values the app actually understands (routes/
+-- admin.js's requireAdmin checks for the literal string 'Admin'; every
+-- other account is implicitly an SME owner). Added after the column
+-- already existed in production, so it's a separate ALTER wrapped in a
+-- DO block rather than an inline CHECK on the column above — Postgres has
+-- no "ADD CONSTRAINT IF NOT EXISTS", so this is the idempotent-safe way
+-- to let db:init re-run this file on every deploy without erroring on a
+-- constraint that's already there.
+DO $$
+BEGIN
+  ALTER TABLE sme_accounts
+      ADD CONSTRAINT sme_accounts_role_check CHECK (role IN ('SME Owner', 'Admin'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ---------------------------------------------------------------------
 -- Monetization configurations set up by an account
 -- (what the "Set-up monetization configuration" screen writes to)
@@ -485,6 +501,44 @@ CREATE INDEX IF NOT EXISTS idx_evaluation_responses_session
 
 CREATE INDEX IF NOT EXISTS idx_evaluation_responses_account
     ON evaluation_responses(account_id);
+
+-- ---------------------------------------------------------------------
+-- Analytics result cache — extends the SAME two-phase caching pattern
+-- uploaded_datasets.business_intelligence already uses for the 'dynamic'
+-- (fact-table) analytics pathway (see getOrBuildBusinessIntelligence() in
+-- services/fullDescriptiveAnalytics.js) to the 'raw' pathway used by
+-- Diagnostic Insights' revenue-bridge/cancellation-reasons/price-change-
+-- impact/coverage views and Predictive/Prescriptive's raw source — which
+-- had NO caching at all: every page load re-fetched every row of a
+-- dataset's uploaded files (SELECT ... FROM dataset_records, no LIMIT)
+-- and re-ran the full analysis, on EVERY visit, regardless of tab. For an
+-- SME owner's larger uploads (hundreds of thousands of rows), that cost
+-- was paid again on every single click between tabs.
+--
+-- One row per (dataset, cache_key) — cache_key names which bundle of
+-- computed results this is (e.g. 'diagnostic-raw', 'predictive-raw',
+-- 'prescriptive-raw'), not which SME account, since the computed result
+-- only depends on the dataset's own data. latest_upload pins down exactly
+-- which state of the dataset this was computed against: services/
+-- analyticsCache.js's getOrCompute() compares it against a cheap
+-- MAX(uploaded_at) lookup on dataset_files (the same freshness check
+-- getOrBuildBusinessIntelligence already uses) before ever falling
+-- through to the expensive recompute, so a cache hit costs one small
+-- indexed query, never a full row re-fetch.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS analytics_result_cache (
+    id             BIGSERIAL   PRIMARY KEY,
+    dataset_id     INTEGER     NOT NULL REFERENCES uploaded_datasets(id) ON DELETE CASCADE,
+    account_id     INTEGER     NOT NULL REFERENCES sme_accounts(id) ON DELETE CASCADE,
+    cache_key      VARCHAR(60) NOT NULL,
+    latest_upload  TIMESTAMPTZ NOT NULL,
+    payload        JSONB       NOT NULL,
+    computed_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (dataset_id, cache_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_analytics_result_cache_account
+    ON analytics_result_cache(account_id);
 
 -- Note: the "session" table used for login sessions is created
 -- automatically by connect-pg-simple the first time the server starts.

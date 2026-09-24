@@ -9,7 +9,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "db:init": "node db/init.js"
+    "db:init": "node db/init.js",
+    "make-admin": "node scripts/promoteToAdmin.js"
   },
   "license": "UNLICENSED",
   "private": true,

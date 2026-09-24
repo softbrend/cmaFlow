@@ -1,0 +1,106 @@
+<div class="page-title">📋 <span class="page-title-text">Evaluations</span></div>
+<p class="page-subtitle">Every SME owner account's TAM end-user evaluation progress, and a cross-respondent summary of the 17-item questionnaire.</p>
+
+<div class="form-card wide" style="max-width: none; margin-bottom: 26px;">
+  <div class="form-title" style="font-size: 18px;">Respondents</div>
+  <div class="table-scroll">
+    <table class="table-simple">
+      <thead>
+        <tr>
+          <th>Account</th>
+          <th>Business</th>
+          <th>Status</th>
+          <th>Tasks done</th>
+          <th>Items answered</th>
+          <th>Completed</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% statuses.forEach(function(s) {
+             var statusLabel, statusClass;
+             if (s.status === 'completed') { statusLabel = 'Completed'; statusClass = 'badge-active'; }
+             else if (s.status === 'questionnaire') { statusLabel = 'Questionnaire'; statusClass = 'badge-risk-medium'; }
+             else if (s.status === 'walkthrough') { statusLabel = 'Walkthrough (task ' + s.current_task + '/6)'; statusClass = 'badge-risk-medium'; }
+             else { statusLabel = 'Not started'; statusClass = 'badge-inactive'; }
+        %>
+          <tr>
+            <td><%= s.owner_name %> <span style="color: var(--text-muted);">(<%= s.username %>)</span></td>
+            <td><%= s.business_name %></td>
+            <td><span class="badge <%= statusClass %>"><%= statusLabel %></span></td>
+            <td><%= s.tasks_done || 0 %> / 6</td>
+            <td><%= s.items_answered || 0 %> / 17</td>
+            <td><%= s.completed_at ? new Date(s.completed_at).toLocaleDateString() : '—' %></td>
+            <td style="text-align: right;">
+              <% if (s.status) { %>
+                <a class="btn btn-ghost btn-sm" href="/admin/evaluations/<%= s.account_id %>">View</a>
+              <% } else { %>
+                <span style="color: var(--text-muted); font-size: 12.5px;">—</span>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="form-card wide" style="max-width: none;">
+  <div class="form-title" style="font-size: 18px;">17-item questionnaire — summary</div>
+  <p class="form-hint">
+    Based on <strong><%= summary.completedCount %></strong> fully completed evaluation<%= summary.completedCount === 1 ? '' : 's' %>.
+    In-progress evaluations are excluded so partial ratings don't skew the figures.
+    %Agree = share of ratings of 4 or 5 (Agree / Strongly Agree) on the 5-point scale.
+  </p>
+
+  <% if (summary.completedCount === 0) { %>
+    <div class="placeholder-card">
+      <div class="emoji">🧭</div>
+      <p>No fully completed evaluations yet — this summary will populate once at least one SME owner finishes the questionnaire.</p>
+    </div>
+  <% } else { %>
+    <div class="kpi-row" style="margin-top: 16px;">
+      <% summary.byDomain.forEach(function(d) { %>
+        <div class="stat-tile">
+          <div class="stat-label"><%= d.label %> (<%= d.domain %>)</div>
+          <div class="stat-value"><%= d.mean !== null ? d.mean.toFixed(2) : '—' %> / 5</div>
+          <div class="stat-delta" style="color: var(--text-muted); font-weight: 600;"><%= d.percentAgree !== null ? d.percentAgree.toFixed(0) + '% agree' : '' %></div>
+        </div>
+      <% }); %>
+    </div>
+
+    <% ['PU', 'PEOU', 'BI'].forEach(function(domain) { %>
+      <div style="margin-top: 22px;">
+        <div class="form-title" style="font-size: 15px; margin-bottom: 6px;"><%= (summary.byDomain.find(function(d){ return d.domain === domain; }) || {}).label %> (<%= domain %>)</div>
+        <div class="table-scroll">
+          <table class="table-simple">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Statement</th>
+                <th>n</th>
+                <th>Mean</th>
+                <th>Median</th>
+                <th>Q1–Q3</th>
+                <th>%Agree</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% summary.byItem.filter(function(it){ return it.domain === domain; }).forEach(function(it) { %>
+                <tr>
+                  <td><%= it.code %></td>
+                  <td><%= it.text %></td>
+                  <td><%= it.n %></td>
+                  <td><%= it.mean !== null ? it.mean.toFixed(2) : '—' %></td>
+                  <td><%= it.median !== null ? it.median.toFixed(1) : '—' %></td>
+                  <td><%= (it.q1 !== null && it.q3 !== null) ? it.q1.toFixed(1) + '–' + it.q3.toFixed(1) : '—' %></td>
+                  <td><%= it.percentAgree !== null ? it.percentAgree.toFixed(0) + '%' : '—' %></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% }); %>
+  <% } %>
+</div>
