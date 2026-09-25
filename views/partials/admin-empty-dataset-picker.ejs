@@ -1,0 +1,39 @@
+<%# Shown in place of the SME-owner "Upload a dataset" empty state on the
+    four analytics pages, only for an Admin account that hasn't selected
+    any SME's dataset yet this session (an Admin never has datasets of
+    its own to upload, so that prompt doesn't apply to it). Lets Admin
+    pick any dataset from any SME account and sets it as the one these
+    four pages default to for the rest of the session — the exact same
+    GET /admin/datasets/:id/view route Manage Datasets' "View analytics"
+    link already uses, just reached from here instead. res.locals already
+    carries adminDatasetSwitcherOptions (routes/dashboard.js's
+    attachAdminViewingBanner), so this partial needs no locals passed
+    explicitly. %>
+<div class="placeholder-card">
+  <div class="emoji">🗂️</div>
+  <% if (adminDatasetSwitcherOptions && adminDatasetSwitcherOptions.length > 0) { %>
+    <p>An Admin account has no datasets of its own — pick any SME owner's dataset below to set it as the default for this section.</p>
+    <select
+      onchange="if (this.value) { window.location.href = '/admin/datasets/' + this.value + '/view'; }"
+      style="margin-top: 10px; padding: 9px 12px; border-radius: 8px; border: 1px solid transparent; background: var(--bg-input); color: #1c2a20; font-size: 14px;"
+    >
+      <option value="">Select a dataset…</option>
+      <%
+        var groupedByBusinessEmpty = {};
+        adminDatasetSwitcherOptions.forEach(function (opt) {
+          (groupedByBusinessEmpty[opt.business_name] = groupedByBusinessEmpty[opt.business_name] || []).push(opt);
+        });
+      %>
+      <% Object.keys(groupedByBusinessEmpty).forEach(function (biz) { %>
+        <optgroup label="<%= biz %>">
+          <% groupedByBusinessEmpty[biz].forEach(function (opt) { %>
+            <option value="<%= opt.id %>"><%= opt.dataset_name %></option>
+          <% }); %>
+        </optgroup>
+      <% }); %>
+    </select>
+    <p class="form-hint" style="margin-top: 10px;">Or pick one from <a href="/admin/datasets" style="color: var(--accent); font-weight: 600;">Manage Datasets</a>, where you can also view each dataset's ERD or delete it.</p>
+  <% } else { %>
+    <p>No SME owner account has uploaded a dataset yet. Once one does, you'll be able to select it here.</p>
+  <% } %>
+</div>

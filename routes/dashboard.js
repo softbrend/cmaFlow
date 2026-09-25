@@ -249,23 +249,21 @@ function resolveAccountId(req) {
 // admin" banner without every res.render() call in those routes needing
 // to remember to pass it — res.render() merges res.locals automatically.
 // Also attaches res.locals.adminDatasetSwitcherOptions — every dataset
-// across every account, for the banner's "switch dataset" dropdown — so
-// an Admin can jump straight to any other SME's dataset (not just
-// another dataset of the account currently being viewed) without
-// returning to Manage Datasets first. Only queried when actually
-// viewing, since that's the only time the banner (and its dropdown)
-// renders at all.
+// across every account (id/dataset_name/business_name), for both the
+// banner's "switch dataset" dropdown AND the empty-state dataset picker
+// these four pages show an Admin who hasn't selected anything yet (an
+// Admin account has no datasets of its own, so it never sees the
+// SME-owner "Upload a dataset" prompt — see views/dashboard/
+// {descriptive-analytics,diagnostic-insights,predictive-analytics,
+// prescriptive-recommendations}.ejs's `datasets.length === 0` branch).
+// Queried for ANY signed-in Admin, not only while already impersonating
+// (adminViewAccountId set) — the empty-state picker needs the full list
+// before an Admin has picked anything at all.
 async function attachAdminViewingBanner(req, res, next) {
   res.locals.adminViewingAccount = null;
   res.locals.adminDatasetSwitcherOptions = null;
-  if (req.session.user && req.session.user.role === 'Admin' && req.session.adminViewAccountId) {
+  if (req.session.user && req.session.user.role === 'Admin') {
     try {
-      const { rows } = await pool.query(
-        `SELECT owner_name, business_name FROM sme_accounts WHERE id = $1`,
-        [req.session.adminViewAccountId]
-      );
-      res.locals.adminViewingAccount = rows[0] || null;
-
       const { rows: switcherRows } = await pool.query(
         `SELECT ud.id, ud.dataset_name, a.business_name
            FROM uploaded_datasets ud
@@ -273,8 +271,16 @@ async function attachAdminViewingBanner(req, res, next) {
           ORDER BY a.business_name, ud.dataset_name`
       );
       res.locals.adminDatasetSwitcherOptions = switcherRows;
+
+      if (req.session.adminViewAccountId) {
+        const { rows } = await pool.query(
+          `SELECT owner_name, business_name FROM sme_accounts WHERE id = $1`,
+          [req.session.adminViewAccountId]
+        );
+        res.locals.adminViewingAccount = rows[0] || null;
+      }
     } catch (e) {
-      // Non-fatal — worst case the banner just doesn't show this request.
+      // Non-fatal — worst case the banner/picker just doesn't show this request.
       res.locals.adminViewingAccount = null;
       res.locals.adminDatasetSwitcherOptions = null;
     }

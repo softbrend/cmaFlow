@@ -8,10 +8,14 @@
 </details>
 
 <% if (!datasets || datasets.length === 0) { %>
-  <div class="placeholder-card">
-    <div class="emoji">📭</div>
-    <p>No datasets uploaded yet. <a href="/upload-dataset" style="color: var(--accent); font-weight: 600;">Upload a dataset</a> to see diagnostic insights here.</p>
-  </div>
+  <% if (typeof currentUser !== 'undefined' && currentUser && currentUser.role === 'Admin') { %>
+    <%- include('../partials/admin-empty-dataset-picker') %>
+  <% } else { %>
+    <div class="placeholder-card">
+      <div class="emoji">📭</div>
+      <p>No datasets uploaded yet. <a href="/upload-dataset" style="color: var(--accent); font-weight: 600;">Upload a dataset</a> to see diagnostic insights here.</p>
+    </div>
+  <% } %>
 <% } else { %>
 
   <form method="GET" action="/diagnostic-insights" class="dataset-picker">
