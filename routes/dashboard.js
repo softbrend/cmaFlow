@@ -289,7 +289,8 @@ async function attachAdminViewingBanner(req, res, next) {
 }
 
 // ------------------------------------------------------------------
-// GET /  — "Monetization intelligence" / SME Owner Portal landing page
+// GET /  — SME Owner Portal landing page (browser-tab title matches the
+// page's own "SME Owner Portal" heading — see views/dashboard/index.ejs).
 // ------------------------------------------------------------------
 router.get('/', async (req, res, next) => {
   try {
@@ -321,7 +322,7 @@ router.get('/', async (req, res, next) => {
     );
 
     res.render('dashboard/index', {
-      title: 'Monetization intelligence',
+      title: 'SME Owner Portal',
       active: 'monetization-intelligence',
       datasets,
       defaultDataset,
