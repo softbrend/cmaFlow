@@ -25,6 +25,9 @@ const {
   getEvaluationStateReadOnly, listAllEvaluationStatuses, getCompletedResponseSummary,
 } = require('../services/tamEvaluation');
 const { listAllDatasets, getDatasetForAdmin, deleteDataset } = require('../services/adminDatasets');
+const { getOrBuildFullProfile } = require('../services/fullDescriptiveAnalytics');
+const { buildErdDefinition } = require('../services/erdDiagram');
+const { humanizeFileType } = require('../middleware/browse');
 
 const router = express.Router();
 router.use(requireAdmin);
@@ -395,6 +398,43 @@ router.get('/admin/datasets/:id/view', async (req, res, next) => {
 router.get('/admin/exit-view', (req, res) => {
   delete req.session.adminViewAccountId;
   res.redirect('/admin/datasets');
+});
+
+// ------------------------------------------------------------------
+// GET /admin/datasets/:id/erd — Entity-Relationship Diagram for any
+// dataset, by dataset id, with no ownership restriction (this is the
+// Admin-oversight counterpart to the SME owner's own GET
+// /browse-dataset/:id/erd in routes/dashboard.js — see
+// claude/erd-diagram.md for the generation algorithm, which this route
+// reuses unchanged). Deliberately does NOT go through
+// resolveAccountId()/session impersonation — an ERD only needs the
+// dataset row's own account_id to look up its cached profile, so there's
+// no need to set req.session.adminViewAccountId just to view a schema
+// diagram. Reachable both from a "View analytics" — the read-only
+// four-analytics oversight route — and directly from a "🗺️ ERD" link on
+// each row of Manage Datasets.
+// ------------------------------------------------------------------
+router.get('/admin/datasets/:id/erd', async (req, res, next) => {
+  try {
+    const dataset = await getDatasetForAdmin(req.params.id);
+    if (!dataset) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
+
+    const bundle = await getOrBuildFullProfile(dataset.account_id, dataset.id);
+    const erd = buildErdDefinition(bundle.files, bundle.relationships);
+
+    res.render('dashboard/erd', {
+      title: `Entity-Relationship Diagram — ${dataset.dataset_name}`,
+      active: 'admin',
+      adminSection: 'datasets',
+      dataset,
+      erd,
+      humanizeFileType,
+      backHref: '/admin/datasets',
+      backLabel: '← Manage Datasets',
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ------------------------------------------------------------------

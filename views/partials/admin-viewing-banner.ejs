@@ -1,12 +1,40 @@
 <%# Shown on the four analytics pages only when an Admin is browsing
     another account's data (session.adminViewAccountId — set by GET
     /admin/datasets/:id/view, cleared by GET /admin/exit-view). res.locals
-    already carries adminViewingAccount (routes/dashboard.js's
-    attachAdminViewingBanner), so every page that includes this partial
-    gets it for free with no locals to pass explicitly. %>
+    already carries adminViewingAccount and adminDatasetSwitcherOptions
+    (routes/dashboard.js's attachAdminViewingBanner), so every page that
+    includes this partial gets them for free with no locals to pass
+    explicitly. selectedDataset is set independently by each of the four
+    analytics routes (already used for their own dataset picker), and is
+    shared with this partial automatically via EJS's include scoping. %>
 <% if (typeof adminViewingAccount !== 'undefined' && adminViewingAccount) { %>
   <div class="ok-box" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
     <span>👁️ Viewing as admin: <strong><%= adminViewingAccount.business_name %></strong> (<%= adminViewingAccount.owner_name %>) — read-only.</span>
-    <a class="btn btn-ghost btn-sm" href="/admin/exit-view">Exit view</a>
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <% if (adminDatasetSwitcherOptions && adminDatasetSwitcherOptions.length > 0) { %>
+        <select
+          onchange="if (this.value) { window.location.href = '/admin/datasets/' + this.value + '/view'; }"
+          style="padding: 7px 10px; border-radius: 8px; border: 1px solid transparent; background: var(--bg-input); color: #1c2a20; font-size: 13px;"
+        >
+          <%
+            var groupedByBusiness = {};
+            adminDatasetSwitcherOptions.forEach(function (opt) {
+              (groupedByBusiness[opt.business_name] = groupedByBusiness[opt.business_name] || []).push(opt);
+            });
+          %>
+          <% Object.keys(groupedByBusiness).forEach(function (biz) { %>
+            <optgroup label="<%= biz %>">
+              <% groupedByBusiness[biz].forEach(function (opt) { %>
+                <option value="<%= opt.id %>" <%= (typeof selectedDataset !== 'undefined' && selectedDataset && selectedDataset.id === opt.id) ? 'selected' : '' %>><%= opt.dataset_name %></option>
+              <% }); %>
+            </optgroup>
+          <% }); %>
+        </select>
+      <% } %>
+      <% if (typeof selectedDataset !== 'undefined' && selectedDataset) { %>
+        <a class="btn btn-ghost btn-sm" href="/admin/datasets/<%= selectedDataset.id %>/erd">🗺️ ERD</a>
+      <% } %>
+      <a class="btn btn-ghost btn-sm" href="/admin/exit-view">Exit view</a>
+    </div>
   </div>
 <% } %>

@@ -1,8 +1,13 @@
 <div class="page-title">🗺️ <span class="page-title-text">Entity-Relationship Diagram — <%= dataset.dataset_name %></span></div>
 <p class="page-subtitle">
-  <a href="/browse-dataset" style="color: var(--accent);">← All datasets</a>
+  <a href="<%= typeof backHref !== 'undefined' ? backHref : '/browse-dataset' %>" style="color: var(--accent);"><%= typeof backLabel !== 'undefined' ? backLabel : '← All datasets' %></a>
   &nbsp;·&nbsp; Dataset ID: <strong><%= dataset.dataset_id %></strong>
 </p>
+<% if (typeof dataset.business_name !== 'undefined' && dataset.business_name) { %>
+  <div class="ok-box" style="margin-bottom:18px;">
+    👁️ Viewing as admin: <strong><%= dataset.business_name %></strong> (<%= dataset.owner_name %>) — read-only.
+  </div>
+<% } %>
 <div class="info-box" style="margin-bottom:18px;">
   Every box below is one uploaded file, and every line is a relationship CMA-FLOW actually confirmed by
   measuring how much two columns' real values overlap — not a guess from column names alone (the same

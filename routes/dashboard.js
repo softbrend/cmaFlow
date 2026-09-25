@@ -248,8 +248,16 @@ function resolveAccountId(req) {
 // null) so the four analytics templates can show a small "Viewing X as
 // admin" banner without every res.render() call in those routes needing
 // to remember to pass it — res.render() merges res.locals automatically.
+// Also attaches res.locals.adminDatasetSwitcherOptions — every dataset
+// across every account, for the banner's "switch dataset" dropdown — so
+// an Admin can jump straight to any other SME's dataset (not just
+// another dataset of the account currently being viewed) without
+// returning to Manage Datasets first. Only queried when actually
+// viewing, since that's the only time the banner (and its dropdown)
+// renders at all.
 async function attachAdminViewingBanner(req, res, next) {
   res.locals.adminViewingAccount = null;
+  res.locals.adminDatasetSwitcherOptions = null;
   if (req.session.user && req.session.user.role === 'Admin' && req.session.adminViewAccountId) {
     try {
       const { rows } = await pool.query(
@@ -257,9 +265,18 @@ async function attachAdminViewingBanner(req, res, next) {
         [req.session.adminViewAccountId]
       );
       res.locals.adminViewingAccount = rows[0] || null;
+
+      const { rows: switcherRows } = await pool.query(
+        `SELECT ud.id, ud.dataset_name, a.business_name
+           FROM uploaded_datasets ud
+           JOIN sme_accounts a ON a.id = ud.account_id
+          ORDER BY a.business_name, ud.dataset_name`
+      );
+      res.locals.adminDatasetSwitcherOptions = switcherRows;
     } catch (e) {
       // Non-fatal — worst case the banner just doesn't show this request.
       res.locals.adminViewingAccount = null;
+      res.locals.adminDatasetSwitcherOptions = null;
     }
   }
   next();

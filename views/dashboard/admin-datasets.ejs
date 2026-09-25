@@ -1,5 +1,5 @@
 <div class="page-title">🗂️ <span class="page-title-text">Manage Datasets</span></div>
-<p class="page-subtitle">Every dataset uploaded by every SME owner account. View analytics opens it read-only in the four analytics pages; Delete removes it and everything computed from it.</p>
+<p class="page-subtitle">Every dataset uploaded by every SME owner account. View analytics opens it read-only in the four analytics pages; ERD shows its entity-relationship diagram; Delete removes it and everything computed from it.</p>
 
 <% if (deleted) { %>
   <div class="alert-success">Deleted <strong><%= deleted %></strong>.</div>
@@ -33,6 +33,7 @@
             <td><%= new Date(d.created_at).toLocaleDateString() %></td>
             <td style="text-align: right; white-space: nowrap;">
               <a class="btn btn-ghost btn-sm" href="/admin/datasets/<%= d.id %>/view">View analytics</a>
+              <a class="btn btn-ghost btn-sm" href="/admin/datasets/<%= d.id %>/erd">🗺️ ERD</a>
               <a class="btn btn-ghost btn-sm" href="/admin/datasets/<%= d.id %>/delete">Delete</a>
             </td>
           </tr>
