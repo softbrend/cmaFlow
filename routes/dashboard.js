@@ -3275,7 +3275,6 @@ async function renderUploadForm(req, res, next, { status = 200, errors = [], suc
     // re-assigned right away rather than waiting for the next login.
     const { datasets, defaultDatasetId } = await ensureDefaultDataset(accountId);
     const recordCounts = await getRecordCounts(accountId);
-    const canonicalStatus = await getCanonicalStatus(accountId);
     const fileManifest = await getFileManifest(accountId);
     res.status(status).render('dashboard/upload-dataset', {
       title: 'Upload New Dataset',
@@ -3283,7 +3282,6 @@ async function renderUploadForm(req, res, next, { status = 200, errors = [], suc
       datasets,
       defaultDatasetId,
       recordCounts,
-      canonicalStatus,
       fileManifest,
       humanizeFileType,
       errors,

@@ -98,39 +98,22 @@
 </div>
 
 <div class="form-card wide">
-  <div class="form-title">Data Mapping &amp; Transformation → CMA Canonical Schema</div>
+  <div class="form-title">Review Field Roles</div>
   <p class="form-hint">
-    Raw uploads are ingested as-is (any columns, any structure, any number of files, any labels). Map &amp; Transform runs for every file uploaded under one Dataset ID together, as a single batch — not one CSV file at a time — mapping each file's merged columns onto the CMA Canonical Schema (Customers, Transactions, Entitlements, or Monetization Config) through Clean → Normalize → Transform → Tag → Enrich → Validate → Freeze, without ever altering the raw upload. You choose which canonical entity each file becomes, per file, on the Map &amp; Transform screen — a file's label is just a label.
+    CMA-Flow's Semantic Field Detection Engine automatically figures out what each column in your raw upload means (for example, revenue, customer ID, or product category). If it flags any column as uncertain, confirm or correct its meaning here. Your four analytics screens — Descriptive, Diagnostic, Predictive, and Prescriptive — read this raw upload directly, so there's no separate mapping or transformation step to run first.
   </p>
   <% if (!datasets || datasets.length === 0) { %>
     <p style="color: var(--text-muted);">No datasets uploaded yet.</p>
   <% } else { %>
     <% datasets.forEach(function(d) { %>
-      <% var counts = recordCounts[d.id] || {}; var status = canonicalStatus[d.id] || {}; %>
+      <% var counts = recordCounts[d.id] || {}; %>
       <% var typeKeys = Object.keys(counts); %>
-      <% var totalRows = typeKeys.reduce(function(sum, k) { return sum + counts[k]; }, 0); %>
-      <% var mappedKeys = typeKeys.filter(function(k) { return !!status[k]; }); %>
-      <% var allMapped = typeKeys.length > 0 && mappedKeys.length === typeKeys.length; %>
       <div style="border-top: 1px solid var(--border); padding: 14px 0;">
         <div style="font-weight:600; margin-bottom:8px;"><%= d.dataset_name %> <span style="font-weight:400; color: var(--text-muted); font-size:12.5px;">(<%= d.dataset_id %>)</span></div>
         <% if (typeKeys.length === 0) { %>
           <p style="color: var(--text-muted); font-size:13px; margin:0;">No files uploaded yet.</p>
-        <% } else if (!allMapped) { %>
-          <a class="btn btn-outline" href="/upload-dataset/<%= d.id %>/map">Map &amp; Transform entire dataset (<%= typeKeys.length %> file<%= typeKeys.length === 1 ? '' : 's' %>, <%= totalRows.toLocaleString() %> rows)</a>
-          <a class="btn btn-ghost" href="/dataset/<%= d.id %>/review-fields" style="font-size:12.5px;">🧠 Review field roles</a>
         <% } else { %>
-          <% var totalValid = mappedKeys.reduce(function(s, k) { return s + status[k].valid; }, 0); %>
-          <% var totalInvalid = mappedKeys.reduce(function(s, k) { return s + status[k].invalid; }, 0); %>
-          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
-            <span style="font-size:13px; color:var(--text-muted);">Mapped — <%= totalValid.toLocaleString() %> valid<% if (totalInvalid) { %>, <%= totalInvalid.toLocaleString() %> invalid<% } %> across <%= typeKeys.length %> file<%= typeKeys.length === 1 ? '' : 's' %></span>
-            <a class="btn btn-outline" href="/upload-dataset/<%= d.id %>/map">Adjust mapping &amp; re-run</a>
-            <a class="btn btn-ghost" href="/dataset/<%= d.id %>/review-fields" style="font-size:12.5px;">🧠 Review field roles</a>
-          </div>
-          <div style="display:flex; flex-wrap:wrap; gap:8px;">
-            <% typeKeys.forEach(function(key) { %>
-              <a class="btn btn-ghost" href="/canonical-dataset/<%= d.id %>/<%= key %>" style="font-size:12.5px;"><%= humanizeFileType(key) %>: v<%= status[key].mappingVersion %></a>
-            <% }); %>
-          </div>
+          <a class="btn btn-ghost" href="/dataset/<%= d.id %>/review-fields" style="font-size:12.5px;">🧠 Review field roles</a>
         <% } %>
       </div>
     <% }); %>
