@@ -58,9 +58,34 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// --- Health check (Render's own health probe hits this to decide whether
+// the running instance is "up" — this MUST be registered before any
+// DB-backed middleware. It used to sit after the session middleware below,
+// with a comment claiming it had "no DB round-trip" — that was the intent,
+// but Express runs middleware in registration order for every route
+// including this one, so every request (healthz included) was still
+// passing through the session middleware's own per-request Postgres query
+// first. During a brief database restart/recovery window, that query
+// failed, the session middleware's error reached our error handler, and
+// Render's health probe saw a 500 from /healthz — indistinguishable, from
+// Render's side, from the app itself being down — and marked the whole
+// instance "failed," which then needed a manual restart to clear even
+// though the Node process itself was never down. Moving this above the
+// session middleware actually delivers on the original comment's intent:
+// this route now genuinely never touches the database, so a transient DB
+// blip no longer takes the instance out of rotation on its own. ---
+app.get('/healthz', (req, res) => res.status(200).send('ok'));
+
 // --- Sessions (persisted in cmaDB via connect-pg-simple) ---
 app.use(session({
-  store: new pgSession({ pool, createTableIfMissing: true, tableName: 'session' }),
+  // createTableIfMissing is deliberately false — the "session" table is
+  // now created by db/schema.sql (npm run db:init, applied idempotently on
+  // every deploy) instead of by connect-pg-simple probing for it on first
+  // use. See the schema.sql comment above the table's definition for why:
+  // that lazy first-use check is what let a single brief database restart
+  // permanently break every session-touching request until the process
+  // was manually restarted.
+  store: new pgSession({ pool, createTableIfMissing: false, tableName: 'session' }),
   secret: process.env.SESSION_SECRET || 'dev-secret-change-me',
   resave: false,
   saveUninitialized: false,
@@ -73,10 +98,6 @@ app.use(session({
 
 app.use(attachUser);
 app.use(evaluationGate);
-
-// --- Health check (Render's deploy/monitoring probe hits this — no DB
-// round-trip so it stays fast and doesn't fail during a brief DB blip) ---
-app.get('/healthz', (req, res) => res.status(200).send('ok'));
 
 // --- Routes ---
 app.use('/', authRoutes);

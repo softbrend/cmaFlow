@@ -579,5 +579,37 @@ CREATE TABLE IF NOT EXISTS dataset_upload_jobs (
 CREATE INDEX IF NOT EXISTS idx_dataset_upload_jobs_account
     ON dataset_upload_jobs(account_id);
 
--- Note: the "session" table used for login sessions is created
--- automatically by connect-pg-simple the first time the server starts.
+-- The "session" table used for login sessions — previously created
+-- on the fly by connect-pg-simple's own createTableIfMissing:true option
+-- (server.js), on the FIRST request that ever touched the session store
+-- after each process start. That turned out to be a real problem: if that
+-- first touch happened while Postgres was still restarting/unreachable
+-- (a normal, brief window after any database restart), connect-pg-simple
+-- caches the FAILED table-check as a promise internal to its store object
+-- and never retries it — every session-touching request for the rest of
+-- that process's life (effectively every real page load) then failed the
+-- same way, even seconds later once Postgres was fully back up, until the
+-- whole Node process was manually restarted. Defining the table here
+-- instead — applied idempotently by `npm run db:init` on every deploy,
+-- see render.yaml's preDeployCommand — means connect-pg-simple never runs
+-- that check at all (server.js now passes createTableIfMissing: false),
+-- so there is nothing left for a brief database restart to poison. Column
+-- shapes and the index match connect-pg-simple's own table.sql exactly.
+CREATE TABLE IF NOT EXISTS "session" (
+    "sid"    varchar NOT NULL COLLATE "default",
+    "sess"   json NOT NULL,
+    "expire" timestamp(6) NOT NULL
+)
+WITH (OIDS=FALSE);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'session_pkey'
+    ) THEN
+        ALTER TABLE "session" ADD CONSTRAINT "session_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE;
+    END IF;
+END
+$$;
+
+CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");

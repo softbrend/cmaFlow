@@ -7,10 +7,18 @@ const { Pool } = require('pg');
 // for local development, where .env.example's defaults still apply.
 // DB_SSL=true is kept as an explicit override for either shape, in case a
 // local Postgres install is also configured to require SSL.
+// connectionTimeoutMillis caps how long a single connection ATTEMPT can
+// hang before giving up — it does not retry anything by itself. Without
+// it, `pg`'s default is no timeout at all, so a request arriving while
+// Postgres is unreachable (mid-restart, network blip) could sit waiting
+// indefinitely instead of failing fast into the app's own error handling.
+// 10s is generous enough for a normal connection under load, short enough
+// that a genuinely-down database doesn't pile up hung requests.
 const pool = process.env.DATABASE_URL
   ? new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: process.env.DB_SSL === 'false' ? false : { rejectUnauthorized: false },
+      connectionTimeoutMillis: 10000,
     })
   : new Pool({
       host: process.env.DB_HOST || 'localhost',
@@ -19,6 +27,7 @@ const pool = process.env.DATABASE_URL
       user: process.env.DB_USER || 'postgres',
       password: process.env.DB_PASSWORD || '',
       ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+      connectionTimeoutMillis: 10000,
     });
 
 pool.on('error', (err) => {
