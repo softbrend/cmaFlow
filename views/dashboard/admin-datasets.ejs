@@ -1,9 +1,16 @@
 <div class="page-title">🗂️ <span class="page-title-text">Manage Datasets</span></div>
-<p class="page-subtitle">Every dataset uploaded by every SME owner account. View analytics opens it read-only in the four analytics pages; ERD shows its entity-relationship diagram; Delete removes it and everything computed from it.</p>
+<p class="page-subtitle">Every dataset uploaded by every SME owner account, grouped by owner (A–Z) with each owner's most recently uploaded dataset first. View analytics opens it read-only in the four analytics pages; ERD shows its entity-relationship diagram; Delete removes it and everything computed from it.</p>
 
 <% if (deleted) { %>
   <div class="alert-success">Deleted <strong><%= deleted %></strong>.</div>
 <% } %>
+
+<form method="GET" action="/admin/datasets" style="display: flex; gap: 10px; max-width: 520px; margin-bottom: 18px;">
+  <input type="text" name="q" value="<%= q %>" placeholder="Search SME owner (business, contact name, or username)"
+         style="flex: 1; padding: 11px 14px; border-radius: 10px; border: 1px solid transparent; background: var(--bg-input); color: #1c2a20; font-size: 14.5px;" />
+  <button type="submit" class="btn btn-ghost">Search</button>
+  <% if (q) { %><a class="btn btn-ghost" href="/admin/datasets">Clear</a><% } %>
+</form>
 
 <div class="form-card wide" style="max-width: none;">
   <div class="table-scroll">
@@ -11,7 +18,6 @@
       <thead>
         <tr>
           <th>Dataset</th>
-          <th>Owner</th>
           <th>Domain</th>
           <th>Files</th>
           <th>Rows</th>
@@ -21,12 +27,22 @@
       </thead>
       <tbody>
         <% if (datasets.length === 0) { %>
-          <tr><td colspan="7" style="color: var(--text-muted);">No datasets uploaded yet.</td></tr>
+          <tr><td colspan="6" style="color: var(--text-muted);">
+            <% if (q) { %>No SME owner matches "<%= q %>".<% } else { %>No datasets uploaded yet.<% } %>
+          </td></tr>
         <% } %>
+        <%
+          var lastAccountId = null;
+        %>
         <% datasets.forEach(function(d) { %>
+          <% if (d.account_id !== lastAccountId) { %>
+            <tr class="table-group-row">
+              <td colspan="6"><%= d.business_name %> <span style="color: var(--text-muted); font-weight: 500;">— <%= d.owner_name %> (<%= d.username %>)</span></td>
+            </tr>
+            <% lastAccountId = d.account_id; %>
+          <% } %>
           <tr>
             <td><%= d.dataset_name %> <span style="color: var(--text-muted); font-size: 12.5px;">(<%= d.dataset_id %>)</span></td>
-            <td><%= d.business_name %> <span style="color: var(--text-muted);">(<%= d.username %>)</span></td>
             <td><%= d.domain || '—' %></td>
             <td><%= d.file_count %></td>
             <td><%= Number(d.total_rows).toLocaleString() %></td>

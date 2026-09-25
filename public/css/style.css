@@ -828,6 +828,15 @@ a { color: inherit; }
 .badge-risk-high { background: var(--badge-danger-bg); color: var(--badge-danger-text); }
 .badge-risk-churned { background: var(--badge-neutral-bg); color: var(--text-muted); }
 .table-scroll { width: 100%; overflow-x: auto; }
+.table-group-row td {
+  background: var(--tab-pill-bg);
+  font-weight: 700;
+  font-size: 13px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border-top: 1px solid var(--border);
+}
+.table-group-row:first-child td { border-top: none; }
 
 /* ---------------- Descriptive Analytics ---------------- */
 .dataset-picker {

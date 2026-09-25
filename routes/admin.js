@@ -354,16 +354,22 @@ router.get('/admin/evaluations/:accountId', async (req, res, next) => {
 
 // ------------------------------------------------------------------
 // GET /admin/datasets — every dataset uploaded by every SME owner
-// account, with file/row counts and a Delete action per row.
+// account, with file/row counts and a Delete action per row. Grouped by
+// owner (alphabetical) with each owner's own datasets most-recently-
+// uploaded first — see services/adminDatasets.js's listAllDatasets() for
+// the ORDER BY that makes the view's grouping work with no extra sort
+// step. `?q=` narrows to owners matching that search term.
 // ------------------------------------------------------------------
 router.get('/admin/datasets', async (req, res, next) => {
   try {
-    const datasets = await listAllDatasets();
+    const q = req.query.q || '';
+    const datasets = await listAllDatasets(q);
     res.render('dashboard/admin-datasets', {
       title: 'Manage datasets',
       active: 'admin',
       adminSection: 'datasets',
       datasets,
+      q,
       deleted: req.query.deleted || null,
     });
   } catch (err) {
