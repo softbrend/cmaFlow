@@ -249,7 +249,7 @@ function resolveAccountId(req) {
 // admin" banner without every res.render() call in those routes needing
 // to remember to pass it — res.render() merges res.locals automatically.
 // Also attaches res.locals.adminDatasetSwitcherOptions — every dataset
-// across every account (id/dataset_name/business_name), for both the
+// across every account (id/dataset_id/dataset_name/business_name), for both the
 // banner's "switch dataset" dropdown AND the empty-state dataset picker
 // these four pages show an Admin who hasn't selected anything yet (an
 // Admin account has no datasets of its own, so it never sees the
@@ -265,10 +265,10 @@ async function attachAdminViewingBanner(req, res, next) {
   if (req.session.user && req.session.user.role === 'Admin') {
     try {
       const { rows: switcherRows } = await pool.query(
-        `SELECT ud.id, ud.dataset_name, a.business_name
+        `SELECT ud.id, ud.dataset_id, ud.dataset_name, a.business_name
            FROM uploaded_datasets ud
            JOIN sme_accounts a ON a.id = ud.account_id
-          ORDER BY a.business_name, ud.dataset_name`
+          ORDER BY a.business_name, ud.dataset_id`
       );
       res.locals.adminDatasetSwitcherOptions = switcherRows;
 

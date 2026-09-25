@@ -25,7 +25,7 @@
           <% Object.keys(groupedByBusiness).forEach(function (biz) { %>
             <optgroup label="<%= biz %>">
               <% groupedByBusiness[biz].forEach(function (opt) { %>
-                <option value="<%= opt.id %>" <%= (typeof selectedDataset !== 'undefined' && selectedDataset && selectedDataset.id === opt.id) ? 'selected' : '' %>><%= opt.dataset_name %></option>
+                <option value="<%= opt.id %>" <%= (typeof selectedDataset !== 'undefined' && selectedDataset && selectedDataset.id === opt.id) ? 'selected' : '' %>><%= opt.dataset_id %> — <%= opt.dataset_name %></option>
               <% }); %>
             </optgroup>
           <% }); %>
