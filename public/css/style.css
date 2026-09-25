@@ -806,6 +806,26 @@ a { color: inherit; }
 }
 .placeholder-card .emoji { font-size: 44px; margin-bottom: 12px; }
 
+/* ---------------- Upload processing (background ingest job) ----------------
+   views/dashboard/upload-processing.ejs polls GET /upload-dataset/jobs/
+   :jobId/status and redirects itself once the job finishes — see
+   services/datasetIngestService.js. */
+.upload-progress-card { text-align: center; padding: 46px 32px; }
+.upload-progress-spinner {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  animation: upload-progress-spin 0.9s linear infinite;
+}
+@keyframes upload-progress-spin { to { transform: rotate(360deg); } }
+.upload-progress-stage { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+.upload-progress-rows { font-size: 13.5px; color: var(--text-muted); }
+.upload-progress-card.is-failed .upload-progress-spinner { border-top-color: var(--danger); animation: none; }
+.upload-progress-card .alert-error { margin: 16px auto 0; max-width: 380px; text-align: left; }
+
 .table-simple { width: 100%; border-collapse: collapse; margin-top: 10px; }
 .table-simple th, .table-simple td {
   text-align: left;

@@ -9,7 +9,9 @@ const expressLayouts = require('express-ejs-layouts');
 
 const pool = require('./db/pool');
 const { attachUser } = require('./middleware/auth');
+const { evaluationGate } = require('./middleware/evaluationGate');
 const { TMP_ROOT } = require('./middleware/upload');
+const { reconcileStuckUploadJobs } = require('./services/uploadJobs');
 const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
 const evaluationRoutes = require('./routes/evaluation');
@@ -19,6 +21,15 @@ const adminRoutes = require('./routes/admin');
 // finished (e.g. the process was killed mid-upload) — safe to wipe on
 // startup since nothing in there is referenced by the database yet.
 fs.rmSync(TMP_ROOT, { recursive: true, force: true });
+
+// Same reasoning, for the background ingest jobs those temp files fed
+// (services/datasetIngestService.js): a job still 'processing' at this
+// point belongs to a request that was killed mid-ingest, and its temp
+// files were just deleted by the wipe above — mark it failed so its
+// processing page (still polling in a leftover browser tab) sees an
+// answer instead of spinning forever. Fire-and-forget: this must never
+// delay the server actually starting to accept requests.
+reconcileStuckUploadJobs().catch((e) => console.error('[uploadJobs] boot reconcile failed:', e));
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -61,6 +72,7 @@ app.use(session({
 }));
 
 app.use(attachUser);
+app.use(evaluationGate);
 
 // --- Health check (Render's deploy/monitoring probe hits this — no DB
 // round-trip so it stays fast and doesn't fail during a brief DB blip) ---

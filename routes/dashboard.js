@@ -8,9 +8,12 @@ const {
   uploadDatasetFiles, sanitizeDatasetId, pairFilesWithLabels, finalizeDatasetUpload, discardDatasetUpload,
   DATASETS_ROOT,
 } = require('../middleware/upload');
-const { humanizeFileType, parseCsvFile, buildColumnMeta, applyFilters } = require('../middleware/browse');
-const { insertDatasetRecords } = require('../db/ingest');
+const { humanizeFileType, buildColumnMeta, applyFilters } = require('../middleware/browse');
 const { CANONICAL_ENTITIES } = require('../db/canonicalSchema');
+const {
+  createUploadJob, getUploadJobForAccount,
+} = require('../services/uploadJobs');
+const { runDatasetIngestJob } = require('../services/datasetIngestService');
 const { suggestMapping, guessEntity, guessConfigModelType } = require('../services/mapping');
 const { runTransformPipeline } = require('../services/transform');
 const {
@@ -3291,19 +3294,87 @@ async function renderUploadForm(req, res, next, { status = 200, errors = [], suc
   }
 }
 
-router.get('/upload-dataset', (req, res, next) => {
-  renderUploadForm(req, res, next);
+// A completed/failed job's outcome is shown here once, via ?job=<id> —
+// see POST /upload-dataset below for why the result isn't just rendered
+// directly in the same request anymore, and GET /upload-dataset/jobs/:id
+// for the processing page that redirects back here with that param.
+router.get('/upload-dataset', async (req, res, next) => {
+  const jobId = req.query.job;
+  if (!jobId) return renderUploadForm(req, res, next);
+
+  try {
+    const job = await getUploadJobForAccount(jobId, req.session.userId);
+    if (!job || job.status === 'processing') return renderUploadForm(req, res, next);
+    if (job.status === 'completed') {
+      return renderUploadForm(req, res, next, { success: job.summary?.message || 'Dataset uploaded.' });
+    }
+    return renderUploadForm(req, res, next, {
+      status: 400,
+      errors: [{ msg: job.error_message || 'The upload could not be processed.' }],
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 const DATASET_ID_RE = /^[A-Za-z0-9_-]{3,50}$/;
+
+// GET /upload-dataset/jobs/:jobId — the processing page a POST below
+// redirects to. Polls GET .../status (next route) and, once the job
+// reaches 'completed' or 'failed', sends the browser back to
+// /upload-dataset?job=<id> for the same success/error banner the old
+// synchronous handler used to render directly.
+router.get('/upload-dataset/jobs/:jobId', async (req, res, next) => {
+  try {
+    const job = await getUploadJobForAccount(req.params.jobId, req.session.userId);
+    if (!job) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
+    res.render('dashboard/upload-processing', {
+      title: 'Uploading Dataset',
+      active: 'upload-new-dataset',
+      jobId: job.id,
+      datasetId: job.dataset_id,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /upload-dataset/jobs/:jobId/status — polled by the processing page
+// above (views/dashboard/upload-processing.ejs). Ownership-checked the
+// same way the page itself is, so one SME owner can never poll another's
+// job by guessing its id.
+router.get('/upload-dataset/jobs/:jobId/status', async (req, res, next) => {
+  try {
+    const job = await getUploadJobForAccount(req.params.jobId, req.session.userId);
+    if (!job) return res.status(404).json({ error: 'not_found' });
+    res.json({
+      status: job.status,
+      stage: job.stage,
+      rowsDone: job.rows_done,
+      redirectTo: job.status === 'processing' ? null : `/upload-dataset?job=${job.id}`,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // POST /upload-dataset — one Dataset ID per submission, but any number of
 // CSV files, each given its own SME-chosen label (see pairFilesWithLabels()
 // in middleware/upload.js) — there's no fixed set of "the" file types a
 // dataset must have. Files sharing the same label merge into one
-// continuous, browsable set (row_index keeps counting up across them). All
-// of it ingests inside a single transaction: either the whole dataset
-// (every file) commits together, or none of it does.
+// continuous, browsable set (row_index keeps counting up across them).
+//
+// Only the fast, synchronous parts happen in this request: multer already
+// received the files onto disk (uploadDatasetFiles, below) before this
+// handler even runs, and field validation is cheap. The actual ingest —
+// streaming-parsing every file and PostgreSQL-COPYing it into
+// dataset_records, all inside one all-or-nothing transaction — runs as a
+// background job (services/datasetIngestService.js) so this request can
+// return in well under a second regardless of how large the files are,
+// rather than risk Render's proxy timing out a request that stays open
+// for however long a multi-hundred-thousand-row upload takes end to end.
+// The browser is sent to a processing page that polls the job's status
+// and redirects back here once it's done — see the three routes above.
 router.post('/upload-dataset', (req, res, next) => {
   uploadDatasetFiles(req, res, async (uploadErr) => {
     if (uploadErr) {
@@ -3346,113 +3417,24 @@ router.post('/upload-dataset', (req, res, next) => {
       byType[pf.fileType].push(pf);
     });
 
-    const client = await pool.connect();
     try {
-      await client.query('BEGIN');
+      const jobId = await createUploadJob({ accountId, datasetId });
+      // Deliberately not awaited — this is the actual "background job"
+      // part. Its own try/catch (inside runDatasetIngestJob) always
+      // resolves the job to 'completed' or 'failed', so nothing here
+      // needs a .catch(); one is still attached as a last-resort net in
+      // case something throws before that job even reaches its own
+      // try/catch (e.g. a bad argument), so a bug there can never surface
+      // as an unhandled promise rejection that crashes the whole server.
+      runDatasetIngestJob(jobId, {
+        accountId, datasetId, datasetName, domain, byType,
+        uploadTmpToken: req._uploadTmpToken, pairedFiles,
+      }).catch((e) => console.error(`[upload-dataset] job ${jobId} threw outside its own handling:`, e));
 
-      const { rows: inserted } = await client.query(
-        `INSERT INTO uploaded_datasets (account_id, dataset_id, dataset_name, domain)
-         VALUES ($1, $2, $3, $4) RETURNING id`,
-        [accountId, datasetId, datasetName, domain || null]
-      );
-      const datasetRowId = inserted[0].id;
-      const rowSummary = {};
-
-      for (const [fileType, group] of Object.entries(byType)) {
-        let runningRowCount = 0;
-        // Accumulated across every physical file sharing this label (see
-        // the merge behavior described above insertDatasetRecords calls)
-        // so profiling below runs once over the FULL merged set, not once
-        // per physical file — a profile is meant to describe the whole
-        // "Transactions" file type, not just whichever CSV happened to be
-        // picked last. Built with concat(), not push(...rows) — spreading
-        // a 200,000-element array into push()'s arguments blows V8's
-        // call-stack argument limit long before that (see the same
-        // reasoning behind arrMin/arrMax in services/datasetProfiler.js).
-        let allRowsForType = [];
-
-        for (const { file, label } of group) {
-          let parsedRows;
-          try {
-            parsedRows = parseCsvFile(file.path);
-          } catch (parseErr) {
-            throw Object.assign(
-              new Error(`${file.originalname} (${label}) could not be read as a CSV file (${parseErr.message}).`),
-              { isParseError: true }
-            );
-          }
-
-          const storedPath = path.join(
-            'uploads', 'datasets', String(accountId), sanitizeDatasetId(datasetId), fileType, file.filename
-          );
-          const { rows: fileRows } = await client.query(
-            `INSERT INTO dataset_files (dataset_id, account_id, file_type, original_name, stored_path, row_count)
-             VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-            [datasetRowId, accountId, fileType, file.originalname, storedPath, parsedRows.length]
-          );
-          const sourceFileId = fileRows[0].id;
-
-          if (parsedRows.length > 0) {
-            await insertDatasetRecords(client, {
-              datasetRowId, accountId, fileType, rows: parsedRows,
-              sourceFileId, startRowIndex: runningRowCount,
-            });
-            allRowsForType = allRowsForType.concat(parsedRows);
-          }
-          runningRowCount += parsedRows.length;
-        }
-
-        rowSummary[fileType] = { files: group.length, rows: runningRowCount };
-
-        // Profile -> Validate -> ... -> Generate Descriptive Analytics:
-        // run the Full Descriptive Analytics profiler (services/
-        // datasetProfiler.js) right here, on the rows already in memory,
-        // rather than waiting for the tab to be opened — see claude/
-        // full-descriptive-analytics.md. Never allowed to fail the
-        // upload itself: if profiling throws for any reason, the raw
-        // ingest above (the part the SME owner actually asked for) has
-        // already succeeded, so this is logged and swallowed rather than
-        // rolling back a perfectly good upload over an analytics bug —
-        // getOrBuildFullProfile() will simply compute it lazily (from
-        // dataset_records) the first time the tab is opened instead.
-        if (allRowsForType.length > 0) {
-          try {
-            await upsertFileProfile(client, {
-              datasetRowId, accountId, fileType, rows: allRowsForType,
-            });
-          } catch (profileErr) {
-            console.error(`Full Descriptive Analytics profiling failed for dataset ${datasetId} / ${fileType}:`, profileErr);
-          }
-        }
-      }
-
-      await client.query('COMMIT');
-      // Only now — after the database write is confirmed durable — do the
-      // raw files move out of the temp folder and into their permanent home.
-      finalizeDatasetUpload(req, accountId, datasetId, pairedFiles);
-
-      const summaryParts = Object.entries(rowSummary).map(([fileType, s]) => (
-        `${humanizeFileType(fileType)} (${s.files} file${s.files === 1 ? '' : 's'}, ${s.rows.toLocaleString()} rows)`
-      ));
-      return renderUploadForm(req, res, next, {
-        success: `"${datasetName}" (${datasetId}) uploaded: ${summaryParts.join(', ')}.`,
-      });
+      return res.redirect(`/upload-dataset/jobs/${jobId}`);
     } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
-      discardDatasetUpload(req); // temp files only — never touches another dataset's files
-
-      if (err.code === '23505') {
-        return renderUploadForm(req, res, next, {
-          status: 400,
-          errors: [{ msg: `Dataset ID "${datasetId}" is already used for this account — choose another.` }],
-        });
-      }
-      if (err.isParseError) {
-        return renderUploadForm(req, res, next, { status: 400, errors: [{ msg: err.message }] });
-      }
+      discardDatasetUpload(req);
       next(err);
-    } finally {
-      client.release();
     }
   });
 });

@@ -16,6 +16,13 @@
       <li><a href="/admin/evaluations" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'evaluations') ? 'active' : '' %>"><span class="nav-dot"></span>View Evaluation Report</a></li>
       <li><a href="/admin/accounts" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'accounts') ? 'active' : '' %>"><span class="nav-dot"></span>Manage SME Accounts</a></li>
       <li><a href="/admin/datasets" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'datasets') ? 'active' : '' %>"><span class="nav-dot"></span>Manage Datasets</a></li>
+    <% } else if (typeof evaluationLocked !== 'undefined' && evaluationLocked) { %>
+      <%# New (or not-yet-completed) SME owner: every other module is
+          hidden until the six-task walkthrough and 17-item questionnaire
+          are finished (middleware/evaluationGate.js enforces this
+          server-side too, so this isn't just cosmetic — see its header
+          comment for exactly what stays reachable and why). %>
+      <li><a href="/evaluation" class="<%= active === 'evaluation' ? 'active' : '' %>"><span class="nav-dot"></span>End-User Evaluation</a></li>
     <% } else { %>
       <%# The four analytics stages carry a stage-colored icon chip instead
           of the plain gold nav-dot — the same DESCRIPTIVE → DIAGNOSTIC →

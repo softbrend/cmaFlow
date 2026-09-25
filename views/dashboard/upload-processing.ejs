@@ -1,0 +1,63 @@
+<%# Shown right after POST /upload-dataset instead of the old synchronous
+    success/error re-render — the actual ingest now runs as a background
+    job (services/datasetIngestService.js) so that request could return
+    immediately. This page polls GET /upload-dataset/jobs/:jobId/status
+    and, once the job reaches 'completed' or 'failed', sends the browser
+    to /upload-dataset?job=<id>, which renders the exact same success/
+    error banner the old synchronous handler used to render directly. %>
+<div class="page-title">⬆️ <span class="page-title-text">Uploading Dataset</span></div>
+<p class="page-subtitle">"<%= datasetId %>" is being validated, parsed, and loaded — this page updates on its own, no need to refresh.</p>
+
+<div class="form-card upload-progress-card" id="upload-progress-card">
+  <div class="upload-progress-spinner" aria-hidden="true"></div>
+  <div class="upload-progress-stage" id="upload-stage-text">Starting…</div>
+  <div class="upload-progress-rows" id="upload-rows-text">&nbsp;</div>
+  <div class="alert-error" id="upload-error-box" style="display: none;">
+    Something went wrong — taking you back to the upload form for details…
+  </div>
+</div>
+
+<script>
+(function () {
+  var jobId = <%- JSON.stringify(jobId) %>;
+  var stageLabels = {
+    validating: 'Validating…',
+    loading: 'Parsing and loading rows…',
+    profiling: 'Generating analytics profile…',
+    finalizing: 'Finalizing…',
+    completed: 'Completed — redirecting…',
+    failed: 'Failed',
+  };
+  var cardEl = document.getElementById('upload-progress-card');
+  var stageEl = document.getElementById('upload-stage-text');
+  var rowsEl = document.getElementById('upload-rows-text');
+  var errorEl = document.getElementById('upload-error-box');
+  var statusUrl = '/upload-dataset/jobs/' + encodeURIComponent(jobId) + '/status';
+
+  function poll() {
+    fetch(statusUrl, { headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        stageEl.textContent = stageLabels[data.stage] || data.stage || 'Working…';
+        rowsEl.textContent = data.rowsDone ? (Number(data.rowsDone).toLocaleString() + ' rows loaded so far') : ' ';
+
+        if (data.status === 'completed' && data.redirectTo) {
+          window.location.href = data.redirectTo;
+          return;
+        }
+        if (data.status === 'failed') {
+          cardEl.classList.add('is-failed');
+          errorEl.style.display = 'block';
+          setTimeout(function () { window.location.href = data.redirectTo || '/upload-dataset'; }, 1200);
+          return;
+        }
+        setTimeout(poll, 600);
+      })
+      .catch(function () {
+        setTimeout(poll, 1500); // transient network hiccup — keep trying, never give up silently
+      });
+  }
+
+  poll();
+})();
+</script>

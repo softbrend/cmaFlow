@@ -1,5 +1,6 @@
 const fs = require('fs');
 const { parse } = require('csv-parse/sync');
+const { parse: parseStream } = require('csv-parse');
 
 // A dataset's file types are whatever free-form labels the SME owner gave
 // its files at upload time (see sanitizeFileType() in middleware/upload.js)
@@ -42,6 +43,31 @@ function parseCsvFile(absPath) {
     to: MAX_ROWS_PARSED,
   });
   return rows;
+}
+
+// Streaming counterpart to parseCsvFile() above, used by services/
+// datasetIngestService.js's upload pipeline instead of it. Returns a
+// Node object-mode Readable that emits one parsed row object at a time
+// as the file is read off disk in chunks — the file's raw bytes are
+// never fully materialized as one JS string the way fs.readFileSync
+// does in parseCsvFile(), so peak memory during parsing itself stays
+// bounded to roughly one read-chunk + the parser's small internal
+// buffer, not the whole file. Same parse options as parseCsvFile() (same
+// tolerance for ragged rows, same MAX_ROWS_PARSED safety cap), so a file
+// that parses one way parses the same way the other — this is a
+// different transport for the same parsing behavior, not a stricter or
+// looser parser. On a malformed CSV, the returned stream emits an
+// 'error' event (rather than throwing synchronously the way the sync
+// parse() does) — callers using stream/promises' pipeline() will see
+// that surface as a rejected promise.
+function streamCsvFile(absPath) {
+  return fs.createReadStream(absPath).pipe(parseStream({
+    columns: true,
+    skip_empty_lines: true,
+    trim: true,
+    relax_column_count: true,
+    to: MAX_ROWS_PARSED,
+  }));
 }
 
 function isNumeric(value) {
@@ -111,6 +137,7 @@ function applyFilters(rows, columnMeta, query) {
 module.exports = {
   humanizeFileType,
   parseCsvFile,
+  streamCsvFile,
   buildColumnMeta,
   applyFilters,
 };

@@ -540,5 +540,44 @@ CREATE TABLE IF NOT EXISTS analytics_result_cache (
 CREATE INDEX IF NOT EXISTS idx_analytics_result_cache_account
     ON analytics_result_cache(account_id);
 
+-- ---------------------------------------------------------------------
+-- Dataset upload jobs — tracks one background ingest job per POST
+-- /upload-dataset submission, so the browser can show real progress
+-- (Uploaded -> Validating -> Parsing -> Loading -> Profiling ->
+-- Completed) instead of hanging on one long request, and so the request
+-- itself returns immediately rather than risking Render's proxy timeout
+-- on a very large CSV. See services/uploadJobs.js and services/
+-- datasetIngestService.js, and claude/upload-processing-performance.md
+-- for the full design writeup.
+--
+-- Deliberately NOT a durable job queue: this app runs as a single Node
+-- instance (render.yaml pins it there via a mounted persistent disk), so
+-- an in-database status row is enough for the browser to poll against —
+-- there's no second instance that could ever pick up someone else's job.
+-- A job is NOT resumable if the server process restarts mid-ingest (its
+-- transaction was never committed, so nothing was actually written) —
+-- reconcileStuckUploadJobs() in services/uploadJobs.js marks any row
+-- still 'processing' as failed at server boot, pairing with server.js's
+-- existing TMP_ROOT wipe on startup, so the browser sees a clear failure
+-- rather than a progress bar that never moves again.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS dataset_upload_jobs (
+    id             BIGSERIAL   PRIMARY KEY,
+    account_id     INTEGER     NOT NULL REFERENCES sme_accounts(id) ON DELETE CASCADE,
+    dataset_id     VARCHAR(50) NOT NULL,
+    dataset_row_id INTEGER     REFERENCES uploaded_datasets(id) ON DELETE SET NULL,
+    status         VARCHAR(20) NOT NULL DEFAULT 'processing'
+                   CHECK (status IN ('processing', 'completed', 'failed')),
+    stage          VARCHAR(20) NOT NULL DEFAULT 'validating',
+    rows_done      INTEGER     NOT NULL DEFAULT 0,
+    error_message  TEXT,
+    summary        JSONB,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_dataset_upload_jobs_account
+    ON dataset_upload_jobs(account_id);
+
 -- Note: the "session" table used for login sessions is created
 -- automatically by connect-pg-simple the first time the server starts.
