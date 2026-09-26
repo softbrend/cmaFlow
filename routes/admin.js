@@ -26,6 +26,7 @@ const {
 } = require('../services/tamEvaluation');
 const { listAllDatasets, getDatasetForAdmin, deleteDataset } = require('../services/adminDatasets');
 const { getOrBuildFullProfile } = require('../services/fullDescriptiveAnalytics');
+const { buildSemanticModelHybrid } = require('../services/semanticFieldEngine');
 const { buildErdDefinition } = require('../services/erdDiagram');
 const { humanizeFileType } = require('../middleware/browse');
 
@@ -649,6 +650,152 @@ router.get('/admin/debug-dataset-columns', async (req, res, next) => {
       lines.push('');
     }
 
+    res.type('text/plain').send(lines.join('\n'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
+// TEMPORARY — GET /admin/debug-semantic-role-export — server-side
+// equivalent of scripts/exportSemanticRoleEvaluation.js, for producing
+// the Section 4.4 rater-labeling inputs without needing a working local
+// DATABASE_URL connection to production (the same DB-connectivity
+// problem the /admin/debug-schema and /admin/debug-tam-reliability
+// routes were built to route around). Runs the exact same production
+// functions — getOrBuildFullProfile() + buildSemanticModelHybrid() — so
+// this can't disagree with what CAAGA actually inferred for these
+// datasets.
+//
+// Usage:
+//   1. GET /admin/datasets — find the dataset_id (not the numeric row
+//      id) for each of the seventeen genuine graduate-student datasets,
+//      as opposed to any development/QA test account.
+//   2. GET /admin/debug-semantic-role-export?ids=id1,id2,...  (no
+//      &file= yet) — a plain-text preview confirming which of those
+//      dataset_id values were found/not found, and how many columns
+//      each contributed, BEFORE downloading anything. Fix the ids list
+//      here first.
+//   3. GET /admin/debug-semantic-role-export?ids=...&file=predictions
+//      — downloads caaga_role_predictions.csv.
+//   4. GET /admin/debug-semantic-role-export?ids=...&file=template
+//      — downloads rater_labeling_template.csv, with rater1_label,
+//      rater2_label, resolved_label left blank for two independent
+//      people to fill in by hand (see scripts/
+//      evaluate_semantic_role_inference.py's own module docstring for
+//      the full labeling procedure).
+// Safe to delete once Section 4.4's real numbers are in the manuscript.
+// ------------------------------------------------------------------
+// Mirrors scripts/exportSemanticRoleEvaluation.js's COARSE_ROLE_MAP
+// exactly (see that file for the full rationale on each mapping
+// choice) — keep both copies in sync if CAAGA's granular role
+// vocabulary (services/semanticFieldOntology.js) ever changes.
+const DEBUG_COARSE_ROLE_MAP = {
+  customer_id: 'Identifier', merchant_id: 'Identifier', product_id: 'Identifier', order_id: 'Identifier',
+  date: 'Date/time',
+  revenue: 'Monetary amount', price: 'Monetary amount', cost: 'Monetary amount', profit: 'Monetary amount', discount: 'Monetary amount',
+  quantity: 'Quantity', duration: 'Quantity',
+  cost_category: 'Category', subscription_plan: 'Category',
+  rating: 'Rating',
+  geo_dimension: 'Geography',
+  status: 'Status', availability: 'Status',
+  name_label: 'Free text',
+};
+
+function debugCsvEscape(v) {
+  const s = v === null || v === undefined ? '' : String(v);
+  return `"${s.replace(/"/g, '""')}"`;
+}
+function debugCsvBody(header, rows) {
+  return [header, ...rows].map((r) => r.map(debugCsvEscape).join(',')).join('\n') + '\n';
+}
+
+router.get('/admin/debug-semantic-role-export', async (req, res, next) => {
+  try {
+    const idsParam = (req.query.ids || '').trim();
+    if (!idsParam) {
+      return res.type('text/plain').send(
+        'Pass the dataset_id values (not the numeric row id) for the seventeen real datasets as a ' +
+        'comma-separated ?ids= query parameter, e.g.:\n' +
+        '  /admin/debug-semantic-role-export?ids=SME_Retail_07,SME_Cafe_03\n' +
+        'Use GET /admin/datasets first to look up each dataset_id. That URL alone (no &file=) shows a ' +
+        'preview of what would be exported, so you can fix the ids list before downloading anything. ' +
+        'Add &file=predictions or &file=template to actually download the corresponding CSV.'
+      );
+    }
+    const wantedIds = idsParam.split(',').map((s) => s.trim()).filter(Boolean);
+    const fileParam = req.query.file === 'template' ? 'template'
+      : req.query.file === 'predictions' ? 'predictions' : null;
+
+    const { rows: datasets } = await pool.query(
+      `SELECT id, account_id, dataset_id, dataset_name
+         FROM uploaded_datasets WHERE dataset_id = ANY($1::text[]) ORDER BY dataset_id`,
+      [wantedIds]
+    );
+    const foundIds = new Set(datasets.map((d) => d.dataset_id));
+    const missingIds = wantedIds.filter((id) => !foundIds.has(id));
+
+    const predRows = [];
+    const templateRows = [];
+    const preview = [];
+
+    for (const ds of datasets) {
+      const { files, relationships } = await getOrBuildFullProfile(ds.account_id, ds.id);
+      if (!files.length) {
+        preview.push(`${ds.dataset_id}: no files/profile found — skipped`);
+        continue;
+      }
+      const model = buildSemanticModelHybrid(files, relationships);
+      let colCount = 0;
+      model.files.forEach((fileEntry) => {
+        const fp = files.find((f) => f.fileType === fileEntry.fileType);
+        if (!fp) return;
+        fp.columns.forEach((col) => {
+          const roleEntry = fileEntry.columnRoles[col.name];
+          const granular = roleEntry ? roleEntry.role : null;
+          const coarse = granular ? (DEBUG_COARSE_ROLE_MAP[granular] || 'other') : 'other';
+          predRows.push([
+            ds.dataset_id, ds.dataset_name, fileEntry.fileType, col.name,
+            granular || '', coarse, roleEntry ? roleEntry.confidence : '', roleEntry ? roleEntry.band : '',
+          ]);
+          templateRows.push([ds.dataset_id, ds.dataset_name, fileEntry.fileType, col.name, '', '', '']);
+          colCount += 1;
+        });
+      });
+      preview.push(`${ds.dataset_id} ("${ds.dataset_name}"): ${colCount} columns across ${model.files.length} file(s)`);
+    }
+
+    if (fileParam === 'predictions') {
+      const csv = debugCsvBody(
+        ['dataset_id', 'dataset_name', 'file_type', 'column_name', 'caaga_role_granular', 'caaga_role_coarse', 'confidence', 'band'],
+        predRows
+      );
+      res.set('Content-Disposition', 'attachment; filename="caaga_role_predictions.csv"');
+      return res.type('text/csv').send(csv);
+    }
+    if (fileParam === 'template') {
+      const csv = debugCsvBody(
+        ['dataset_id', 'dataset_name', 'file_type', 'column_name', 'rater1_label', 'rater2_label', 'resolved_label'],
+        templateRows
+      );
+      res.set('Content-Disposition', 'attachment; filename="rater_labeling_template.csv"');
+      return res.type('text/csv').send(csv);
+    }
+
+    const lines = [
+      `Requested ${wantedIds.length} dataset_id(s); found ${datasets.length}, missing ${missingIds.length}.`,
+      '',
+      ...preview,
+    ];
+    if (missingIds.length) {
+      lines.push('', 'NOT FOUND (check spelling/case against /admin/datasets):', ...missingIds.map((id) => `  - ${id}`));
+    }
+    lines.push(
+      '',
+      `Total columns that would be exported: ${predRows.length}`,
+      '',
+      'If this looks right, re-run with &file=predictions or &file=template to download.'
+    );
     res.type('text/plain').send(lines.join('\n'));
   } catch (err) {
     next(err);
