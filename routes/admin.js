@@ -499,4 +499,91 @@ router.get('/admin/debug-schema', async (req, res, next) => {
   }
 });
 
+// ------------------------------------------------------------------
+// TEMPORARY — GET /admin/debug-tam-reliability — Cronbach's alpha for
+// each TAM domain (PU/PEOU/BI), computed from the raw per-respondent,
+// per-item ratings already stored in evaluation_responses. Added 26
+// September 2026 to fill in the manuscript's "Cronbach's alpha was [ ]
+// for PU, [ ] for PEOU, and [ ] for BI" placeholder (Section 5.2/5.8)
+// without needing external database access (pgAdmin, etc.) — same
+// reasoning as /admin/debug-schema above. Plain text, admin-gated.
+// Safe to delete once you have the numbers — it's a diagnostic, not a
+// feature.
+//
+// Only status='completed' sessions are included, matching
+// getCompletedResponseSummary()'s own "final data only" discipline
+// (services/tamEvaluation.js) — a still-in-progress respondent's
+// partial ratings never enter the reliability computation either.
+//
+// alpha = (k / (k-1)) * (1 - sum(item variances) / variance of the
+// summed domain score), sample variance (n-1 denominator) throughout —
+// the standard Cronbach's alpha formula.
+// ------------------------------------------------------------------
+router.get('/admin/debug-tam-reliability', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT s.id AS session_id, r.item_code, r.rating
+         FROM evaluation_responses r
+         JOIN evaluation_sessions s ON s.id = r.session_id
+        WHERE s.status = 'completed' AND r.rating IS NOT NULL
+        ORDER BY s.id, r.item_code`
+    );
+
+    const bySession = new Map();
+    rows.forEach((r) => {
+      if (!bySession.has(r.session_id)) bySession.set(r.session_id, {});
+      bySession.get(r.session_id)[r.item_code] = r.rating;
+    });
+
+    function mean(arr) { return arr.reduce((a, b) => a + b, 0) / arr.length; }
+    function sampleVariance(arr) {
+      if (arr.length < 2) return null;
+      const m = mean(arr);
+      return arr.reduce((a, b) => a + (b - m) ** 2, 0) / (arr.length - 1);
+    }
+
+    const lines = [];
+    groupItemsByDomain().forEach((domain) => {
+      const codes = domain.items.map((it) => it.code);
+      const k = codes.length;
+
+      // Only respondents who answered every item in THIS domain — for a
+      // status='completed' session that should be all of them (Section
+      // 4.1's own submit-time validation requires every item answered),
+      // but this stays defensive rather than assuming it.
+      const completeRespondents = [...bySession.values()].filter((answers) =>
+        codes.every((c) => typeof answers[c] === 'number')
+      );
+      const n = completeRespondents.length;
+
+      lines.push(`${domain.label} (${domain.domain}) — k=${k} items, n=${n} respondents`);
+      if (n < 2) {
+        lines.push('  alpha: cannot compute (fewer than 2 fully-answered respondents)');
+        lines.push('');
+        return;
+      }
+
+      const itemVariances = codes.map((c) => sampleVariance(completeRespondents.map((a) => a[c])));
+      const totalScores = completeRespondents.map((a) => codes.reduce((sum, c) => sum + a[c], 0));
+      const totalVariance = sampleVariance(totalScores);
+
+      codes.forEach((c, i) => lines.push(`  ${c} variance: ${itemVariances[i].toFixed(4)}`));
+      lines.push(`  sum-score variance: ${totalVariance.toFixed(4)}`);
+
+      if (totalVariance === 0) {
+        lines.push('  alpha: undefined (every respondent gave an identical total score — zero variance)');
+      } else {
+        const sumItemVar = itemVariances.reduce((a, b) => a + b, 0);
+        const alpha = (k / (k - 1)) * (1 - sumItemVar / totalVariance);
+        lines.push(`  Cronbach's alpha: ${alpha.toFixed(2)}`);
+      }
+      lines.push('');
+    });
+
+    res.type('text/plain').send(lines.join('\n'));
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
