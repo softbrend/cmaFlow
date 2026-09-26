@@ -476,4 +476,27 @@ router.post('/admin/datasets/:id/delete', async (req, res, next) => {
   }
 });
 
+// ------------------------------------------------------------------
+// TEMPORARY — GET /admin/debug-schema — read-only column listing for the
+// three evaluation tables, added 26 September 2026 only to confirm the
+// consent_status/consent_decided_at migration reached production when
+// external database access (pgAdmin, etc.) was unavailable. Plain text,
+// admin-gated by the router.use(requireAdmin) above. Safe to delete once
+// that's confirmed — it exists purely as a diagnostic, not a feature.
+// ------------------------------------------------------------------
+router.get('/admin/debug-schema', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT table_name, column_name, data_type, column_default
+         FROM information_schema.columns
+        WHERE table_name IN ('evaluation_sessions', 'evaluation_task_logs', 'evaluation_responses')
+        ORDER BY table_name, ordinal_position`
+    );
+    const lines = rows.map((r) => `${r.table_name}.${r.column_name}  (${r.data_type})${r.column_default ? '  default=' + r.column_default : ''}`);
+    res.type('text/plain').send(lines.join('\n') || 'No columns found — do these tables exist?');
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
