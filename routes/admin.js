@@ -586,4 +586,73 @@ router.get('/admin/debug-tam-reliability', async (req, res, next) => {
   }
 });
 
+// ------------------------------------------------------------------
+// TEMPORARY — GET /admin/debug-dataset-columns — read-only dump of the
+// exact files/columns/relationships CMA-Flow has on record for the
+// Maven Pizza Challenge and Seattle Airbnb Open Data datasets, so the
+// manuscript's description of what two respondents changed in their
+// own uploaded data (which columns/files they kept or added) can be
+// written from real database state rather than read off a screenshot.
+// Matches dataset_name loosely (ILIKE) since respondents typed their
+// own dataset names on upload — there is no fixed vocabulary for it
+// (see uploaded_datasets.dataset_name in db/schema.sql). Ordered by
+// account then created_at ASC so, when the same account re-uploaded a
+// revised version (Implementation: "revised uploads are retained as
+// separate versions rather than overwriting earlier data"), the
+// earlier/later relationship between two rows is unambiguous from the
+// output alone. Reuses getOrBuildFullProfile() — the exact function
+// production uses to render the ERD page — so this is not a
+// reimplementation that could disagree with what the screenshots show.
+// Safe to delete once the manuscript text is written; it's a
+// diagnostic, not a feature.
+// ------------------------------------------------------------------
+router.get('/admin/debug-dataset-columns', async (req, res, next) => {
+  try {
+    const { rows: datasets } = await pool.query(
+      `SELECT ud.id, ud.account_id, ud.dataset_id, ud.dataset_name, ud.created_at
+         FROM uploaded_datasets ud
+        WHERE ud.dataset_name ILIKE '%maven%' OR ud.dataset_name ILIKE '%airbnb%'
+        ORDER BY ud.account_id ASC, ud.created_at ASC`
+    );
+
+    const lines = [];
+    if (!datasets.length) {
+      lines.push('No uploaded_datasets rows found with dataset_name matching "maven" or "airbnb".');
+    }
+
+    for (const ds of datasets) {
+      const { files, relationships } = await getOrBuildFullProfile(ds.account_id, ds.id);
+      lines.push(
+        `Dataset: "${ds.dataset_name}"  (dataset_id=${ds.dataset_id}, uploaded_datasets.id=${ds.id}, ` +
+        `account_id=${ds.account_id}, created_at=${new Date(ds.created_at).toISOString()})`
+      );
+      if (!files.length) {
+        lines.push('  (no files/profile found for this dataset)');
+        lines.push('');
+        continue;
+      }
+      files.forEach((f) => {
+        lines.push(`  File: ${f.fileType}  (${f.columns.length} columns)`);
+        f.columns.forEach((c) => { lines.push(`    - ${c.name}  [${c.kind}]`); });
+      });
+      if (relationships.length) {
+        lines.push('  Relationships detected:');
+        relationships.forEach((r) => {
+          lines.push(
+            `    - ${r.fromFile}.${r.fromColumn} ~ ${r.toFile}.${r.toColumn} ` +
+            `(overlap ${r.overlapPct.toFixed(1)}%)`
+          );
+        });
+      } else {
+        lines.push('  Relationships detected: none');
+      }
+      lines.push('');
+    }
+
+    res.type('text/plain').send(lines.join('\n'));
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
