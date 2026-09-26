@@ -168,6 +168,26 @@ async function startTaskIfNeeded(sessionId, accountId, taskNumber) {
   );
 }
 
+// Records the respondent's own consent decision (Republic Act No. 10173 —
+// Data Privacy Act of 2012): 'given' to start/continue the walkthrough and
+// questionnaire, 'declined' to stop serving those screens without touching
+// anything already logged, or 'pending' to show the informed-consent
+// screen again after a decline (a later, freshly-affirmed "agree" is what
+// actually resumes the evaluation — reconsidering never skips straight
+// back to 'given'). consent_decided_at is stamped for a real decision and
+// cleared for 'pending' so it always reflects the latest choice.
+async function recordConsent(session, consentStatus) {
+  const { rows } = await pool.query(
+    `UPDATE evaluation_sessions
+        SET consent_status = $2::VARCHAR(20),
+            consent_decided_at = CASE WHEN $2::VARCHAR(20) = 'pending' THEN NULL ELSE now() END
+      WHERE id = $1
+      RETURNING *`,
+    [session.id, consentStatus]
+  );
+  return rows[0];
+}
+
 // Marks a task complete: fills in completed_at/time_on_task_seconds and
 // the assistance/error/notes the SME owner reported, then advances the
 // session to the next task — or to the questionnaire once task 6 is
@@ -298,6 +318,7 @@ async function listAllEvaluationStatuses() {
   const { rows } = await pool.query(
     `SELECT a.id AS account_id, a.username, a.owner_name, a.business_name,
             s.status, s.current_task, s.started_at,
+            s.consent_status, s.consent_decided_at,
             s.walkthrough_completed_at, s.completed_at,
             (SELECT COUNT(*)::int FROM evaluation_task_logs tl
               WHERE tl.session_id = s.id AND tl.completed_at IS NOT NULL) AS tasks_done,
@@ -369,6 +390,7 @@ module.exports = {
   groupItemsByDomain,
   getOrCreateSession,
   getEvaluationState,
+  recordConsent,
   startTaskIfNeeded,
   completeTask,
   saveResponses,

@@ -9,6 +9,7 @@
         <tr>
           <th>Account</th>
           <th>Business</th>
+          <th>Consent</th>
           <th>Status</th>
           <th>Tasks done</th>
           <th>Items answered</th>
@@ -23,10 +24,17 @@
              else if (s.status === 'questionnaire') { statusLabel = 'Questionnaire'; statusClass = 'badge-risk-medium'; }
              else if (s.status === 'walkthrough') { statusLabel = 'Walkthrough (task ' + s.current_task + '/6)'; statusClass = 'badge-risk-medium'; }
              else { statusLabel = 'Not started'; statusClass = 'badge-inactive'; }
+
+             var consentLabel, consentClass;
+             if (s.consent_status === 'given') { consentLabel = 'Given'; consentClass = 'badge-active'; }
+             else if (s.consent_status === 'declined') { consentLabel = 'Declined'; consentClass = 'badge-risk-high'; }
+             else if (s.consent_status === 'pending') { consentLabel = 'Pending'; consentClass = 'badge-inactive'; }
+             else { consentLabel = '—'; consentClass = 'badge-inactive'; }
         %>
           <tr>
             <td><%= s.owner_name %> <span style="color: var(--text-muted);">(<%= s.username %>)</span></td>
             <td><%= s.business_name %></td>
+            <td><span class="badge <%= consentClass %>"><%= consentLabel %></span></td>
             <td><span class="badge <%= statusClass %>"><%= statusLabel %></span></td>
             <td><%= s.tasks_done || 0 %> / 6</td>
             <td><%= s.items_answered || 0 %> / 17</td>

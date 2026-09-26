@@ -446,6 +446,33 @@ CREATE TABLE IF NOT EXISTS evaluation_sessions (
     UNIQUE (account_id)
 );
 
+-- Consent gate (Republic Act No. 10173 — Data Privacy Act of 2012): a
+-- respondent must explicitly and voluntarily choose to participate before
+-- any walkthrough/questionnaire screen is shown. 'pending' is the default
+-- for every session — including ones created before this column existed,
+-- via the ALTER below — so nobody already in progress is silently treated
+-- as having consented. GET /evaluation checks this column first and only
+-- falls through to the status-based routing above once it is 'given'.
+-- consent_decided_at is cleared back to NULL whenever consent_status
+-- returns to 'pending' (see recordConsent() in services/tamEvaluation.js),
+-- so it always reflects the most recent agree/decline decision rather than
+-- the first one, and 'declined' never deletes anything already logged —
+-- it only stops new walkthrough/questionnaire screens from being served.
+ALTER TABLE evaluation_sessions
+    ADD COLUMN IF NOT EXISTS consent_status VARCHAR(20) NOT NULL DEFAULT 'pending';
+
+ALTER TABLE evaluation_sessions
+    ADD COLUMN IF NOT EXISTS consent_decided_at TIMESTAMPTZ;
+
+DO $$
+BEGIN
+  ALTER TABLE evaluation_sessions
+      ADD CONSTRAINT evaluation_sessions_consent_status_check
+      CHECK (consent_status IN ('pending', 'given', 'declined'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
 -- One row per (session, task 1-6). started_at is stamped the first time
 -- the account lands on that task's walkthrough screen (see
 -- startTaskIfNeeded() in services/tamEvaluation.js) and never overwritten

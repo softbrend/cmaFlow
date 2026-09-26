@@ -62,3 +62,14 @@
     </table>
   </div>
 <% } %>
+
+<div class="form-card wide" style="margin-top: 22px; text-align: center;">
+  <p class="form-hint" style="margin-bottom: 10px;">
+    Your participation is voluntary. You may withdraw at any time — anything not yet completed will be excluded from reporting.
+  </p>
+  <form method="POST" action="/evaluation/consent" style="display:inline;"
+        onsubmit="return confirm('Withdraw from this evaluation? Nothing you\'ve already logged will be deleted, but no further tasks will be recorded unless you rejoin.');">
+    <input type="hidden" name="decision" value="decline" />
+    <button type="submit" class="btn btn-ghost btn-sm">Withdraw from This Evaluation</button>
+  </form>
+</div>

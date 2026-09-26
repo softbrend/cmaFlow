@@ -6,23 +6,49 @@ const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const {
   WALKTHROUGH_TASKS, TAM_ITEMS, groupItemsByDomain,
-  getEvaluationState, startTaskIfNeeded, completeTask,
+  getEvaluationState, recordConsent, startTaskIfNeeded, completeTask,
   saveResponses, validateQuestionnaire, markCompleted,
 } = require('../services/tamEvaluation');
 
 const router = express.Router();
 router.use(requireAuth);
 
+// Only these three decisions are ever written, and each maps to exactly
+// one consent_status value — see recordConsent() in tamEvaluation.js.
+const CONSENT_DECISIONS = { agree: 'given', decline: 'declined', reconsider: 'pending' };
+
 // ------------------------------------------------------------------
 // GET /evaluation — single entry point. Always resumes wherever this
 // account left off: creates the session on first visit, then routes to
-// the current walkthrough task, the questionnaire, or the completed
-// summary, purely from what's already saved in Postgres.
+// the informed-consent screen, the declined screen, or (once consent has
+// been given) the current walkthrough task, the questionnaire, or the
+// completed summary — purely from what's already saved in Postgres.
 // ------------------------------------------------------------------
 router.get('/evaluation', async (req, res, next) => {
   try {
     const accountId = req.session.userId;
     const { session, taskLogs, responses } = await getEvaluationState(accountId);
+
+    // Republic Act No. 10173 (Data Privacy Act of 2012): no walkthrough or
+    // questionnaire screen is ever served until the respondent has
+    // affirmatively and voluntarily agreed to take part. A fresh session
+    // defaults to 'pending', so this is the very first thing every account
+    // sees at /evaluation.
+    if (session.consent_status === 'pending') {
+      return res.render('dashboard/evaluation-consent', {
+        title: 'End-User Evaluation — Informed Consent',
+        active: 'evaluation',
+        session,
+      });
+    }
+
+    if (session.consent_status === 'declined') {
+      return res.render('dashboard/evaluation-declined', {
+        title: 'End-User Evaluation',
+        active: 'evaluation',
+        session,
+      });
+    }
 
     if (session.status === 'walkthrough') {
       await startTaskIfNeeded(session.id, accountId, session.current_task);
@@ -65,6 +91,26 @@ router.get('/evaluation', async (req, res, next) => {
 });
 
 // ------------------------------------------------------------------
+// POST /evaluation/consent — the respondent's own voluntary-participation
+// choice (RA 10173): agree, decline, or reconsider (declined -> pending,
+// so a "changed my mind" respondent sees the full informed-consent screen
+// again rather than being silently re-enrolled).
+// ------------------------------------------------------------------
+router.post('/evaluation/consent', async (req, res, next) => {
+  try {
+    const accountId = req.session.userId;
+    const { session } = await getEvaluationState(accountId);
+    const nextStatus = CONSENT_DECISIONS[req.body.decision];
+    if (nextStatus) {
+      await recordConsent(session, nextStatus);
+    }
+    return res.redirect('/evaluation');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
 // POST /evaluation/task/:n/complete — logs completion/assistance/error
 // for the walkthrough's current task and advances to the next one (or
 // to the questionnaire, after task 6).
@@ -75,10 +121,13 @@ router.post('/evaluation/task/:n/complete', async (req, res, next) => {
     const taskNumber = parseInt(req.params.n, 10);
     const { session } = await getEvaluationState(accountId);
 
-    // Only the account's actual current task can be completed — guards
-    // against a stale/replayed form (e.g. the back button) silently
-    // skipping ahead or re-logging an already-completed task.
-    if (session.status !== 'walkthrough' || taskNumber !== session.current_task) {
+    // Consent must still be 'given' — a mid-evaluation withdrawal (see the
+    // "Withdraw from this evaluation" link) must stop this from silently
+    // logging further task data. Also guards against a stale/replayed form
+    // (e.g. the back button) skipping ahead or re-logging an
+    // already-completed task: only the account's actual current task can
+    // be completed.
+    if (session.consent_status !== 'given' || session.status !== 'walkthrough' || taskNumber !== session.current_task) {
       return res.redirect('/evaluation');
     }
 
@@ -105,7 +154,7 @@ router.post('/evaluation/questionnaire', async (req, res, next) => {
   try {
     const accountId = req.session.userId;
     const { session } = await getEvaluationState(accountId);
-    if (session.status !== 'questionnaire') {
+    if (session.consent_status !== 'given' || session.status !== 'questionnaire') {
       return res.redirect('/evaluation');
     }
 

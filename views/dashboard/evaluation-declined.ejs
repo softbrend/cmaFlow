@@ -1,0 +1,22 @@
+<div class="page-title">🔒 <span class="page-title-text">End-User Evaluation</span></div>
+<p class="page-subtitle">You've chosen not to take part in this evaluation. Nothing beyond that choice has been recorded, and every other part of CMA-Flow works exactly as before.</p>
+
+<div class="placeholder-card">
+  <div class="emoji">🧭</div>
+  <p>
+    No walkthrough tasks or questionnaire answers are collected while you're in this state.
+    <% if (session.consent_decided_at) { %>
+      Recorded <%= new Date(session.consent_decided_at).toLocaleString() %>.
+    <% } %>
+  </p>
+</div>
+
+<div class="form-card wide" style="margin-top: 22px;">
+  <p class="form-hint" style="margin-bottom: 12px;">
+    Changed your mind? You can review the informed-consent information again and choose to participate at any time.
+  </p>
+  <form method="POST" action="/evaluation/consent">
+    <input type="hidden" name="decision" value="reconsider" />
+    <button type="submit" class="btn btn-ghost">Review the Consent Information Again</button>
+  </form>
+</div>

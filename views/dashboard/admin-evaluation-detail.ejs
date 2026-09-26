@@ -11,6 +11,19 @@
 <% } else { %>
 
   <div class="ok-box">
+    Consent (RA 10173): <strong>
+      <% if (session.consent_status === 'given') { %>Given
+      <% } else if (session.consent_status === 'declined') { %>Declined
+      <% } else { %>Pending — not yet decided
+      <% } %>
+    </strong>
+    <% if (session.consent_decided_at) { %>
+      <span style="color: var(--text-muted); font-weight: 400;">(<%= new Date(session.consent_decided_at).toLocaleString() %>)</span>
+    <% } %>
+  </div>
+
+  <% if (session.consent_status === 'given') { %>
+  <div class="ok-box" style="margin-top: 10px;">
     Status: <strong>
       <% if (session.status === 'completed') { %>Completed <%= session.completed_at ? new Date(session.completed_at).toLocaleString() : '' %>
       <% } else if (session.status === 'questionnaire') { %>Walkthrough done, questionnaire in progress
@@ -18,6 +31,18 @@
       <% } %>
     </strong>
   </div>
+  <% } else { %>
+  <div class="placeholder-card" style="margin-top: 10px;">
+    <div class="emoji">🧭</div>
+    <p>
+      <% if (session.consent_status === 'declined') { %>
+        This respondent has not agreed to participate, so no walkthrough or questionnaire data is collected.
+      <% } else { %>
+        This respondent has not yet decided whether to participate.
+      <% } %>
+    </p>
+  </div>
+  <% } %>
 
   <div class="form-card wide" style="margin-bottom: 22px;">
     <div class="form-title" style="font-size: 18px;">Walkthrough</div>
