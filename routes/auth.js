@@ -8,10 +8,21 @@ const { ensureDefaultDataset } = require('../services/accountDatasets');
 const router = express.Router();
 const SALT_ROUNDS = 12;
 
+// New-account registration is closed while the TAM/user-acceptance
+// evaluation is underway (JIOS manuscript, Section 5.8) — the respondent
+// roster is fixed to the invited participants, so no walk-up SME account
+// should be able to self-register and skew or dilute that dataset. Flip
+// back to `true` once the evaluation window closes.
+const SIGNUPS_OPEN = false;
+
 // ------------------------------------------------------------------
 // GET /signup
 // ------------------------------------------------------------------
 router.get('/signup', redirectIfAuthed, (req, res) => {
+  if (!SIGNUPS_OPEN) {
+    req.session.flashError = 'New account registration is temporarily closed.';
+    return res.redirect('/login');
+  }
   res.render('auth/signup', {
     title: 'Create your SME account',
     layout: 'layout-auth',
@@ -40,6 +51,11 @@ const signupValidators = [
 ];
 
 router.post('/signup', redirectIfAuthed, signupValidators, async (req, res, next) => {
+  if (!SIGNUPS_OPEN) {
+    req.session.flashError = 'New account registration is temporarily closed.';
+    return res.redirect('/login');
+  }
+
   const result = validationResult(req);
 
   if (!result.isEmpty()) {
