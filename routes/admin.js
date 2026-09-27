@@ -802,4 +802,95 @@ router.get('/admin/debug-semantic-role-export', async (req, res, next) => {
   }
 });
 
+// ------------------------------------------------------------------
+// TEMPORARY — GET/POST /admin/debug-consent-backfill
+//
+// consent_status (db/schema.sql, RA10173 Data Privacy Act gate) was
+// added to evaluation_sessions AFTER several respondents had already
+// finished the full six-task walkthrough + 17-item questionnaire, so
+// the column's NOT NULL DEFAULT 'pending' retroactively stamped every
+// pre-existing session as pending — not because those respondents
+// never consented, but because the column didn't exist yet to record
+// it (see View Evaluation Report: several rows show Status=Completed,
+// 6/6 tasks, 17/17 items, but Consent=Pending). This is a one-time
+// data-integrity backfill for THOSE rows only, not a blanket
+// pending -> given flip: it never touches a session that is still
+// mid-walkthrough (status='walkthrough' or 'questionnaire'), so an
+// account that has not actually finished can never be marked
+// consented by this route. consent_decided_at is backfilled to that
+// session's own completed_at (the real moment they finished), not
+// now(), so the record honestly reflects when the work happened
+// rather than when this backfill ran.
+//
+// GET  — plain-text preview of exactly which accounts/sessions would
+//        change (no writes).
+// POST — performs the UPDATE, scoped identically, then reports how
+//        many rows changed.
+// Safe to delete once every genuinely-completed respondent's consent
+// is fixed and the manuscript's respondent roster is final.
+// ------------------------------------------------------------------
+async function findConsentBackfillCandidates() {
+  const { rows } = await pool.query(
+    `SELECT s.id AS session_id, a.username, a.owner_name, a.business_name,
+            s.status, s.consent_status, s.completed_at, s.walkthrough_completed_at
+       FROM evaluation_sessions s
+       JOIN sme_accounts a ON a.id = s.account_id
+      WHERE s.consent_status = 'pending'
+        AND s.status = 'completed'
+      ORDER BY a.business_name ASC`
+  );
+  return rows;
+}
+
+router.get('/admin/debug-consent-backfill', async (req, res, next) => {
+  try {
+    const candidates = await findConsentBackfillCandidates();
+    const lines = [
+      `Found ${candidates.length} session(s) with status='completed' but consent_status='pending'.`,
+      candidates.length
+        ? 'Only these rows would change — nothing still mid-walkthrough or mid-questionnaire is touched.'
+        : 'Nothing to backfill.',
+      '',
+      ...candidates.map((r) =>
+        `  session ${r.session_id} - ${r.owner_name} (${r.username}, ${r.business_name}) - ` +
+        `completed_at=${r.completed_at ? r.completed_at.toISOString() : 'null'}`
+      ),
+    ];
+    if (candidates.length) {
+      lines.push(
+        '',
+        `POST this same URL (e.g. curl -X POST, logged in as admin) to set consent_status='given' and ` +
+        `consent_decided_at=completed_at for exactly these ${candidates.length} row(s).`
+      );
+    }
+    res.type('text/plain').send(lines.join('\n'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/admin/debug-consent-backfill', async (req, res, next) => {
+  try {
+    const candidates = await findConsentBackfillCandidates();
+    if (!candidates.length) {
+      return res.type('text/plain').send("Nothing to backfill — 0 sessions matched status='completed' AND consent_status='pending'.");
+    }
+    const { rows: updated } = await pool.query(
+      `UPDATE evaluation_sessions
+          SET consent_status = 'given',
+              consent_decided_at = COALESCE(completed_at, walkthrough_completed_at, started_at)
+        WHERE consent_status = 'pending'
+          AND status = 'completed'
+        RETURNING id, account_id`
+    );
+    res.type('text/plain').send(
+      `Updated ${updated.length} session(s): consent_status set to 'given', consent_decided_at backfilled to ` +
+      `each session's own completed_at.\n\n` +
+      updated.map((r) => `  session ${r.id} (account ${r.account_id})`).join('\n') + '\n'
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
