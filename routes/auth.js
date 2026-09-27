@@ -8,12 +8,11 @@ const { ensureDefaultDataset } = require('../services/accountDatasets');
 const router = express.Router();
 const SALT_ROUNDS = 12;
 
-// New-account registration is closed while the TAM/user-acceptance
-// evaluation is underway (JIOS manuscript, Section 5.8) — the respondent
-// roster is fixed to the invited participants, so no walk-up SME account
-// should be able to self-register and skew or dilute that dataset. Flip
-// back to `true` once the evaluation window closes.
-const SIGNUPS_OPEN = false;
+// New-account registration was closed while the TAM/user-acceptance
+// evaluation was underway (JIOS manuscript, Section 5.8), so the
+// respondent roster stayed fixed to the invited participants. Re-opened
+// now that the evaluation window has closed.
+const SIGNUPS_OPEN = true;
 
 // ------------------------------------------------------------------
 // GET /signup
