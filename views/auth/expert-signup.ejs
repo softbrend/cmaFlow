@@ -1,6 +1,6 @@
 <div class="form-card wide">
   <div class="form-title"><img src="/img/cma-flow-icon.png" alt="CMA-Flow" style="width:28px; height:28px; border-radius:7px; background:#fff; padding:2px; vertical-align:-6px; margin-right:8px;" />Create your Expert Evaluator account</div>
-  <p class="form-hint">Information captured: username, full name, affiliation, email, area of expertise (optional), and password. You'll upload your own dataset, run it through CMA-Flow's four analytics modules, and complete a short evaluation afterwards.</p>
+  <p class="form-hint">Information captured: username, full name, affiliation, email, the business category you'll evaluate, and password. You'll download that category's CSV template, fill it with a realistic dataset, upload it, run it through CMA-Flow's four analytics modules, and complete a short evaluation afterwards.</p>
 
   <% if (errors && errors.length) { %>
     <div class="alert-error">
@@ -26,15 +26,20 @@
       <input type="text" id="affiliation" name="affiliation" value="<%= old.affiliation || '' %>" required />
     </div>
 
-    <div class="field-row">
-      <div class="field">
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" value="<%= old.email || '' %>" required />
-      </div>
-      <div class="field">
-        <label for="expertise_area">Area of expertise (optional)</label>
-        <input type="text" id="expertise_area" name="expertise_area" value="<%= old.expertise_area || '' %>" placeholder="e.g., Information Systems, Data Analytics" />
-      </div>
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" value="<%= old.email || '' %>" required />
+    </div>
+
+    <div class="field">
+      <label for="business_category">Business category you will evaluate</label>
+      <select id="business_category" name="business_category" required>
+        <option value="" disabled <%= !old.business_category ? 'selected' : '' %>>Select a business category…</option>
+        <% categories.forEach(function(c) { %>
+          <option value="<%= c.name %>" <%= old.business_category === c.name ? 'selected' : '' %>><%= c.name %> — <%= c.examples %></option>
+        <% }); %>
+      </select>
+      <p class="form-hint" style="margin: 7px 0 0;">Pick the category closest to the dataset you're preparing — you'll download its matching CSV template on the next page.</p>
     </div>
 
     <div class="field">

@@ -44,10 +44,20 @@ function resolveTemplateFile(fileName) {
 router.get('/sme-templates', requireAuth, (req, res, next) => {
   try {
     const manifest = loadManifest();
+    const user = req.session.user;
+    // An Expert Evaluator declares their business category at signup
+    // (routes/auth.js's business_category field, stored in
+    // sme_accounts.business_sector) — surfaced here so the row matching
+    // that choice is easy to find rather than making them re-scan all 20.
+    // null for an SME owner (whose business_sector is their own actual
+    // sector, not one of these 20 categories necessarily) and for anyone
+    // without a declared category yet.
+    const assignedCategory = (user && user.role === 'Expert Evaluator' && user.business_sector) || null;
     res.render('dashboard/sme-templates', {
       title: 'Download SME Templates',
       active: 'sme-templates',
       manifest,
+      assignedCategory,
     });
   } catch (err) {
     next(err);

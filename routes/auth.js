@@ -4,6 +4,7 @@ const { body, validationResult } = require('express-validator');
 const pool = require('../db/pool');
 const { redirectIfAuthed } = require('../middleware/auth');
 const { ensureDefaultDataset } = require('../services/accountDatasets');
+const { loadCategories, isValidCategory } = require('../services/smeCategories');
 
 const router = express.Router();
 const SALT_ROUNDS = 12;
@@ -154,9 +155,23 @@ router.get('/expert-signup/register', redirectIfAuthed, (req, res) => {
     layout: 'layout-auth',
     errors: [],
     old: {},
+    categories: loadCategories(),
   });
 });
 
+// business_category replaces what was originally a free-text, optional
+// "area of expertise" field (added 30 September 2026, revised 1 October
+// 2026): an Expert Evaluator's actual job here is to pick one of the 20
+// SME Business Categories, download that category's CSV template, fill
+// it with a realistic dataset, and evaluate CMA-Flow's analytics against
+// it — so capturing that choice as a required, validated selection from
+// the same list the templates page offers is far more useful than a free-
+// text professional-expertise field no other part of the app reads.
+// Still stored in sme_accounts.business_sector (no schema change) —
+// only the meaning of that column for this role changed, from "their own
+// expertise" to "the business category they're evaluating". See
+// services/smeCategories.js for the shared category list this validates
+// against.
 const expertSignupValidators = [
   body('username')
     .trim()
@@ -165,7 +180,12 @@ const expertSignupValidators = [
   body('full_name').trim().notEmpty().withMessage('Your full name is required.'),
   body('affiliation').trim().notEmpty().withMessage('Your affiliation or organization is required.'),
   body('email').trim().isEmail().withMessage('A valid email is required.').normalizeEmail(),
-  body('expertise_area').trim().optional({ checkFalsy: true }),
+  body('business_category')
+    .trim()
+    .notEmpty().withMessage('Select the business category you will evaluate.')
+    .bail()
+    .custom((value) => isValidCategory(value))
+    .withMessage('Select a valid business category from the list.'),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters.'),
   body('confirm_password').custom((value, { req }) => value === req.body.password)
     .withMessage('Passwords do not match.'),
@@ -183,11 +203,12 @@ router.post('/expert-signup/register', redirectIfAuthed, expertSignupValidators,
       layout: 'layout-auth',
       errors: result.array(),
       old: req.body,
+      categories: loadCategories(),
     });
   }
 
   const {
-    username, full_name, affiliation, email, expertise_area, password,
+    username, full_name, affiliation, email, business_category, password,
   } = req.body;
 
   try {
@@ -196,8 +217,8 @@ router.post('/expert-signup/register', redirectIfAuthed, expertSignupValidators,
       `INSERT INTO sme_accounts
          (username, owner_name, business_name, email, business_sector, password_hash, role)
        VALUES ($1, $2, $3, $4, $5, $6, 'Expert Evaluator')
-       RETURNING id, username, owner_name, business_name, email, role, assigned_dataset`,
-      [username, full_name, affiliation, email, expertise_area || null, password_hash]
+       RETURNING id, username, owner_name, business_name, email, role, business_sector, assigned_dataset`,
+      [username, full_name, affiliation, email, business_category, password_hash]
     );
 
     const account = rows[0];
@@ -212,6 +233,7 @@ router.post('/expert-signup/register', redirectIfAuthed, expertSignupValidators,
         layout: 'layout-auth',
         errors: [{ msg: 'That username or email is already registered.' }],
         old: req.body,
+        categories: loadCategories(),
       });
     }
     next(err);
@@ -243,8 +265,14 @@ router.post('/login', redirectIfAuthed, async (req, res, next) => {
   }
 
   try {
+    // business_sector included here (not just in the registration
+    // RETURNING clauses) so req.session.user.business_sector is populated
+    // on every login, not only immediately after signup — an Expert
+    // Evaluator's declared category (routes/templates.js's
+    // assignedCategory) depends on it still being there after they log
+    // back in on a later visit.
     const { rows } = await pool.query(
-      `SELECT id, username, owner_name, business_name, email, role, assigned_dataset, password_hash
+      `SELECT id, username, owner_name, business_name, email, role, business_sector, assigned_dataset, password_hash
          FROM sme_accounts WHERE username = $1`,
       [username.trim()]
     );
