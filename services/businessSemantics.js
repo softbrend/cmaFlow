@@ -75,6 +75,34 @@ const ID_LIKE_EXCLUDE_RE = /(zip|postal|_no$|_num$|number|lic|licence|license|ph
 // Same fix, same reasoning as cost_category/quantity/geo_dimension above.
 const COST_KEYWORD_RE = /(?:^|[_ ])(?:costs?|expenditures?|expenses?|billing[_ ]?amount|spend|spending)(?:$|[_ ])|cloud[_ ]?cost/i;
 
+// Same problem, a different shape: a column named "discount_amount",
+// "refund_amount", "tax_amount", "fee_amount" etc. is a deduction FROM
+// revenue, not revenue itself — but the revenue rule's own nameRe below
+// matches the bare "amount" suffix on purpose (so a real "Total_Amount"
+// column is still caught), which means a deduction column with no
+// distinguishing numeric signal (it's still a plain positive currency
+// figure, same shape as a real revenue column) can score identically to
+// — or even edge out — the dataset's actual revenue column on a tie,
+// silently making the app compute "revenue" off the discount/tax/refund
+// figure instead. Caught via this session's own synthetic-data
+// generation: the 20 SME templates' shared `discount_amount` core column
+// (data/sme-templates/*_template.csv) tied the real `revenue` column at
+// identical confidence, and findRoleColumn() (metricRegistry.js) breaks
+// ties by column order — Account Evaluation's "default CSV for
+// evaluation" ingest pipeline surfaced this by actually running the real
+// engine end-to-end against ingested data, not just checking CSV math.
+// Same underscore/space/start/end anchoring as COST_KEYWORD_RE above, for
+// the same reason (compound names like "Discount_Amount_USD").
+const NON_REVENUE_AMOUNT_RE = /(?:^|[_ ])(?:discounts?|refunds?|rebates?|taxe?s?|fees?|adjustments?|credits?|deductions?|surcharges?|tips?|chargebacks?|write[_ ]?offs?)(?:$|[_ ])/i;
+
+// Combined exclusion for the 'revenue' rule below — a column must never
+// win REVENUE for being a cost/expense figure (COST_KEYWORD_RE) OR a
+// deduction-from-revenue figure (NON_REVENUE_AMOUNT_RE) that merely
+// happens to also match the generic "amount"/"total" wording.
+const REVENUE_NAME_EXCLUDE_RE = new RegExp(
+  `${COST_KEYWORD_RE.source}|${NON_REVENUE_AMOUNT_RE.source}`, 'i'
+);
+
 // Cloud-provider billing vocabulary — used two ways: (1) below, as one of
 // several signals that lets services/datasetClassifier.js name a cost
 // dataset's business domain "Cloud Computing / IT Services"; (2) by
@@ -153,7 +181,9 @@ const ROLE_RULES = [
     // dataset-level half (a GENERIC "amount" column with no cost keyword
     // at all, sitting in what reads as a cloud/vendor billing export) is
     // caught separately by reclassifyAmbiguousRevenueAsCost() below.
-    nameExcludeRe: COST_KEYWORD_RE,
+    // REVENUE_NAME_EXCLUDE_RE also rules out discount/refund/tax/fee-type
+    // "amount" columns — see its own comment above COST_KEYWORD_RE.
+    nameExcludeRe: REVENUE_NAME_EXCLUDE_RE,
     expectedKinds: new Set(['currency', 'numeric']),
     pattern: (col) => monetaryPatternScore(col),
     uniqueness: () => 0.6, // revenue values aren't expected to be unique OR repeating in any particular way

@@ -21,6 +21,7 @@ const path = require('path');
 const { parse } = require('csv-parse/sync');
 const { requireAuth } = require('../middleware/auth');
 const pool = require('../db/pool');
+const { ingestTemplateForEvaluation } = require('../services/templateEvaluationIngest');
 
 const router = express.Router();
 const TEMPLATES_ROOT = path.join(__dirname, '..', 'data', 'sme-templates');
@@ -104,23 +105,37 @@ router.get('/sme-templates/download/:file', requireAuth, (req, res) => {
 });
 
 // POST /sme-templates/set-evaluation-default — an Expert Evaluator's own
-// explicit choice of which template's pre-populated CSV they want to use
-// as their reference dataset for cross-checking the four analytics
-// reports. Stored on sme_accounts.evaluation_template_file (see db/
-// schema.sql), the same way an SME owner's default_dataset_id works for
-// their own uploads — but this is a filename, validated against the
-// manifest, not a foreign key, since the 20 templates are static files
-// checked into the repo rather than account-owned rows.
+// explicit choice of which template they want to use for the evaluation.
+// This does two things, not just one: it records the choice (sme_accounts
+// .evaluation_template_file, for the "browse these exact rows" page
+// below), AND it actually ingests that template's 50 rows as this
+// account's own working dataset — the same uploaded_datasets/
+// dataset_files/dataset_records shape a real upload produces (see
+// services/templateEvaluationIngest.js) — and sets it as their
+// default_dataset_id. That second part is what makes "default" mean what
+// it says: the Descriptive/Diagnostic/Predictive/Prescriptive pages (and
+// Task 1's "Upload New Dataset" step) read an account's default dataset
+// with no manual upload needed, so picking a template here is enough to
+// drive all four analytics modules from it.
 router.post('/sme-templates/set-evaluation-default', requireExpertEvaluator, async (req, res, next) => {
   try {
     const resolved = resolveTemplateFile(req.body.template_file);
-    if (resolved) {
-      await pool.query(
-        'UPDATE sme_accounts SET evaluation_template_file = $1 WHERE id = $2',
-        [resolved.row.template_file, req.session.userId],
-      );
-      req.session.user.evaluation_template_file = resolved.row.template_file;
+    if (!resolved) {
+      return res.redirect('/sme-templates');
     }
+
+    const raw = fs.readFileSync(resolved.fullPath, 'utf-8');
+    const records = parse(raw, { columns: true, skip_empty_lines: true });
+
+    const { datasetRowId } = await ingestTemplateForEvaluation(req.session.userId, resolved, records);
+
+    await pool.query(
+      'UPDATE sme_accounts SET evaluation_template_file = $1 WHERE id = $2',
+      [resolved.row.template_file, req.session.userId],
+    );
+    req.session.user.evaluation_template_file = resolved.row.template_file;
+    req.session.user.default_dataset_id = datasetRowId;
+
     res.redirect('/sme-templates');
   } catch (err) {
     next(err);
