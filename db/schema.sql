@@ -733,3 +733,25 @@ CREATE INDEX IF NOT EXISTS idx_expert_evaluation_responses_session
 
 CREATE INDEX IF NOT EXISTS idx_expert_evaluation_responses_account
     ON expert_evaluation_responses(account_id);
+
+-- ---------------------------------------------------------------------
+-- Per-Expert-Evaluator "default CSV for evaluation" — which of the 20
+-- static SME template files (data/sme-templates/*_template.csv, each now
+-- pre-populated with 50 synthetic, analytics-ready rows) an Expert
+-- Evaluator has chosen as their reference dataset. Once set, routes/
+-- templates.js's GET /sme-templates/evaluation-data lets them browse and
+-- filter those exact rows in a table, so they can cross-check the four
+-- analytics reports' numbers against known source values during the TAM
+-- walkthrough.
+--
+-- Expert-Evaluator-only concept — an SME owner has nothing analogous,
+-- since their reports are built from their own uploaded data, not a
+-- shared static template — so this is stored the same way
+-- business_sector already is for that role: a plain column on
+-- sme_accounts, read/written only for Expert Evaluator rows. It holds a
+-- filename validated against the manifest (resolveTemplateFile() in
+-- routes/templates.js), not a foreign key, because the templates are
+-- static files checked into the repo rather than rows in any table.
+-- ---------------------------------------------------------------------
+ALTER TABLE sme_accounts
+    ADD COLUMN IF NOT EXISTS evaluation_template_file VARCHAR(150);

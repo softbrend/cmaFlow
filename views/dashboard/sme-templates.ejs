@@ -1,6 +1,6 @@
 <div class="page-title">📄 <span class="page-title-text">Download SME Templates</span></div>
 <% if (assignedCategory) { %>
-  <p class="page-subtitle">You selected <strong><%= assignedCategory %></strong> at signup — its row is highlighted below. Download its CSV template, fill it with a realistic dataset, then upload it as your Task 1.</p>
+  <p class="page-subtitle">You selected <strong><%= assignedCategory %></strong> at signup — its row is highlighted below. Download its CSV template, fill it with a realistic dataset, then upload it as your Task 1.<% if (isExpertEvaluator) { %> Every template already ships with 50 synthetic rows built to drive real output across all four analytics modules — pick one below as your "default CSV for evaluation" to browse and cross-check its exact values against the reports CMA-Flow generates.<% } %></p>
 <% } else { %>
   <p class="page-subtitle">Pick the business category closest to the dataset you're preparing, and download its CSV template — the exact column set CMA-Flow expects for that category. Fill it with a realistic dataset of your own choosing, then upload it as your Task 1.</p>
 <% } %>
@@ -12,6 +12,19 @@
   <a class="btn btn-ghost btn-sm" href="/sme-templates/reference/analytics-guidance">Download analytics-readiness guidance</a>
 </div>
 
+<% if (isExpertEvaluator) { %>
+  <div class="form-card wide" style="margin-bottom: 22px;">
+    <div class="form-title" style="font-size: 15px;">Default CSV for evaluation</div>
+    <% if (evaluationTemplateFile) {
+         var defaultRow = manifest.find(function (r) { return r.template_file === evaluationTemplateFile; }); %>
+      <p class="form-hint" style="margin-bottom: 10px;">You're currently using <strong><%= defaultRow ? defaultRow.sme_business_category : evaluationTemplateFile %></strong> as your default CSV for evaluation — its 50 rows are what you'll browse and filter below. Pick "Use for evaluation" on a different row any time to switch.</p>
+      <a class="btn btn-accent btn-sm" href="/sme-templates/evaluation-data">Browse records in table format</a>
+    <% } else { %>
+      <p class="form-hint" style="margin-bottom: 0;">Pick "Use for evaluation" on any row below to set that template's 50 synthetic rows as your reference dataset — you'll then be able to browse and filter them in a table to check record values against the generated reports.</p>
+    <% } %>
+  </div>
+<% } %>
+
 <div class="form-card wide" style="max-width: none;">
   <div class="table-scroll">
     <table class="table-simple">
@@ -22,19 +35,33 @@
           <th>Fields</th>
           <th>Analytics supported</th>
           <th></th>
+          <% if (isExpertEvaluator) { %><th></th><% } %>
         </tr>
       </thead>
       <tbody>
         <% manifest.forEach(function(row) {
-             var isAssigned = assignedCategory && row.sme_business_category === assignedCategory; %>
-          <tr<% if (isAssigned) { %> style="background: var(--bg-input);"<% } %>>
-            <td><%= row.sme_business_category %><% if (isAssigned) { %> <span class="badge badge-active" style="margin-left: 6px;">Your category</span><% } %></td>
+             var isAssigned = assignedCategory && row.sme_business_category === assignedCategory;
+             var isEvalDefault = isExpertEvaluator && evaluationTemplateFile === row.template_file; %>
+          <tr<% if (isAssigned || isEvalDefault) { %> style="background: var(--bg-input);"<% } %>>
+            <td><%= row.sme_business_category %><% if (isAssigned) { %> <span class="badge badge-active" style="margin-left: 6px;">Your category</span><% } %><% if (isEvalDefault) { %> <span class="badge badge-active" style="margin-left: 6px;">★ Default for evaluation</span><% } %></td>
             <td style="color: var(--text-muted); font-size: 13px;"><%= row.examples %></td>
             <td><%= row.field_count %></td>
             <td style="color: var(--text-muted); font-size: 13px;"><%= row.analytics_supported %></td>
             <td style="text-align: right;">
               <a class="btn btn-accent btn-sm" href="/sme-templates/download/<%= row.template_file %>">Download CSV</a>
             </td>
+            <% if (isExpertEvaluator) { %>
+              <td style="text-align: right;">
+                <% if (isEvalDefault) { %>
+                  <a class="btn btn-ghost btn-sm" href="/sme-templates/evaluation-data">Browse records</a>
+                <% } else { %>
+                  <form method="POST" action="/sme-templates/set-evaluation-default" style="display:inline;">
+                    <input type="hidden" name="template_file" value="<%= row.template_file %>" />
+                    <button type="submit" class="btn btn-ghost btn-sm">Use for evaluation</button>
+                  </form>
+                <% } %>
+              </td>
+            <% } %>
           </tr>
         <% }); %>
       </tbody>

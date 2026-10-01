@@ -1,1 +1,51 @@
 record_id,transaction_date,customer_id,customer_segment,region,channel,product_service_id,product_service_name,category,quantity,unit_price,discount_amount,revenue,direct_cost,payment_method,status,promotion_flag,customer_rating,order_id,sku,brand,inventory_level,reorder_level,shipping_cost,delivery_days,return_flag,website_sessions,cart_abandonment_flag
+RET-0001,2026-03-06,CUST-0004,VIP,East Region,Online,PS-0100,Wireless Earbuds,Electronics,2,39.62,14.03,65.21,36.45,Cash,Completed,true,4,ORD-025,SKU-042,PulseTech,173,25,4.53,4,false,9,false
+RET-0002,2026-03-25,CUST-0013,New,North Region,In-store,PS-0301,Throw Pillow,Home Goods,4,19.76,0,79.04,48.06,Mobile Wallet,Completed,false,2,ORD-032,SKU-032,Generic,84,28,6.82,2,false,6,false
+RET-0003,2026-03-27,CUST-0002,VIP,North Region,Marketplace,PS-0202,Denim Jacket,Clothing,4,28.36,20.19,93.25,65.65,Bank Transfer,Pending,true,5,ORD-023,SKU-039,NovaWear,154,22,2.43,6,false,11,false
+RET-0004,2026-04-04,CUST-0001,VIP,South Region,In-store,PS-0203,Cotton T-Shirt,Clothing,1,27.6,0,27.6,17.31,Cash,Completed,false,4,ORD-045,SKU-052,Generic,82,40,6.2,1,false,6,false
+RET-0005,2026-04-07,CUST-0001,VIP,Metro Area,Online,PS-0104,Phone Charger,Electronics,3,45.21,0,135.63,87.75,Online Payment,Completed,false,4,ORD-023,SKU-004,PulseTech,148,10,7.86,2,true,11,false
+RET-0006,2026-04-13,CUST-0010,VIP,Metro Area,In-store,PS-0105,Phone Charger,Electronics,1,42.37,0,42.37,25.04,Credit/Debit Card,Completed,false,4,ORD-032,SKU-049,NovaWear,81,33,7.27,5,false,8,false
+RET-0007,2026-04-18,CUST-0003,VIP,Metro Area,Online,PS-0206,Denim Jacket,Clothing,5,28.14,21.67,119.03,77.85,Cash,Completed,true,1,ORD-025,SKU-033,Generic,117,14,9.17,2,false,2,false
+RET-0008,2026-04-24,CUST-0010,VIP,East Region,Online,PS-0207,Running Shoes,Clothing,1,27.8,0,27.8,17.79,Credit/Debit Card,Completed,false,5,ORD-048,SKU-027,Generic,79,11,8.64,9,false,9,false
+RET-0009,2026-04-26,CUST-0003,VIP,East Region,Online,PS-0208,Denim Jacket,Clothing,4,28.18,15.1,97.62,61.79,Online Payment,Cancelled,false,,ORD-015,SKU-055,NovaWear,112,35,9.41,5,false,10,false
+RET-0010,2026-05-01,CUST-0005,VIP,South Region,In-store,PS-0300,LED Desk Lamp,Home Goods,5,19.96,17.47,82.33,57.3,Bank Transfer,Cancelled,true,,ORD-002,SKU-020,PulseTech,144,26,4.83,7,false,12,false
+RET-0011,2026-05-03,CUST-0001,VIP,North Region,Online,PS-0301,Throw Pillow,Home Goods,3,19.54,10.32,48.3,32.65,Cash,Pending,true,4,ORD-009,SKU-010,Generic,216,17,6.14,6,false,12,false
+RET-0012,2026-05-20,CUST-0004,VIP,South Region,Online,PS-0102,Wireless Earbuds,Electronics,3,41.37,6.33,117.78,74.2,Cash,Completed,false,4,ORD-029,SKU-023,NovaWear,118,15,6.31,4,false,12,false
+RET-0013,2026-05-21,CUST-0002,VIP,Metro Area,In-store,PS-0303,LED Desk Lamp,Home Goods,3,20.18,0,60.54,42.26,Mobile Wallet,Cancelled,false,,ORD-026,SKU-016,BrightHome,237,21,7.07,3,false,10,false
+RET-0014,2026-05-22,CUST-0003,VIP,North Region,Online,PS-0204,Running Shoes,Clothing,1,27.85,0,27.85,18.27,Bank Transfer,Completed,false,5,ORD-030,SKU-013,NovaWear,209,10,7.34,3,true,3,false
+RET-0015,2026-05-23,CUST-0011,Returning,South Region,Online,PS-0105,Bluetooth Speaker,Electronics,3,42.03,0,126.09,90.41,Bank Transfer,Completed,false,3,ORD-024,SKU-002,BrightHome,220,37,2.25,6,false,2,false
+RET-0016,2026-05-25,CUST-0006,Returning,South Region,Online,PS-0106,Bluetooth Speaker,Electronics,4,39.55,0,158.2,101.41,Online Payment,Completed,true,5,ORD-019,SKU-014,BrightHome,176,23,3.33,9,false,4,false
+RET-0017,2026-06-03,CUST-0006,Returning,Metro Area,Marketplace,PS-0107,Bluetooth Speaker,Electronics,3,45.03,0,135.09,87.4,Cash,Completed,false,4,ORD-033,SKU-039,PulseTech,166,22,3.13,5,false,11,false
+RET-0018,2026-06-05,CUST-0003,VIP,North Region,In-store,PS-0108,Wireless Earbuds,Electronics,2,41.77,0,83.54,52.88,Cash,Completed,false,4,ORD-002,SKU-023,BrightHome,104,23,7.53,4,false,7,false
+RET-0019,2026-06-07,CUST-0010,VIP,South Region,Marketplace,PS-0200,Cotton T-Shirt,Clothing,1,28.04,0,28.04,20.02,Online Payment,Completed,true,4,ORD-028,SKU-040,NovaWear,100,38,6.56,9,false,2,false
+RET-0020,2026-06-14,CUST-0011,Returning,Metro Area,In-store,PS-0301,Throw Pillow,Home Goods,1,17.53,0,17.53,10.73,Cash,Completed,false,5,ORD-020,SKU-025,BrightHome,126,17,7.93,9,false,6,false
+RET-0021,2026-06-17,CUST-0009,VIP,North Region,Online,PS-0302,Throw Pillow,Home Goods,1,19.42,0,19.42,11.9,Bank Transfer,Completed,false,4,ORD-034,SKU-019,NovaWear,164,12,5.78,5,false,8,true
+RET-0022,2026-06-26,CUST-0016,New,East Region,Marketplace,PS-0103,Bluetooth Speaker,Electronics,4,45.45,0,181.8,110.72,Credit/Debit Card,Completed,false,4,ORD-019,SKU-001,PulseTech,163,12,3.23,2,false,8,true
+RET-0023,2026-06-28,CUST-0009,VIP,South Region,In-store,PS-0304,LED Desk Lamp,Home Goods,6,20.34,13.18,108.86,69.34,Online Payment,Completed,false,5,ORD-044,SKU-032,Generic,214,11,6.6,5,false,2,false
+RET-0024,2026-07-04,CUST-0005,VIP,Metro Area,Marketplace,PS-0105,Bluetooth Speaker,Electronics,4,41.65,0,166.6,96.79,Online Payment,Completed,false,4,ORD-042,SKU-007,Generic,231,33,8.91,9,false,8,true
+RET-0025,2026-07-05,CUST-0008,VIP,Metro Area,In-store,PS-0206,Denim Jacket,Clothing,2,27.87,0,55.74,32.61,Cash,Completed,false,4,ORD-033,SKU-059,Generic,54,11,4.74,9,false,9,false
+RET-0026,2026-07-07,CUST-0001,VIP,North Region,Online,PS-0107,Phone Charger,Electronics,1,44.1,7.5,36.6,21.37,Mobile Wallet,Completed,false,5,ORD-020,SKU-044,Generic,88,16,7.87,7,false,11,false
+RET-0027,2026-07-09,CUST-0001,VIP,Metro Area,Marketplace,PS-0108,Bluetooth Speaker,Electronics,3,40.23,0,120.69,71.93,Online Payment,Cancelled,false,,ORD-027,SKU-048,BrightHome,212,12,1.62,4,false,2,false
+RET-0028,2026-07-12,CUST-0012,New,South Region,Online,PS-0200,Running Shoes,Clothing,2,32.58,8.73,56.43,38.77,Cash,Completed,false,4,ORD-008,SKU-050,BrightHome,61,37,8.93,9,true,1,false
+RET-0029,2026-07-21,CUST-0004,VIP,East Region,Online,PS-0301,Throw Pillow,Home Goods,6,19.31,0,115.86,74.03,Credit/Debit Card,Completed,false,4,ORD-012,SKU-008,PulseTech,172,18,7.13,8,false,2,true
+RET-0030,2026-07-25,CUST-0004,VIP,East Region,In-store,PS-0202,Cotton T-Shirt,Clothing,1,33.53,4.69,28.84,16.06,Bank Transfer,Completed,false,2,ORD-002,SKU-001,BrightHome,10,12,2.41,2,false,1,false
+RET-0031,2026-07-27,CUST-0008,VIP,North Region,Marketplace,PS-0203,Denim Jacket,Clothing,5,33.12,10.6,155,108.81,Mobile Wallet,Cancelled,true,,ORD-008,SKU-033,PulseTech,39,25,7.62,1,false,1,false
+RET-0032,2026-08-04,CUST-0001,VIP,East Region,In-store,PS-0204,Running Shoes,Clothing,2,33.36,9.94,56.78,40.26,Cash,Completed,true,4,ORD-019,SKU-046,BrightHome,193,37,7.33,5,false,7,false
+RET-0033,2026-08-05,CUST-0008,VIP,South Region,Online,PS-0205,Cotton T-Shirt,Clothing,4,32.94,0,131.76,92.1,Mobile Wallet,Completed,false,3,ORD-018,SKU-007,NovaWear,218,35,7.96,9,false,12,false
+RET-0034,2026-08-08,CUST-0004,VIP,East Region,Online,PS-0206,Cotton T-Shirt,Clothing,5,33.28,0,166.4,91.52,Cash,Completed,false,5,ORD-003,SKU-018,Generic,192,17,5.35,9,false,5,false
+RET-0035,2026-08-13,CUST-0009,VIP,North Region,In-store,PS-0207,Cotton T-Shirt,Clothing,1,32.96,0,32.96,21.92,Credit/Debit Card,Refunded,false,,ORD-040,SKU-014,PulseTech,225,31,3.51,3,true,8,false
+RET-0036,2026-08-14,CUST-0005,VIP,Metro Area,Marketplace,PS-0308,Ceramic Mug Set,Home Goods,5,19.33,0,96.65,58.96,Credit/Debit Card,Completed,false,4,ORD-013,SKU-028,BrightHome,167,12,8.86,4,false,6,false
+RET-0037,2026-08-16,CUST-0014,New,East Region,Marketplace,PS-0100,Wireless Earbuds,Electronics,4,44.65,0,178.6,123.95,Mobile Wallet,Completed,false,4,ORD-042,SKU-037,Generic,42,21,4.26,4,false,8,true
+RET-0038,2026-08-23,CUST-0005,VIP,South Region,Online,PS-0301,Throw Pillow,Home Goods,2,19.87,0,39.74,23.09,Mobile Wallet,Completed,true,5,ORD-049,SKU-030,BrightHome,160,12,3.36,8,false,9,false
+RET-0039,2026-08-25,CUST-0005,VIP,Metro Area,In-store,PS-0102,Phone Charger,Electronics,4,39.44,0,157.76,103.96,Mobile Wallet,Completed,false,5,ORD-002,SKU-024,BrightHome,158,24,2.24,3,false,11,false
+RET-0040,2026-08-26,CUST-0004,VIP,South Region,In-store,PS-0303,LED Desk Lamp,Home Goods,3,19.77,0,59.31,35.82,Bank Transfer,Completed,false,4,ORD-013,SKU-056,PulseTech,153,14,2.96,5,false,2,false
+RET-0041,2026-08-27,CUST-0005,VIP,East Region,Online,PS-0204,Denim Jacket,Clothing,2,32.89,12.1,53.68,32.26,Cash,Completed,true,5,ORD-021,SKU-053,Generic,226,12,4.91,4,false,7,false
+RET-0042,2026-09-05,CUST-0004,VIP,South Region,Marketplace,PS-0205,Denim Jacket,Clothing,4,33.53,23.2,110.92,69.66,Cash,Completed,true,3,ORD-023,SKU-008,BrightHome,222,21,5.46,1,false,7,false
+RET-0043,2026-09-06,CUST-0002,VIP,South Region,Online,PS-0206,Cotton T-Shirt,Clothing,1,32.73,0,32.73,18.36,Online Payment,Cancelled,false,,ORD-032,SKU-042,Generic,210,17,3.25,2,false,10,false
+RET-0044,2026-09-09,CUST-0010,VIP,Metro Area,Online,PS-0207,Running Shoes,Clothing,2,32.63,4.24,61.02,38.93,Mobile Wallet,Completed,false,4,ORD-012,SKU-043,BrightHome,54,20,9.35,4,false,11,false
+RET-0045,2026-09-14,CUST-0002,VIP,Metro Area,Online,PS-0108,Phone Charger,Electronics,1,43.12,5.69,37.43,22.2,Mobile Wallet,Refunded,true,,ORD-030,SKU-034,NovaWear,125,20,4.05,1,true,7,true
+RET-0046,2026-09-15,CUST-0007,Returning,South Region,In-store,PS-0100,Wireless Earbuds,Electronics,1,40.83,0,40.83,24.01,Online Payment,Completed,false,4,ORD-002,SKU-056,PulseTech,83,21,8.69,3,false,7,false
+RET-0047,2026-09-17,CUST-0015,New,South Region,In-store,PS-0201,Running Shoes,Clothing,1,32.58,0,32.58,17.95,Online Payment,Completed,false,5,ORD-014,SKU-029,BrightHome,48,33,1.95,2,false,3,false
+RET-0048,2026-09-20,CUST-0001,VIP,North Region,Marketplace,PS-0302,Throw Pillow,Home Goods,4,19.44,6.22,71.54,41.64,Bank Transfer,Completed,false,5,ORD-025,SKU-027,PulseTech,114,38,3.82,7,false,11,false
+RET-0049,2026-09-23,CUST-0007,Returning,Metro Area,Online,PS-0303,LED Desk Lamp,Home Goods,4,19.28,0,77.12,45.81,Cash,Completed,false,4,ORD-003,SKU-051,BrightHome,87,34,3.47,9,false,10,false
+RET-0050,2026-09-26,CUST-0001,VIP,North Region,Online,PS-0204,Cotton T-Shirt,Clothing,1,32.88,2.63,30.25,18.48,Credit/Debit Card,Completed,true,3,ORD-042,SKU-011,PulseTech,79,35,3.38,5,false,5,false

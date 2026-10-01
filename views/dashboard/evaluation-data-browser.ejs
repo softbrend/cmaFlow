@@ -1,0 +1,138 @@
+<%
+// Columns this page knows how to offer as a dedicated dropdown filter,
+// when the current template happens to have them (every template does,
+// since they're part of the shared 18-column core — see data/sme-templates
+// generator notes). Anything else is still searchable via the free-text
+// box and visible in the table itself.
+var FILTERABLE = ['category', 'status', 'customer_segment', 'payment_method', 'region'];
+var filterOptions = {};
+FILTERABLE.forEach(function (col) {
+  if (columns.indexOf(col) === -1) return;
+  var seen = {};
+  var vals = [];
+  records.forEach(function (r) {
+    var v = r[col];
+    if (v !== undefined && v !== null && v !== '' && !seen[v]) { seen[v] = true; vals.push(v); }
+  });
+  vals.sort();
+  filterOptions[col] = vals;
+});
+var hasDate = columns.indexOf('transaction_date') !== -1;
+%>
+<div class="page-title">🔎 <span class="page-title-text">Browse Evaluation CSV</span></div>
+<p class="page-subtitle">
+  <strong><%= categoryLabel %></strong> — <%= records.length %> rows from <%= templateFile %>, your current default CSV for evaluation. Filter below to check specific record values against what the four analytics reports show, or use the search box to find a specific row.
+  <a href="/sme-templates" style="margin-left: 6px;">Change default CSV</a>
+</p>
+
+<div class="form-card wide" style="margin-bottom: 18px;">
+  <div class="form-title" style="font-size: 15px;">Filters</div>
+  <div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;">
+    <div class="field" style="min-width: 220px; margin-bottom: 0;">
+      <label for="eval-search">Search (any column)</label>
+      <input type="text" id="eval-search" placeholder="e.g. a customer id, a product name…" />
+    </div>
+    <% Object.keys(filterOptions).forEach(function (col) { %>
+      <div class="field" style="min-width: 160px; margin-bottom: 0;">
+        <label for="eval-filter-<%= col %>"><%= col.replace(/_/g, ' ') %></label>
+        <select id="eval-filter-<%= col %>" data-filter-col="<%= col %>">
+          <option value="">All</option>
+          <% filterOptions[col].forEach(function (v) { %>
+            <option value="<%= v %>"><%= v %></option>
+          <% }); %>
+        </select>
+      </div>
+    <% }); %>
+    <% if (hasDate) { %>
+      <div class="field" style="margin-bottom: 0;">
+        <label for="eval-date-from">Transaction date from</label>
+        <input type="date" id="eval-date-from" />
+      </div>
+      <div class="field" style="margin-bottom: 0;">
+        <label for="eval-date-to">Transaction date to</label>
+        <input type="date" id="eval-date-to" />
+      </div>
+    <% } %>
+    <button type="button" id="eval-reset" class="btn btn-ghost btn-sm">Reset filters</button>
+  </div>
+  <p class="form-hint" style="margin: 10px 0 0;" id="eval-count">Showing <%= records.length %> of <%= records.length %> records.</p>
+</div>
+
+<div class="form-card wide" style="max-width: none;">
+  <div class="table-scroll">
+    <table class="table-simple" id="eval-table">
+      <thead>
+        <tr>
+          <% columns.forEach(function (col) { %><th><%= col.replace(/_/g, ' ') %></th><% }); %>
+        </tr>
+      </thead>
+      <tbody>
+        <% records.forEach(function (r) { %>
+          <tr
+            <% FILTERABLE.forEach(function (col) { if (columns.indexOf(col) !== -1) { %>data-<%= col.replace(/_/g, '-') %>="<%= (r[col] || '').toString().replace(/"/g, '&quot;') %>" <% } }); %>
+            <% if (hasDate) { %>data-transaction-date="<%= r.transaction_date %>"<% } %>
+          >
+            <% columns.forEach(function (col) { %><td><%= r[col] === undefined || r[col] === null || r[col] === '' ? '' : r[col] %></td><% }); %>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <p class="form-hint" id="eval-empty" style="display:none; margin: 14px 0 0;">No rows match the current filters.</p>
+</div>
+
+<script>
+(function () {
+  var table = document.getElementById('eval-table');
+  var rows = Array.prototype.slice.call(table.querySelectorAll('tbody tr'));
+  var searchBox = document.getElementById('eval-search');
+  var dropdowns = Array.prototype.slice.call(document.querySelectorAll('[data-filter-col]'));
+  var dateFrom = document.getElementById('eval-date-from');
+  var dateTo = document.getElementById('eval-date-to');
+  var countEl = document.getElementById('eval-count');
+  var emptyEl = document.getElementById('eval-empty');
+  var total = rows.length;
+
+  function applyFilters() {
+    var search = (searchBox.value || '').trim().toLowerCase();
+    var activeDropdowns = dropdowns.map(function (el) {
+      return { col: el.getAttribute('data-filter-col').replace(/_/g, '-'), value: el.value };
+    }).filter(function (f) { return f.value; });
+    var from = dateFrom && dateFrom.value ? dateFrom.value : null;
+    var to = dateTo && dateTo.value ? dateTo.value : null;
+
+    var visible = 0;
+    rows.forEach(function (row) {
+      var ok = true;
+      for (var i = 0; i < activeDropdowns.length; i++) {
+        var f = activeDropdowns[i];
+        if (row.getAttribute('data-' + f.col) !== f.value) { ok = false; break; }
+      }
+      if (ok && (from || to)) {
+        var d = row.getAttribute('data-transaction-date');
+        if (from && d < from) ok = false;
+        if (to && d > to) ok = false;
+      }
+      if (ok && search) {
+        ok = row.textContent.toLowerCase().indexOf(search) !== -1;
+      }
+      row.style.display = ok ? '' : 'none';
+      if (ok) visible++;
+    });
+    countEl.textContent = 'Showing ' + visible + ' of ' + total + ' records.';
+    emptyEl.style.display = visible === 0 ? '' : 'none';
+  }
+
+  searchBox.addEventListener('input', applyFilters);
+  dropdowns.forEach(function (el) { el.addEventListener('change', applyFilters); });
+  if (dateFrom) dateFrom.addEventListener('change', applyFilters);
+  if (dateTo) dateTo.addEventListener('change', applyFilters);
+  document.getElementById('eval-reset').addEventListener('click', function () {
+    searchBox.value = '';
+    dropdowns.forEach(function (el) { el.value = ''; });
+    if (dateFrom) dateFrom.value = '';
+    if (dateTo) dateTo.value = '';
+    applyFilters();
+  });
+})();
+</script>

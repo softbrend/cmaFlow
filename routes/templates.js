@@ -20,10 +20,29 @@ const fs = require('fs');
 const path = require('path');
 const { parse } = require('csv-parse/sync');
 const { requireAuth } = require('../middleware/auth');
+const pool = require('../db/pool');
 
 const router = express.Router();
 const TEMPLATES_ROOT = path.join(__dirname, '..', 'data', 'sme-templates');
 const MANIFEST_PATH = path.join(TEMPLATES_ROOT, '00_CMAFlow_SME_Template_Manifest.csv');
+const EXPERT_ROLE = 'Expert Evaluator';
+
+// Same shape as requireAdmin in middleware/auth.js — a signed-in account
+// that isn't an Expert Evaluator gets a plain 403, not a bounce to
+// /login, since they ARE authenticated, just not the role this section
+// (choosing/browsing the "default CSV for evaluation") is for. Kept
+// local to this router since nothing outside routes/templates.js needs
+// it yet.
+function requireExpertEvaluator(req, res, next) {
+  if (!(req.session && req.session.userId)) {
+    req.session.flashError = 'Please sign in to continue.';
+    return res.redirect('/login');
+  }
+  if (req.session.user && req.session.user.role === EXPERT_ROLE) {
+    return next();
+  }
+  return res.status(403).render('errors/403', { title: 'Not authorized', layout: false });
+}
 
 function loadManifest() {
   const raw = fs.readFileSync(MANIFEST_PATH, 'utf-8');
@@ -53,11 +72,23 @@ router.get('/sme-templates', requireAuth, (req, res, next) => {
     // sector, not one of these 20 categories necessarily) and for anyone
     // without a declared category yet.
     const assignedCategory = (user && user.role === 'Expert Evaluator' && user.business_sector) || null;
+    // Each of the 20 templates now ships with 50 synthetic rows (see
+    // data/sme-templates/*_template.csv) built so they drive real output
+    // across all four analytics modules. An Expert Evaluator can mark one
+    // as their "default CSV for evaluation" below and then browse/filter
+    // its exact rows (GET /sme-templates/evaluation-data) to cross-check
+    // report numbers against known source values — an SME owner has no
+    // equivalent concept, since their reports are built from their own
+    // uploaded data.
+    const isExpertEvaluator = !!(user && user.role === EXPERT_ROLE);
+    const evaluationTemplateFile = (isExpertEvaluator && user.evaluation_template_file) || null;
     res.render('dashboard/sme-templates', {
       title: 'Download SME Templates',
       active: 'sme-templates',
       manifest,
       assignedCategory,
+      isExpertEvaluator,
+      evaluationTemplateFile,
     });
   } catch (err) {
     next(err);
@@ -70,6 +101,61 @@ router.get('/sme-templates/download/:file', requireAuth, (req, res) => {
     return res.status(404).render('errors/404', { title: 'Not found', layout: false });
   }
   res.download(resolved.fullPath, resolved.row.template_file);
+});
+
+// POST /sme-templates/set-evaluation-default — an Expert Evaluator's own
+// explicit choice of which template's pre-populated CSV they want to use
+// as their reference dataset for cross-checking the four analytics
+// reports. Stored on sme_accounts.evaluation_template_file (see db/
+// schema.sql), the same way an SME owner's default_dataset_id works for
+// their own uploads — but this is a filename, validated against the
+// manifest, not a foreign key, since the 20 templates are static files
+// checked into the repo rather than account-owned rows.
+router.post('/sme-templates/set-evaluation-default', requireExpertEvaluator, async (req, res, next) => {
+  try {
+    const resolved = resolveTemplateFile(req.body.template_file);
+    if (resolved) {
+      await pool.query(
+        'UPDATE sme_accounts SET evaluation_template_file = $1 WHERE id = $2',
+        [resolved.row.template_file, req.session.userId],
+      );
+      req.session.user.evaluation_template_file = resolved.row.template_file;
+    }
+    res.redirect('/sme-templates');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /sme-templates/evaluation-data — browse/filter the exact rows of
+// whichever template the Expert Evaluator picked above. Reads the CSV
+// straight off disk (it's the same static file /sme-templates/download
+// serves) and hands every row + column name to the view; filtering itself
+// happens client-side in the browser (see views/dashboard/
+// evaluation-data-browser.ejs) since 50 rows is trivial to filter in the
+// page without a round trip per filter change.
+router.get('/sme-templates/evaluation-data', requireExpertEvaluator, (req, res, next) => {
+  try {
+    const fileName = req.session.user.evaluation_template_file;
+    const resolved = fileName && resolveTemplateFile(fileName);
+    if (!resolved) {
+      req.session.flashError = 'Choose a default CSV for evaluation first.';
+      return res.redirect('/sme-templates');
+    }
+    const raw = fs.readFileSync(resolved.fullPath, 'utf-8');
+    const records = parse(raw, { columns: true, skip_empty_lines: true });
+    const columns = records.length ? Object.keys(records[0]) : [];
+    res.render('dashboard/evaluation-data-browser', {
+      title: 'Browse Evaluation CSV',
+      active: 'sme-templates',
+      categoryLabel: resolved.row.sme_business_category,
+      templateFile: resolved.row.template_file,
+      columns,
+      records,
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // Two reference documents alongside the per-category templates: the full

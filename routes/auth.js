@@ -265,14 +265,16 @@ router.post('/login', redirectIfAuthed, async (req, res, next) => {
   }
 
   try {
-    // business_sector included here (not just in the registration
-    // RETURNING clauses) so req.session.user.business_sector is populated
+    // business_sector and evaluation_template_file included here (not
+    // just in the registration RETURNING clauses) so both are populated
     // on every login, not only immediately after signup — an Expert
     // Evaluator's declared category (routes/templates.js's
-    // assignedCategory) depends on it still being there after they log
-    // back in on a later visit.
+    // assignedCategory) and their chosen default CSV for evaluation
+    // (evaluationTemplateFile) both depend on these still being there
+    // after they log back in on a later visit.
     const { rows } = await pool.query(
-      `SELECT id, username, owner_name, business_name, email, role, business_sector, assigned_dataset, password_hash
+      `SELECT id, username, owner_name, business_name, email, role, business_sector,
+              evaluation_template_file, assigned_dataset, password_hash
          FROM sme_accounts WHERE username = $1`,
       [username.trim()]
     );
