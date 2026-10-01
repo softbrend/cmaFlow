@@ -101,11 +101,25 @@ app.use(attachUser);
 app.use(evaluationGate);
 
 // --- Routes ---
+// templateRoutes MUST be registered before adminRoutes. adminRoutes opens
+// with an unconditional `router.use(requireAdmin)` (routes/admin.js) with
+// no path restriction — Express runs that for ANY request that falls
+// through every earlier router unmatched, not just requests actually
+// aimed at /admin/*, because the whole router is mounted at '/'. Since
+// /sme-templates isn't defined in authRoutes/dashboardRoutes/
+// evaluationRoutes, a request for it used to fall through all the way to
+// adminRoutes and get wrongly turned away with "this section is for
+// Admin accounts only" before templateRoutes ever got a chance to handle
+// it — even though GET /sme-templates itself only requires requireAuth
+// (any signed-in account). Registering templateRoutes first means its
+// own routes get matched and handled on their own merits; anything that
+// still isn't matched (i.e. genuinely meant for /admin/*) falls through
+// to adminRoutes exactly as before.
 app.use('/', authRoutes);
 app.use('/', dashboardRoutes);
 app.use('/', evaluationRoutes);
-app.use('/', adminRoutes);
 app.use('/', templateRoutes);
+app.use('/', adminRoutes);
 
 // --- 404 ---
 app.use((req, res) => {
