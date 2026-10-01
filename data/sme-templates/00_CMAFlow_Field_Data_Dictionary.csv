@@ -1,0 +1,594 @@
+sme_business_category,field_name,suggested_data_type,analytics_role,required_or_recommended,description
+Retail and ECommerce,record_id,identifier,descriptive profiling; diagnostic segmentation,Required,Record Id
+Retail and ECommerce,transaction_date,date,descriptive trend; predictive time-series,Required,Transaction Date
+Retail and ECommerce,customer_id,identifier,descriptive profiling; diagnostic segmentation,Required,Customer Id
+Retail and ECommerce,customer_segment,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Customer Segment
+Retail and ECommerce,region,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Region
+Retail and ECommerce,channel,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Channel
+Retail and ECommerce,product_service_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Product Service Id
+Retail and ECommerce,product_service_name,categorical/text,descriptive profiling; diagnostic segmentation,Required,Product Service Name
+Retail and ECommerce,category,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Category
+Retail and ECommerce,quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Quantity
+Retail and ECommerce,unit_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Unit Price
+Retail and ECommerce,discount_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Discount Amount
+Retail and ECommerce,revenue,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Revenue
+Retail and ECommerce,direct_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Direct Cost
+Retail and ECommerce,payment_method,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Payment Method
+Retail and ECommerce,status,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Required,Status
+Retail and ECommerce,promotion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Promotion Flag
+Retail and ECommerce,customer_rating,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Customer Rating
+Retail and ECommerce,order_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Order Id
+Retail and ECommerce,sku,identifier,descriptive profiling; diagnostic segmentation,Recommended,Sku
+Retail and ECommerce,brand,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Brand
+Retail and ECommerce,inventory_level,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Inventory Level
+Retail and ECommerce,reorder_level,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Reorder Level
+Retail and ECommerce,shipping_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Shipping Cost
+Retail and ECommerce,delivery_days,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Delivery Days
+Retail and ECommerce,return_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Return Flag
+Retail and ECommerce,website_sessions,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Website Sessions
+Retail and ECommerce,cart_abandonment_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Cart Abandonment Flag
+Food and Beverage,record_id,identifier,descriptive profiling; diagnostic segmentation,Required,Record Id
+Food and Beverage,transaction_date,date,descriptive trend; predictive time-series,Required,Transaction Date
+Food and Beverage,customer_id,identifier,descriptive profiling; diagnostic segmentation,Required,Customer Id
+Food and Beverage,customer_segment,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Customer Segment
+Food and Beverage,region,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Region
+Food and Beverage,channel,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Channel
+Food and Beverage,product_service_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Product Service Id
+Food and Beverage,product_service_name,categorical/text,descriptive profiling; diagnostic segmentation,Required,Product Service Name
+Food and Beverage,category,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Category
+Food and Beverage,quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Quantity
+Food and Beverage,unit_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Unit Price
+Food and Beverage,discount_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Discount Amount
+Food and Beverage,revenue,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Revenue
+Food and Beverage,direct_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Direct Cost
+Food and Beverage,payment_method,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Payment Method
+Food and Beverage,status,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Required,Status
+Food and Beverage,promotion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Promotion Flag
+Food and Beverage,customer_rating,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Customer Rating
+Food and Beverage,order_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Order Id
+Food and Beverage,menu_item,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Menu Item
+Food and Beverage,meal_period,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Meal Period
+Food and Beverage,table_or_delivery,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Table Or Delivery
+Food and Beverage,ingredient_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Ingredient Cost
+Food and Beverage,prep_time_minutes,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Prep Time Minutes
+Food and Beverage,delivery_time_minutes,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Delivery Time Minutes
+Food and Beverage,waste_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Waste Cost
+Food and Beverage,order_source,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Order Source
+Food and Beverage,repeat_customer_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Repeat Customer Flag
+Accommodation and Tourism,record_id,identifier,descriptive profiling; diagnostic segmentation,Required,Record Id
+Accommodation and Tourism,transaction_date,date,descriptive trend; predictive time-series,Required,Transaction Date
+Accommodation and Tourism,customer_id,identifier,descriptive profiling; diagnostic segmentation,Required,Customer Id
+Accommodation and Tourism,customer_segment,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Customer Segment
+Accommodation and Tourism,region,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Region
+Accommodation and Tourism,channel,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Channel
+Accommodation and Tourism,product_service_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Product Service Id
+Accommodation and Tourism,product_service_name,categorical/text,descriptive profiling; diagnostic segmentation,Required,Product Service Name
+Accommodation and Tourism,category,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Category
+Accommodation and Tourism,quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Quantity
+Accommodation and Tourism,unit_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Unit Price
+Accommodation and Tourism,discount_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Discount Amount
+Accommodation and Tourism,revenue,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Revenue
+Accommodation and Tourism,direct_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Direct Cost
+Accommodation and Tourism,payment_method,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Payment Method
+Accommodation and Tourism,status,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Required,Status
+Accommodation and Tourism,promotion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Promotion Flag
+Accommodation and Tourism,customer_rating,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Customer Rating
+Accommodation and Tourism,booking_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Booking Id
+Accommodation and Tourism,property_or_tour,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Property Or Tour
+Accommodation and Tourism,room_or_package_type,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Room Or Package Type
+Accommodation and Tourism,check_in_date,date,descriptive trend; predictive time-series,Recommended,Check In Date
+Accommodation and Tourism,check_out_date,date,descriptive trend; predictive time-series,Recommended,Check Out Date
+Accommodation and Tourism,nights,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Nights
+Accommodation and Tourism,occupancy_rate,currency/numeric,descriptive profiling; diagnostic segmentation,Recommended,Occupancy Rate
+Accommodation and Tourism,available_capacity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Available Capacity
+Accommodation and Tourism,booking_lead_days,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Booking Lead Days
+Accommodation and Tourism,cancellation_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Cancellation Flag
+Accommodation and Tourism,season,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Season
+Professional Services,record_id,identifier,descriptive profiling; diagnostic segmentation,Required,Record Id
+Professional Services,transaction_date,date,descriptive trend; predictive time-series,Required,Transaction Date
+Professional Services,customer_id,identifier,descriptive profiling; diagnostic segmentation,Required,Customer Id
+Professional Services,customer_segment,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Customer Segment
+Professional Services,region,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Region
+Professional Services,channel,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Channel
+Professional Services,product_service_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Product Service Id
+Professional Services,product_service_name,categorical/text,descriptive profiling; diagnostic segmentation,Required,Product Service Name
+Professional Services,category,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Category
+Professional Services,quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Quantity
+Professional Services,unit_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Unit Price
+Professional Services,discount_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Discount Amount
+Professional Services,revenue,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Revenue
+Professional Services,direct_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Direct Cost
+Professional Services,payment_method,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Payment Method
+Professional Services,status,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Required,Status
+Professional Services,promotion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Promotion Flag
+Professional Services,customer_rating,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Customer Rating
+Professional Services,project_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Project Id
+Professional Services,service_type,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Service Type
+Professional Services,consultant_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Consultant Id
+Professional Services,billable_hours,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Billable Hours
+Professional Services,hourly_rate,currency/numeric,descriptive profiling; diagnostic segmentation,Recommended,Hourly Rate
+Professional Services,project_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Project Cost
+Professional Services,project_start_date,date,descriptive trend; predictive time-series,Recommended,Project Start Date
+Professional Services,project_end_date,date,descriptive trend; predictive time-series,Recommended,Project End Date
+Professional Services,completion_days,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Completion Days
+Professional Services,client_acquisition_source,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Client Acquisition Source
+Professional Services,repeat_client_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Repeat Client Flag
+IT and Digital Services,record_id,identifier,descriptive profiling; diagnostic segmentation,Required,Record Id
+IT and Digital Services,transaction_date,date,descriptive trend; predictive time-series,Required,Transaction Date
+IT and Digital Services,customer_id,identifier,descriptive profiling; diagnostic segmentation,Required,Customer Id
+IT and Digital Services,customer_segment,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Customer Segment
+IT and Digital Services,region,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Region
+IT and Digital Services,channel,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Channel
+IT and Digital Services,product_service_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Product Service Id
+IT and Digital Services,product_service_name,categorical/text,descriptive profiling; diagnostic segmentation,Required,Product Service Name
+IT and Digital Services,category,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Category
+IT and Digital Services,quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Quantity
+IT and Digital Services,unit_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Unit Price
+IT and Digital Services,discount_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Discount Amount
+IT and Digital Services,revenue,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Revenue
+IT and Digital Services,direct_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Direct Cost
+IT and Digital Services,payment_method,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Payment Method
+IT and Digital Services,status,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Required,Status
+IT and Digital Services,promotion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Promotion Flag
+IT and Digital Services,customer_rating,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Customer Rating
+IT and Digital Services,subscription_or_project_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Subscription Or Project Id
+IT and Digital Services,plan_name,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Plan Name
+IT and Digital Services,billing_cycle,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Billing Cycle
+IT and Digital Services,active_users,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Active Users
+IT and Digital Services,feature_usage_count,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Feature Usage Count
+IT and Digital Services,api_calls,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Api Calls
+IT and Digital Services,support_tickets,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Support Tickets
+IT and Digital Services,uptime_percent,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Uptime Percent
+IT and Digital Services,subscription_start_date,date,descriptive trend; predictive time-series,Recommended,Subscription Start Date
+IT and Digital Services,subscription_end_date,date,descriptive trend; predictive time-series,Recommended,Subscription End Date
+IT and Digital Services,renewal_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Renewal Flag
+IT and Digital Services,churn_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Churn Flag
+Manufacturing,record_id,identifier,descriptive profiling; diagnostic segmentation,Required,Record Id
+Manufacturing,transaction_date,date,descriptive trend; predictive time-series,Required,Transaction Date
+Manufacturing,customer_id,identifier,descriptive profiling; diagnostic segmentation,Required,Customer Id
+Manufacturing,customer_segment,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Customer Segment
+Manufacturing,region,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Region
+Manufacturing,channel,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Channel
+Manufacturing,product_service_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Product Service Id
+Manufacturing,product_service_name,categorical/text,descriptive profiling; diagnostic segmentation,Required,Product Service Name
+Manufacturing,category,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Category
+Manufacturing,quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Quantity
+Manufacturing,unit_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Unit Price
+Manufacturing,discount_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Discount Amount
+Manufacturing,revenue,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Revenue
+Manufacturing,direct_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Direct Cost
+Manufacturing,payment_method,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Payment Method
+Manufacturing,status,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Required,Status
+Manufacturing,promotion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Promotion Flag
+Manufacturing,customer_rating,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Customer Rating
+Manufacturing,production_batch_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Production Batch Id
+Manufacturing,product_line,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Product Line
+Manufacturing,units_produced,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Units Produced
+Manufacturing,units_defective,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Units Defective
+Manufacturing,machine_hours,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Machine Hours
+Manufacturing,labor_hours,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Labor Hours
+Manufacturing,material_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Material Cost
+Manufacturing,labor_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Labor Cost
+Manufacturing,overhead_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Overhead Cost
+Manufacturing,downtime_minutes,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Downtime Minutes
+Manufacturing,lead_time_days,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Lead Time Days
+Manufacturing,waste_units,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Waste Units
+Agriculture and Agribusiness,record_id,identifier,descriptive profiling; diagnostic segmentation,Required,Record Id
+Agriculture and Agribusiness,transaction_date,date,descriptive trend; predictive time-series,Required,Transaction Date
+Agriculture and Agribusiness,customer_id,identifier,descriptive profiling; diagnostic segmentation,Required,Customer Id
+Agriculture and Agribusiness,customer_segment,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Customer Segment
+Agriculture and Agribusiness,region,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Region
+Agriculture and Agribusiness,channel,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Channel
+Agriculture and Agribusiness,product_service_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Product Service Id
+Agriculture and Agribusiness,product_service_name,categorical/text,descriptive profiling; diagnostic segmentation,Required,Product Service Name
+Agriculture and Agribusiness,category,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Category
+Agriculture and Agribusiness,quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Quantity
+Agriculture and Agribusiness,unit_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Unit Price
+Agriculture and Agribusiness,discount_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Discount Amount
+Agriculture and Agribusiness,revenue,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Revenue
+Agriculture and Agribusiness,direct_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Direct Cost
+Agriculture and Agribusiness,payment_method,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Payment Method
+Agriculture and Agribusiness,status,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Required,Status
+Agriculture and Agribusiness,promotion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Promotion Flag
+Agriculture and Agribusiness,customer_rating,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Customer Rating
+Agriculture and Agribusiness,farm_batch_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Farm Batch Id
+Agriculture and Agribusiness,crop_or_product,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Crop Or Product
+Agriculture and Agribusiness,farm_area_hectares,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Farm Area Hectares
+Agriculture and Agribusiness,harvest_quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Harvest Quantity
+Agriculture and Agribusiness,yield_per_hectare,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Yield Per Hectare
+Agriculture and Agribusiness,input_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Input Cost
+Agriculture and Agribusiness,labor_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Labor Cost
+Agriculture and Agribusiness,weather_condition,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Weather Condition
+Agriculture and Agribusiness,rainfall_mm,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Rainfall Mm
+Agriculture and Agribusiness,harvest_date,date,descriptive trend; predictive time-series,Recommended,Harvest Date
+Agriculture and Agribusiness,grade_quality,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Grade Quality
+Agriculture and Agribusiness,spoilage_quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Spoilage Quantity
+Transportation and Logistics,record_id,identifier,descriptive profiling; diagnostic segmentation,Required,Record Id
+Transportation and Logistics,transaction_date,date,descriptive trend; predictive time-series,Required,Transaction Date
+Transportation and Logistics,customer_id,identifier,descriptive profiling; diagnostic segmentation,Required,Customer Id
+Transportation and Logistics,customer_segment,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Customer Segment
+Transportation and Logistics,region,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Region
+Transportation and Logistics,channel,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Channel
+Transportation and Logistics,product_service_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Product Service Id
+Transportation and Logistics,product_service_name,categorical/text,descriptive profiling; diagnostic segmentation,Required,Product Service Name
+Transportation and Logistics,category,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Category
+Transportation and Logistics,quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Quantity
+Transportation and Logistics,unit_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Unit Price
+Transportation and Logistics,discount_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Discount Amount
+Transportation and Logistics,revenue,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Revenue
+Transportation and Logistics,direct_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Direct Cost
+Transportation and Logistics,payment_method,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Payment Method
+Transportation and Logistics,status,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Required,Status
+Transportation and Logistics,promotion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Promotion Flag
+Transportation and Logistics,customer_rating,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Customer Rating
+Transportation and Logistics,trip_or_delivery_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Trip Or Delivery Id
+Transportation and Logistics,vehicle_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Vehicle Id
+Transportation and Logistics,service_type,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Service Type
+Transportation and Logistics,distance_km,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Distance Km
+Transportation and Logistics,fuel_liters,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Fuel Liters
+Transportation and Logistics,fuel_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Fuel Cost
+Transportation and Logistics,driver_hours,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Driver Hours
+Transportation and Logistics,delivery_time_minutes,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Delivery Time Minutes
+Transportation and Logistics,on_time_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,On Time Flag
+Transportation and Logistics,load_weight_kg,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Load Weight Kg
+Transportation and Logistics,vehicle_maintenance_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Vehicle Maintenance Cost
+Transportation and Logistics,failed_delivery_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Failed Delivery Flag
+Construction and Home Services,record_id,identifier,descriptive profiling; diagnostic segmentation,Required,Record Id
+Construction and Home Services,transaction_date,date,descriptive trend; predictive time-series,Required,Transaction Date
+Construction and Home Services,customer_id,identifier,descriptive profiling; diagnostic segmentation,Required,Customer Id
+Construction and Home Services,customer_segment,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Customer Segment
+Construction and Home Services,region,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Region
+Construction and Home Services,channel,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Channel
+Construction and Home Services,product_service_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Product Service Id
+Construction and Home Services,product_service_name,categorical/text,descriptive profiling; diagnostic segmentation,Required,Product Service Name
+Construction and Home Services,category,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Category
+Construction and Home Services,quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Quantity
+Construction and Home Services,unit_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Unit Price
+Construction and Home Services,discount_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Discount Amount
+Construction and Home Services,revenue,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Revenue
+Construction and Home Services,direct_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Direct Cost
+Construction and Home Services,payment_method,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Payment Method
+Construction and Home Services,status,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Required,Status
+Construction and Home Services,promotion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Promotion Flag
+Construction and Home Services,customer_rating,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Customer Rating
+Construction and Home Services,job_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Job Id
+Construction and Home Services,service_type,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Service Type
+Construction and Home Services,project_start_date,date,descriptive trend; predictive time-series,Recommended,Project Start Date
+Construction and Home Services,project_end_date,date,descriptive trend; predictive time-series,Recommended,Project End Date
+Construction and Home Services,labor_hours,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Labor Hours
+Construction and Home Services,labor_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Labor Cost
+Construction and Home Services,material_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Material Cost
+Construction and Home Services,equipment_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Equipment Cost
+Construction and Home Services,estimated_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Estimated Cost
+Construction and Home Services,actual_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Actual Cost
+Construction and Home Services,completion_delay_days,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Completion Delay Days
+Construction and Home Services,rework_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Rework Flag
+Health and Wellness Services,record_id,identifier,descriptive profiling; diagnostic segmentation,Required,Record Id
+Health and Wellness Services,transaction_date,date,descriptive trend; predictive time-series,Required,Transaction Date
+Health and Wellness Services,customer_id,identifier,descriptive profiling; diagnostic segmentation,Required,Customer Id
+Health and Wellness Services,customer_segment,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Customer Segment
+Health and Wellness Services,region,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Region
+Health and Wellness Services,channel,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Channel
+Health and Wellness Services,product_service_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Product Service Id
+Health and Wellness Services,product_service_name,categorical/text,descriptive profiling; diagnostic segmentation,Required,Product Service Name
+Health and Wellness Services,category,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Category
+Health and Wellness Services,quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Quantity
+Health and Wellness Services,unit_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Unit Price
+Health and Wellness Services,discount_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Discount Amount
+Health and Wellness Services,revenue,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Revenue
+Health and Wellness Services,direct_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Direct Cost
+Health and Wellness Services,payment_method,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Payment Method
+Health and Wellness Services,status,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Required,Status
+Health and Wellness Services,promotion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Promotion Flag
+Health and Wellness Services,customer_rating,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Customer Rating
+Health and Wellness Services,visit_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Visit Id
+Health and Wellness Services,service_type,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Service Type
+Health and Wellness Services,provider_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Provider Id
+Health and Wellness Services,appointment_date,date,descriptive trend; predictive time-series,Recommended,Appointment Date
+Health and Wellness Services,appointment_type,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Appointment Type
+Health and Wellness Services,service_duration_minutes,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Service Duration Minutes
+Health and Wellness Services,capacity_slots,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Capacity Slots
+Health and Wellness Services,booked_slots,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Booked Slots
+Health and Wellness Services,no_show_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,No Show Flag
+Health and Wellness Services,follow_up_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Follow Up Flag
+Health and Wellness Services,consumables_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Consumables Cost
+Health and Wellness Services,membership_plan,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Membership Plan
+Education and Training,record_id,identifier,descriptive profiling; diagnostic segmentation,Required,Record Id
+Education and Training,transaction_date,date,descriptive trend; predictive time-series,Required,Transaction Date
+Education and Training,customer_id,identifier,descriptive profiling; diagnostic segmentation,Required,Customer Id
+Education and Training,customer_segment,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Customer Segment
+Education and Training,region,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Region
+Education and Training,channel,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Channel
+Education and Training,product_service_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Product Service Id
+Education and Training,product_service_name,categorical/text,descriptive profiling; diagnostic segmentation,Required,Product Service Name
+Education and Training,category,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Category
+Education and Training,quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Quantity
+Education and Training,unit_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Unit Price
+Education and Training,discount_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Discount Amount
+Education and Training,revenue,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Revenue
+Education and Training,direct_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Direct Cost
+Education and Training,payment_method,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Payment Method
+Education and Training,status,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Required,Status
+Education and Training,promotion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Promotion Flag
+Education and Training,customer_rating,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Customer Rating
+Education and Training,enrollment_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Enrollment Id
+Education and Training,course_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Course Id
+Education and Training,course_name,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Course Name
+Education and Training,delivery_mode,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Delivery Mode
+Education and Training,enrollment_date,date,descriptive trend; predictive time-series,Recommended,Enrollment Date
+Education and Training,completion_date,date,descriptive trend; predictive time-series,Recommended,Completion Date
+Education and Training,sessions_attended,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Sessions Attended
+Education and Training,sessions_total,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Sessions Total
+Education and Training,completion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Completion Flag
+Education and Training,assessment_score,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Assessment Score
+Education and Training,instructor_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Instructor Id
+Education and Training,course_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Course Cost
+Beauty and Personal Care,record_id,identifier,descriptive profiling; diagnostic segmentation,Required,Record Id
+Beauty and Personal Care,transaction_date,date,descriptive trend; predictive time-series,Required,Transaction Date
+Beauty and Personal Care,customer_id,identifier,descriptive profiling; diagnostic segmentation,Required,Customer Id
+Beauty and Personal Care,customer_segment,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Customer Segment
+Beauty and Personal Care,region,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Region
+Beauty and Personal Care,channel,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Channel
+Beauty and Personal Care,product_service_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Product Service Id
+Beauty and Personal Care,product_service_name,categorical/text,descriptive profiling; diagnostic segmentation,Required,Product Service Name
+Beauty and Personal Care,category,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Category
+Beauty and Personal Care,quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Quantity
+Beauty and Personal Care,unit_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Unit Price
+Beauty and Personal Care,discount_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Discount Amount
+Beauty and Personal Care,revenue,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Revenue
+Beauty and Personal Care,direct_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Direct Cost
+Beauty and Personal Care,payment_method,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Payment Method
+Beauty and Personal Care,status,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Required,Status
+Beauty and Personal Care,promotion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Promotion Flag
+Beauty and Personal Care,customer_rating,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Customer Rating
+Beauty and Personal Care,appointment_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Appointment Id
+Beauty and Personal Care,service_type,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Service Type
+Beauty and Personal Care,staff_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Staff Id
+Beauty and Personal Care,appointment_date,date,descriptive trend; predictive time-series,Recommended,Appointment Date
+Beauty and Personal Care,service_duration_minutes,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Service Duration Minutes
+Beauty and Personal Care,product_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Product Cost
+Beauty and Personal Care,staff_commission,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Staff Commission
+Beauty and Personal Care,booking_source,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Booking Source
+Beauty and Personal Care,no_show_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,No Show Flag
+Beauty and Personal Care,repeat_customer_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Repeat Customer Flag
+Beauty and Personal Care,membership_plan,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Membership Plan
+Real Estate and Property Services,record_id,identifier,descriptive profiling; diagnostic segmentation,Required,Record Id
+Real Estate and Property Services,transaction_date,date,descriptive trend; predictive time-series,Required,Transaction Date
+Real Estate and Property Services,customer_id,identifier,descriptive profiling; diagnostic segmentation,Required,Customer Id
+Real Estate and Property Services,customer_segment,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Customer Segment
+Real Estate and Property Services,region,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Region
+Real Estate and Property Services,channel,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Channel
+Real Estate and Property Services,product_service_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Product Service Id
+Real Estate and Property Services,product_service_name,categorical/text,descriptive profiling; diagnostic segmentation,Required,Product Service Name
+Real Estate and Property Services,category,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Category
+Real Estate and Property Services,quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Quantity
+Real Estate and Property Services,unit_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Unit Price
+Real Estate and Property Services,discount_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Discount Amount
+Real Estate and Property Services,revenue,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Revenue
+Real Estate and Property Services,direct_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Direct Cost
+Real Estate and Property Services,payment_method,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Payment Method
+Real Estate and Property Services,status,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Required,Status
+Real Estate and Property Services,promotion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Promotion Flag
+Real Estate and Property Services,customer_rating,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Customer Rating
+Real Estate and Property Services,property_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Property Id
+Real Estate and Property Services,transaction_or_lease_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Transaction Or Lease Id
+Real Estate and Property Services,property_type,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Property Type
+Real Estate and Property Services,listing_date,date,descriptive trend; predictive time-series,Recommended,Listing Date
+Real Estate and Property Services,close_date,date,descriptive trend; predictive time-series,Recommended,Close Date
+Real Estate and Property Services,listing_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Listing Price
+Real Estate and Property Services,final_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Final Price
+Real Estate and Property Services,monthly_rent,currency/numeric,descriptive profiling; diagnostic segmentation,Recommended,Monthly Rent
+Real Estate and Property Services,occupancy_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Occupancy Flag
+Real Estate and Property Services,days_on_market,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Days On Market
+Real Estate and Property Services,agent_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Agent Id
+Real Estate and Property Services,commission_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Commission Amount
+Real Estate and Property Services,property_area_sqm,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Property Area Sqm
+Creative and Media Services,record_id,identifier,descriptive profiling; diagnostic segmentation,Required,Record Id
+Creative and Media Services,transaction_date,date,descriptive trend; predictive time-series,Required,Transaction Date
+Creative and Media Services,customer_id,identifier,descriptive profiling; diagnostic segmentation,Required,Customer Id
+Creative and Media Services,customer_segment,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Customer Segment
+Creative and Media Services,region,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Region
+Creative and Media Services,channel,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Channel
+Creative and Media Services,product_service_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Product Service Id
+Creative and Media Services,product_service_name,categorical/text,descriptive profiling; diagnostic segmentation,Required,Product Service Name
+Creative and Media Services,category,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Category
+Creative and Media Services,quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Quantity
+Creative and Media Services,unit_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Unit Price
+Creative and Media Services,discount_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Discount Amount
+Creative and Media Services,revenue,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Revenue
+Creative and Media Services,direct_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Direct Cost
+Creative and Media Services,payment_method,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Payment Method
+Creative and Media Services,status,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Required,Status
+Creative and Media Services,promotion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Promotion Flag
+Creative and Media Services,customer_rating,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Customer Rating
+Creative and Media Services,project_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Project Id
+Creative and Media Services,service_type,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Service Type
+Creative and Media Services,project_start_date,date,descriptive trend; predictive time-series,Recommended,Project Start Date
+Creative and Media Services,delivery_date,date,descriptive trend; predictive time-series,Recommended,Delivery Date
+Creative and Media Services,creative_hours,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Creative Hours
+Creative and Media Services,revision_count,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Revision Count
+Creative and Media Services,ad_spend,currency/numeric,descriptive profiling; diagnostic segmentation,Recommended,Ad Spend
+Creative and Media Services,campaign_impressions,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Campaign Impressions
+Creative and Media Services,campaign_clicks,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Campaign Clicks
+Creative and Media Services,campaign_conversions,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Campaign Conversions
+Creative and Media Services,project_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Project Cost
+Creative and Media Services,client_acquisition_source,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Client Acquisition Source
+Financial and Business Services,record_id,identifier,descriptive profiling; diagnostic segmentation,Required,Record Id
+Financial and Business Services,transaction_date,date,descriptive trend; predictive time-series,Required,Transaction Date
+Financial and Business Services,customer_id,identifier,descriptive profiling; diagnostic segmentation,Required,Customer Id
+Financial and Business Services,customer_segment,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Customer Segment
+Financial and Business Services,region,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Region
+Financial and Business Services,channel,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Channel
+Financial and Business Services,product_service_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Product Service Id
+Financial and Business Services,product_service_name,categorical/text,descriptive profiling; diagnostic segmentation,Required,Product Service Name
+Financial and Business Services,category,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Category
+Financial and Business Services,quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Quantity
+Financial and Business Services,unit_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Unit Price
+Financial and Business Services,discount_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Discount Amount
+Financial and Business Services,revenue,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Revenue
+Financial and Business Services,direct_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Direct Cost
+Financial and Business Services,payment_method,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Payment Method
+Financial and Business Services,status,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Required,Status
+Financial and Business Services,promotion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Promotion Flag
+Financial and Business Services,customer_rating,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Customer Rating
+Financial and Business Services,engagement_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Engagement Id
+Financial and Business Services,service_type,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Service Type
+Financial and Business Services,account_manager_id,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Account Manager Id
+Financial and Business Services,service_hours,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Service Hours
+Financial and Business Services,assets_or_value_managed,currency/numeric,descriptive profiling; diagnostic segmentation,Recommended,Assets Or Value Managed
+Financial and Business Services,transaction_count,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Transaction Count
+Financial and Business Services,processing_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Processing Cost
+Financial and Business Services,late_payment_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Late Payment Flag
+Financial and Business Services,days_to_payment,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Days To Payment
+Financial and Business Services,renewal_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Renewal Flag
+Financial and Business Services,risk_category,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Risk Category
+Automotive Services,record_id,identifier,descriptive profiling; diagnostic segmentation,Required,Record Id
+Automotive Services,transaction_date,date,descriptive trend; predictive time-series,Required,Transaction Date
+Automotive Services,customer_id,identifier,descriptive profiling; diagnostic segmentation,Required,Customer Id
+Automotive Services,customer_segment,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Customer Segment
+Automotive Services,region,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Region
+Automotive Services,channel,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Channel
+Automotive Services,product_service_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Product Service Id
+Automotive Services,product_service_name,categorical/text,descriptive profiling; diagnostic segmentation,Required,Product Service Name
+Automotive Services,category,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Category
+Automotive Services,quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Quantity
+Automotive Services,unit_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Unit Price
+Automotive Services,discount_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Discount Amount
+Automotive Services,revenue,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Revenue
+Automotive Services,direct_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Direct Cost
+Automotive Services,payment_method,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Payment Method
+Automotive Services,status,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Required,Status
+Automotive Services,promotion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Promotion Flag
+Automotive Services,customer_rating,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Customer Rating
+Automotive Services,service_order_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Service Order Id
+Automotive Services,vehicle_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Vehicle Id
+Automotive Services,vehicle_type,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Vehicle Type
+Automotive Services,service_type,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Service Type
+Automotive Services,mileage_km,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Mileage Km
+Automotive Services,labor_hours,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Labor Hours
+Automotive Services,parts_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Parts Cost
+Automotive Services,labor_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Labor Cost
+Automotive Services,service_duration_hours,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Service Duration Hours
+Automotive Services,repeat_repair_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Repeat Repair Flag
+Automotive Services,warranty_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Warranty Flag
+Automotive Services,next_service_due_date,date,descriptive trend; predictive time-series,Recommended,Next Service Due Date
+Wholesale and Distribution,record_id,identifier,descriptive profiling; diagnostic segmentation,Required,Record Id
+Wholesale and Distribution,transaction_date,date,descriptive trend; predictive time-series,Required,Transaction Date
+Wholesale and Distribution,customer_id,identifier,descriptive profiling; diagnostic segmentation,Required,Customer Id
+Wholesale and Distribution,customer_segment,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Customer Segment
+Wholesale and Distribution,region,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Region
+Wholesale and Distribution,channel,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Channel
+Wholesale and Distribution,product_service_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Product Service Id
+Wholesale and Distribution,product_service_name,categorical/text,descriptive profiling; diagnostic segmentation,Required,Product Service Name
+Wholesale and Distribution,category,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Category
+Wholesale and Distribution,quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Quantity
+Wholesale and Distribution,unit_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Unit Price
+Wholesale and Distribution,discount_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Discount Amount
+Wholesale and Distribution,revenue,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Revenue
+Wholesale and Distribution,direct_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Direct Cost
+Wholesale and Distribution,payment_method,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Payment Method
+Wholesale and Distribution,status,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Required,Status
+Wholesale and Distribution,promotion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Promotion Flag
+Wholesale and Distribution,customer_rating,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Customer Rating
+Wholesale and Distribution,sales_order_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Sales Order Id
+Wholesale and Distribution,sku,identifier,descriptive profiling; diagnostic segmentation,Recommended,Sku
+Wholesale and Distribution,supplier_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Supplier Id
+Wholesale and Distribution,warehouse_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Warehouse Id
+Wholesale and Distribution,units_ordered,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Units Ordered
+Wholesale and Distribution,units_delivered,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Units Delivered
+Wholesale and Distribution,inventory_level,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Inventory Level
+Wholesale and Distribution,reorder_level,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Reorder Level
+Wholesale and Distribution,purchase_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Purchase Cost
+Wholesale and Distribution,shipping_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Shipping Cost
+Wholesale and Distribution,lead_time_days,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Lead Time Days
+Wholesale and Distribution,stockout_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Stockout Flag
+Wholesale and Distribution,return_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Return Flag
+Arts Crafts and Handicrafts,record_id,identifier,descriptive profiling; diagnostic segmentation,Required,Record Id
+Arts Crafts and Handicrafts,transaction_date,date,descriptive trend; predictive time-series,Required,Transaction Date
+Arts Crafts and Handicrafts,customer_id,identifier,descriptive profiling; diagnostic segmentation,Required,Customer Id
+Arts Crafts and Handicrafts,customer_segment,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Customer Segment
+Arts Crafts and Handicrafts,region,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Region
+Arts Crafts and Handicrafts,channel,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Channel
+Arts Crafts and Handicrafts,product_service_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Product Service Id
+Arts Crafts and Handicrafts,product_service_name,categorical/text,descriptive profiling; diagnostic segmentation,Required,Product Service Name
+Arts Crafts and Handicrafts,category,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Category
+Arts Crafts and Handicrafts,quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Quantity
+Arts Crafts and Handicrafts,unit_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Unit Price
+Arts Crafts and Handicrafts,discount_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Discount Amount
+Arts Crafts and Handicrafts,revenue,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Revenue
+Arts Crafts and Handicrafts,direct_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Direct Cost
+Arts Crafts and Handicrafts,payment_method,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Payment Method
+Arts Crafts and Handicrafts,status,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Required,Status
+Arts Crafts and Handicrafts,promotion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Promotion Flag
+Arts Crafts and Handicrafts,customer_rating,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Customer Rating
+Arts Crafts and Handicrafts,order_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Order Id
+Arts Crafts and Handicrafts,item_type,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Item Type
+Arts Crafts and Handicrafts,artisan_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Artisan Id
+Arts Crafts and Handicrafts,production_hours,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Production Hours
+Arts Crafts and Handicrafts,material_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Material Cost
+Arts Crafts and Handicrafts,packaging_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Packaging Cost
+Arts Crafts and Handicrafts,custom_order_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Custom Order Flag
+Arts Crafts and Handicrafts,sales_channel,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Sales Channel
+Arts Crafts and Handicrafts,inventory_level,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Inventory Level
+Arts Crafts and Handicrafts,lead_time_days,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Lead Time Days
+Arts Crafts and Handicrafts,return_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Return Flag
+Repair and Maintenance Services,record_id,identifier,descriptive profiling; diagnostic segmentation,Required,Record Id
+Repair and Maintenance Services,transaction_date,date,descriptive trend; predictive time-series,Required,Transaction Date
+Repair and Maintenance Services,customer_id,identifier,descriptive profiling; diagnostic segmentation,Required,Customer Id
+Repair and Maintenance Services,customer_segment,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Customer Segment
+Repair and Maintenance Services,region,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Region
+Repair and Maintenance Services,channel,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Channel
+Repair and Maintenance Services,product_service_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Product Service Id
+Repair and Maintenance Services,product_service_name,categorical/text,descriptive profiling; diagnostic segmentation,Required,Product Service Name
+Repair and Maintenance Services,category,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Category
+Repair and Maintenance Services,quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Quantity
+Repair and Maintenance Services,unit_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Unit Price
+Repair and Maintenance Services,discount_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Discount Amount
+Repair and Maintenance Services,revenue,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Revenue
+Repair and Maintenance Services,direct_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Direct Cost
+Repair and Maintenance Services,payment_method,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Payment Method
+Repair and Maintenance Services,status,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Required,Status
+Repair and Maintenance Services,promotion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Promotion Flag
+Repair and Maintenance Services,customer_rating,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Customer Rating
+Repair and Maintenance Services,repair_job_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Repair Job Id
+Repair and Maintenance Services,equipment_type,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Equipment Type
+Repair and Maintenance Services,brand,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Brand
+Repair and Maintenance Services,technician_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Technician Id
+Repair and Maintenance Services,diagnosis_category,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Diagnosis Category
+Repair and Maintenance Services,labor_hours,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Labor Hours
+Repair and Maintenance Services,parts_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Parts Cost
+Repair and Maintenance Services,labor_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Labor Cost
+Repair and Maintenance Services,repair_duration_hours,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Repair Duration Hours
+Repair and Maintenance Services,repeat_repair_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Repeat Repair Flag
+Repair and Maintenance Services,warranty_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Warranty Flag
+Repair and Maintenance Services,downtime_hours,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Downtime Hours
+Personal and Household Services,record_id,identifier,descriptive profiling; diagnostic segmentation,Required,Record Id
+Personal and Household Services,transaction_date,date,descriptive trend; predictive time-series,Required,Transaction Date
+Personal and Household Services,customer_id,identifier,descriptive profiling; diagnostic segmentation,Required,Customer Id
+Personal and Household Services,customer_segment,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Customer Segment
+Personal and Household Services,region,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Region
+Personal and Household Services,channel,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Channel
+Personal and Household Services,product_service_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Product Service Id
+Personal and Household Services,product_service_name,categorical/text,descriptive profiling; diagnostic segmentation,Required,Product Service Name
+Personal and Household Services,category,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Category
+Personal and Household Services,quantity,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Quantity
+Personal and Household Services,unit_price,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Unit Price
+Personal and Household Services,discount_amount,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Discount Amount
+Personal and Household Services,revenue,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Revenue
+Personal and Household Services,direct_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Required,Direct Cost
+Personal and Household Services,payment_method,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Payment Method
+Personal and Household Services,status,categorical/text,descriptive segmentation; diagnostic comparison; predictive classification,Required,Status
+Personal and Household Services,promotion_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Promotion Flag
+Personal and Household Services,customer_rating,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Customer Rating
+Personal and Household Services,service_job_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Service Job Id
+Personal and Household Services,service_type,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Service Type
+Personal and Household Services,staff_id,identifier,descriptive profiling; diagnostic segmentation,Recommended,Staff Id
+Personal and Household Services,booking_date,date,descriptive trend; predictive time-series,Recommended,Booking Date
+Personal and Household Services,service_duration_hours,numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Service Duration Hours
+Personal and Household Services,labor_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Labor Cost
+Personal and Household Services,materials_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Materials Cost
+Personal and Household Services,travel_cost,currency/numeric,descriptive statistics; diagnostic correlation; predictive modeling; prescriptive what-if,Recommended,Travel Cost
+Personal and Household Services,booking_source,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Booking Source
+Personal and Household Services,repeat_customer_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Repeat Customer Flag
+Personal and Household Services,cancellation_flag,boolean,descriptive segmentation; diagnostic comparison; predictive classification,Recommended,Cancellation Flag
+Personal and Household Services,subscription_plan,categorical/text,descriptive profiling; diagnostic segmentation,Recommended,Subscription Plan

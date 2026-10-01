@@ -1,0 +1,21 @@
+sme_business_category,examples,template_file,field_count,analytics_supported
+Retail and ECommerce,"Online shops, clothing, electronics, general merchandise",Retail_and_ECommerce_template.csv,28,Descriptive; Diagnostic; Predictive; Prescriptive
+Food and Beverage,"Restaurants, cafés, bakeries, food delivery, catering",Food_and_Beverage_template.csv,28,Descriptive; Diagnostic; Predictive; Prescriptive
+Accommodation and Tourism,"Hotels, inns, resorts, homestays, tour operators",Accommodation_and_Tourism_template.csv,29,Descriptive; Diagnostic; Predictive; Prescriptive
+Professional Services,"Accounting, consulting, legal support, design services",Professional_Services_template.csv,29,Descriptive; Diagnostic; Predictive; Prescriptive
+IT and Digital Services,"Software development, web design, SaaS, IT support",IT_and_Digital_Services_template.csv,30,Descriptive; Diagnostic; Predictive; Prescriptive
+Manufacturing,"Food processing, furniture, garments, handicrafts, small-scale production",Manufacturing_template.csv,30,Descriptive; Diagnostic; Predictive; Prescriptive
+Agriculture and Agribusiness,"Farms, coffee producers, livestock, agricultural suppliers",Agriculture_and_Agribusiness_template.csv,30,Descriptive; Diagnostic; Predictive; Prescriptive
+Transportation and Logistics,"Delivery, trucking, courier, vehicle rental",Transportation_and_Logistics_template.csv,30,Descriptive; Diagnostic; Predictive; Prescriptive
+Construction and Home Services,"Contractors, electrical, plumbing, renovation",Construction_and_Home_Services_template.csv,30,Descriptive; Diagnostic; Predictive; Prescriptive
+Health and Wellness Services,"Clinics, dental practices, fitness, wellness services",Health_and_Wellness_Services_template.csv,30,Descriptive; Diagnostic; Predictive; Prescriptive
+Education and Training,"Tutorial centers, training providers, online learning",Education_and_Training_template.csv,30,Descriptive; Diagnostic; Predictive; Prescriptive
+Beauty and Personal Care,"Salons, barbershops, spas, beauty retailers",Beauty_and_Personal_Care_template.csv,29,Descriptive; Diagnostic; Predictive; Prescriptive
+Real Estate and Property Services,"Rental, brokerage, property management",Real_Estate_and_Property_Services_template.csv,31,Descriptive; Diagnostic; Predictive; Prescriptive
+Creative and Media Services,"Photography, video, graphic design, advertising",Creative_and_Media_Services_template.csv,30,Descriptive; Diagnostic; Predictive; Prescriptive
+Financial and Business Services,"Bookkeeping, payment services, financial consulting",Financial_and_Business_Services_template.csv,29,Descriptive; Diagnostic; Predictive; Prescriptive
+Automotive Services,"Repair, detailing, spare parts, vehicle services",Automotive_Services_template.csv,30,Descriptive; Diagnostic; Predictive; Prescriptive
+Wholesale and Distribution,"Distributors, wholesalers, supply businesses",Wholesale_and_Distribution_template.csv,31,Descriptive; Diagnostic; Predictive; Prescriptive
+Arts Crafts and Handicrafts,"Handmade products, souvenirs, local crafts",Arts_Crafts_and_Handicrafts_template.csv,29,Descriptive; Diagnostic; Predictive; Prescriptive
+Repair and Maintenance Services,"Appliance, computer, mobile phone, equipment repair",Repair_and_Maintenance_Services_template.csv,30,Descriptive; Diagnostic; Predictive; Prescriptive
+Personal and Household Services,"Laundry, cleaning, tailoring, event services",Personal_and_Household_Services_template.csv,30,Descriptive; Diagnostic; Predictive; Prescriptive

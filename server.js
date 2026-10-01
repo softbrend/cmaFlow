@@ -16,6 +16,7 @@ const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
 const evaluationRoutes = require('./routes/evaluation');
 const adminRoutes = require('./routes/admin');
+const templateRoutes = require('./routes/templates');
 
 // Clear any dataset-upload temp files left behind by a request that never
 // finished (e.g. the process was killed mid-upload) — safe to wipe on
@@ -104,6 +105,7 @@ app.use('/', authRoutes);
 app.use('/', dashboardRoutes);
 app.use('/', evaluationRoutes);
 app.use('/', adminRoutes);
+app.use('/', templateRoutes);
 
 // --- 404 ---
 app.use((req, res) => {

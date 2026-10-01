@@ -100,6 +100,125 @@ router.post('/signup', redirectIfAuthed, signupValidators, async (req, res, next
 });
 
 // ------------------------------------------------------------------
+// Expert Evaluator signup — added 30 September 2026 for the field-
+// generalization evaluation round. Deliberately NOT linked from /login,
+// /signup, or anywhere else in the app's nav: this is a purposively-
+// recruited population (domain experts, not the general public), so the
+// flow sits behind a shared access code before the registration form is
+// even shown, the same way the TAM evaluation roster itself was kept
+// closed to invited participants only (see SIGNUPS_OPEN's history
+// above). The code lives in EXPERT_SIGNUP_CODE (.env / Render env var) —
+// never hard-coded to a value visible in this file — with a fallback
+// default ONLY for local dev so a fresh checkout isn't locked out before
+// .env is configured; set a real value in production.
+//
+// GET  /expert-signup            -> the access-code form
+// POST /expert-signup            -> verifies the code, flags the session
+// GET  /expert-signup/register   -> the actual signup form (code-gated)
+// POST /expert-signup/register   -> creates the role='Expert Evaluator' account
+//
+// req.session.expertCodeVerified is a one-time flag: it's set on a
+// correct code and cleared the moment an account is actually created (or
+// never set at all without one), so it can't be reused to register a
+// second account without re-entering the code.
+// ------------------------------------------------------------------
+const EXPERT_SIGNUP_CODE = process.env.EXPERT_SIGNUP_CODE || 'cmaflow-expert-2026';
+
+router.get('/expert-signup', redirectIfAuthed, (req, res) => {
+  res.render('auth/expert-signup-code', {
+    title: 'Expert Evaluator Access',
+    layout: 'layout-auth',
+    error: null,
+  });
+});
+
+router.post('/expert-signup', redirectIfAuthed, (req, res) => {
+  const submitted = (req.body.access_code || '').trim();
+  if (!submitted || submitted !== EXPERT_SIGNUP_CODE) {
+    return res.status(400).render('auth/expert-signup-code', {
+      title: 'Expert Evaluator Access',
+      layout: 'layout-auth',
+      error: 'That access code is not correct.',
+    });
+  }
+  req.session.expertCodeVerified = true;
+  return res.redirect('/expert-signup/register');
+});
+
+router.get('/expert-signup/register', redirectIfAuthed, (req, res) => {
+  if (!req.session.expertCodeVerified) {
+    return res.redirect('/expert-signup');
+  }
+  res.render('auth/expert-signup', {
+    title: 'Create your Expert Evaluator account',
+    layout: 'layout-auth',
+    errors: [],
+    old: {},
+  });
+});
+
+const expertSignupValidators = [
+  body('username')
+    .trim()
+    .matches(/^[A-Za-z0-9_-]{3,50}$/)
+    .withMessage('Username must be 3-50 characters (letters, numbers, - or _ only).'),
+  body('full_name').trim().notEmpty().withMessage('Your full name is required.'),
+  body('affiliation').trim().notEmpty().withMessage('Your affiliation or organization is required.'),
+  body('email').trim().isEmail().withMessage('A valid email is required.').normalizeEmail(),
+  body('expertise_area').trim().optional({ checkFalsy: true }),
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters.'),
+  body('confirm_password').custom((value, { req }) => value === req.body.password)
+    .withMessage('Passwords do not match.'),
+];
+
+router.post('/expert-signup/register', redirectIfAuthed, expertSignupValidators, async (req, res, next) => {
+  if (!req.session.expertCodeVerified) {
+    return res.redirect('/expert-signup');
+  }
+
+  const result = validationResult(req);
+  if (!result.isEmpty()) {
+    return res.status(400).render('auth/expert-signup', {
+      title: 'Create your Expert Evaluator account',
+      layout: 'layout-auth',
+      errors: result.array(),
+      old: req.body,
+    });
+  }
+
+  const {
+    username, full_name, affiliation, email, expertise_area, password,
+  } = req.body;
+
+  try {
+    const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
+    const { rows } = await pool.query(
+      `INSERT INTO sme_accounts
+         (username, owner_name, business_name, email, business_sector, password_hash, role)
+       VALUES ($1, $2, $3, $4, $5, $6, 'Expert Evaluator')
+       RETURNING id, username, owner_name, business_name, email, role, assigned_dataset`,
+      [username, full_name, affiliation, email, expertise_area || null, password_hash]
+    );
+
+    const account = rows[0];
+    delete req.session.expertCodeVerified; // one-time: re-entering the code is required for the next account
+    req.session.userId = account.id;
+    req.session.user = account;
+    return res.redirect('/');
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(400).render('auth/expert-signup', {
+        title: 'Create your Expert Evaluator account',
+        layout: 'layout-auth',
+        errors: [{ msg: 'That username or email is already registered.' }],
+        old: req.body,
+      });
+    }
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
 // GET /login
 // ------------------------------------------------------------------
 router.get('/login', redirectIfAuthed, (req, res) => {

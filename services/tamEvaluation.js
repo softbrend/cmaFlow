@@ -1,23 +1,59 @@
 // TAM End-User Evaluation — six-task walkthrough + 17-item Technology
-// Acceptance Model questionnaire, embedded in the running app for the
-// sme_owner to complete against the six live analytics-pipeline modules.
-// This is the app-side implementation of the instrument described in
-// claude/tam-instrument-end-user-evaluation.md (Table 1's six tasks,
-// Tables 2-4's PU/PEOU/BI items) — same task order, same item wording,
-// same "rating <=3 needs a remark" rule, same six modules. Persisted in
-// evaluation_sessions / evaluation_task_logs / evaluation_responses
-// (db/schema.sql) so an account can always resume exactly where it left
-// off, across logins and devices, rather than losing progress to a
-// closed tab.
+// Acceptance Model questionnaire, embedded in the running app. Same task
+// order, same item wording, same "rating <=3 needs a remark" rule, same
+// six modules, for BOTH of the two populations that take it:
+//   - an sme_owner account (persisted in
+//     evaluation_sessions / evaluation_task_logs / evaluation_responses)
+//   - an Expert Evaluator account, added 30 September 2026 for the
+//     field-generalization round (persisted in the parallel
+//     expert_evaluation_sessions / _task_logs / _responses tables)
+// Every function below takes the account's role as its last argument and
+// picks the matching table set via tablesFor() — the task list, item
+// list, and all the business rules are shared code; only the storage
+// target differs. This is deliberate: db/schema.sql's comment on the
+// expert_* tables explains why they must never be queried together with
+// the SME-owner ones, and keeping one copy of this logic (instead of a
+// forked sibling file) is what keeps both populations' evaluations
+// actually identical in how they're administered and scored.
 const pool = require('../db/pool');
 const { quantile, mean } = require('./statsUtils');
+
+const SME_ROLE = 'SME Owner';
+const EXPERT_ROLE = 'Expert Evaluator';
+
+// The only two table sets this ever resolves to — role is always either
+// an account's own sme_accounts.role (SME Owner/Admin/Expert Evaluator)
+// or explicitly passed by a caller that already knows which population
+// it's asking about; anything other than the literal 'Expert Evaluator'
+// string (including undefined, for every pre-existing call site written
+// before this round) resolves to the original SME-owner tables, so this
+// is purely additive.
+const TABLE_SETS = {
+  sme: {
+    sessions: 'evaluation_sessions',
+    taskLogs: 'evaluation_task_logs',
+    responses: 'evaluation_responses',
+  },
+  expert: {
+    sessions: 'expert_evaluation_sessions',
+    taskLogs: 'expert_evaluation_task_logs',
+    responses: 'expert_evaluation_responses',
+  },
+};
+
+function tablesFor(role) {
+  return role === EXPERT_ROLE ? TABLE_SETS.expert : TABLE_SETS.sme;
+}
 
 // ------------------------------------------------------------------
 // The six-task walkthrough (Table 1) — one task per in-scope module, in
 // administration order. `slug`/`href` point at that module's real route
 // so "open the module" and "log completion" are two different actions:
-// the SME owner actually does the task in the live app, then comes back
-// here to say so.
+// the respondent actually does the task in the live app, then comes back
+// here to say so. Shared by both populations — an Expert Evaluator works
+// through the exact same six modules, on whatever dataset they uploaded
+// (see views/dashboard/sme-templates for how they pick/download a
+// category template first), as an SME owner does.
 // ------------------------------------------------------------------
 const WALKTHROUGH_TASKS = [
   {
@@ -66,7 +102,9 @@ const WALKTHROUGH_TASKS = [
 
 // ------------------------------------------------------------------
 // The 17-item TAM questionnaire (Tables 2-4): Perceived Usefulness (7),
-// Perceived Ease of Use (7), Behavioral Intention to Use (3).
+// Perceived Ease of Use (7), Behavioral Intention to Use (3). Shared
+// wording for both populations — an Expert Evaluator answers the same
+// instrument an SME owner does, so the two are directly comparable.
 // ------------------------------------------------------------------
 const DOMAIN_LABELS = {
   PU: 'Perceived Usefulness',
@@ -112,30 +150,33 @@ function groupItemsByDomain() {
 // first time it's ever needed. UNIQUE(account_id) plus ON CONFLICT DO
 // NOTHING makes this safe to call on every GET /evaluation without a
 // separate existence check or a race on double-submission.
-async function getOrCreateSession(accountId) {
+async function getOrCreateSession(accountId, role) {
+  const t = tablesFor(role);
   await pool.query(
-    `INSERT INTO evaluation_sessions (account_id) VALUES ($1)
+    `INSERT INTO ${t.sessions} (account_id) VALUES ($1)
      ON CONFLICT (account_id) DO NOTHING`,
     [accountId]
   );
   const { rows } = await pool.query(
-    `SELECT * FROM evaluation_sessions WHERE account_id = $1`,
+    `SELECT * FROM ${t.sessions} WHERE account_id = $1`,
     [accountId]
   );
   return rows[0];
 }
 
-async function getTaskLogs(sessionId) {
+async function getTaskLogs(sessionId, role) {
+  const t = tablesFor(role);
   const { rows } = await pool.query(
-    `SELECT * FROM evaluation_task_logs WHERE session_id = $1 ORDER BY task_number`,
+    `SELECT * FROM ${t.taskLogs} WHERE session_id = $1 ORDER BY task_number`,
     [sessionId]
   );
   return rows;
 }
 
-async function getResponses(sessionId) {
+async function getResponses(sessionId, role) {
+  const t = tablesFor(role);
   const { rows } = await pool.query(
-    `SELECT * FROM evaluation_responses WHERE session_id = $1`,
+    `SELECT * FROM ${t.responses} WHERE session_id = $1`,
     [sessionId]
   );
   const byCode = new Map(rows.map((r) => [r.item_code, r]));
@@ -145,11 +186,11 @@ async function getResponses(sessionId) {
 // Full state for rendering GET /evaluation: the session, every task log
 // so far (for the completed-so-far checklist), and every saved response
 // (for pre-filling the questionnaire on resume).
-async function getEvaluationState(accountId) {
-  const session = await getOrCreateSession(accountId);
+async function getEvaluationState(accountId, role) {
+  const session = await getOrCreateSession(accountId, role);
   const [taskLogs, responses] = await Promise.all([
-    getTaskLogs(session.id),
-    getResponses(session.id),
+    getTaskLogs(session.id, role),
+    getResponses(session.id, role),
   ]);
   return { session, taskLogs, responses };
 }
@@ -157,11 +198,12 @@ async function getEvaluationState(accountId) {
 // Stamps started_at for the current task the first time the account
 // lands on its walkthrough screen. ON CONFLICT DO NOTHING means a page
 // refresh or a later revisit never resets the clock.
-async function startTaskIfNeeded(sessionId, accountId, taskNumber) {
-  const task = WALKTHROUGH_TASKS.find((t) => t.number === taskNumber);
+async function startTaskIfNeeded(sessionId, accountId, taskNumber, role) {
+  const t = tablesFor(role);
+  const task = WALKTHROUGH_TASKS.find((x) => x.number === taskNumber);
   if (!task) return;
   await pool.query(
-    `INSERT INTO evaluation_task_logs (session_id, account_id, task_number, module_slug)
+    `INSERT INTO ${t.taskLogs} (session_id, account_id, task_number, module_slug)
      VALUES ($1, $2, $3, $4)
      ON CONFLICT (session_id, task_number) DO NOTHING`,
     [sessionId, accountId, taskNumber, task.moduleSlug]
@@ -176,9 +218,10 @@ async function startTaskIfNeeded(sessionId, accountId, taskNumber) {
 // actually resumes the evaluation — reconsidering never skips straight
 // back to 'given'). consent_decided_at is stamped for a real decision and
 // cleared for 'pending' so it always reflects the latest choice.
-async function recordConsent(session, consentStatus) {
+async function recordConsent(session, consentStatus, role) {
+  const t = tablesFor(role);
   const { rows } = await pool.query(
-    `UPDATE evaluation_sessions
+    `UPDATE ${t.sessions}
         SET consent_status = $2::VARCHAR(20),
             consent_decided_at = CASE WHEN $2::VARCHAR(20) = 'pending' THEN NULL ELSE now() END
       WHERE id = $1
@@ -189,11 +232,12 @@ async function recordConsent(session, consentStatus) {
 }
 
 // Marks a task complete: fills in completed_at/time_on_task_seconds and
-// the assistance/error/notes the SME owner reported, then advances the
+// the assistance/error/notes the respondent reported, then advances the
 // session to the next task — or to the questionnaire once task 6 is
 // done. Returns the updated session row.
-async function completeTask(session, accountId, taskNumber, { neededAssistance, hadError, notes }) {
-  const task = WALKTHROUGH_TASKS.find((t) => t.number === taskNumber);
+async function completeTask(session, accountId, taskNumber, { neededAssistance, hadError, notes }, role) {
+  const t = tablesFor(role);
+  const task = WALKTHROUGH_TASKS.find((x) => x.number === taskNumber);
   // INSERT ... ON CONFLICT rather than a bare UPDATE: normally
   // startTaskIfNeeded() already created this row when the walkthrough
   // page was loaded, so this is an update in practice, but self-healing
@@ -202,12 +246,12 @@ async function completeTask(session, accountId, taskNumber, { neededAssistance, 
   // submitting it) — a silent no-op UPDATE that matched zero rows would
   // otherwise lose the completion without any error.
   await pool.query(
-    `INSERT INTO evaluation_task_logs
+    `INSERT INTO ${t.taskLogs}
        (session_id, account_id, task_number, module_slug, completed_at, time_on_task_seconds, needed_assistance, had_error, notes)
      VALUES ($1, $2, $3, $4, now(), 0, $5, $6, $7)
      ON CONFLICT (session_id, task_number) DO UPDATE
         SET completed_at = now(),
-            time_on_task_seconds = GREATEST(0, EXTRACT(EPOCH FROM (now() - evaluation_task_logs.started_at))::INTEGER),
+            time_on_task_seconds = GREATEST(0, EXTRACT(EPOCH FROM (now() - ${t.taskLogs}.started_at))::INTEGER),
             needed_assistance = excluded.needed_assistance,
             had_error = excluded.had_error,
             notes = excluded.notes`,
@@ -221,7 +265,7 @@ async function completeTask(session, accountId, taskNumber, { neededAssistance, 
   // expression contexts in one query ("inconsistent types deduced for
   // parameter $3") without an explicit cast pinning it down.
   const { rows } = await pool.query(
-    `UPDATE evaluation_sessions
+    `UPDATE ${t.sessions}
         SET current_task = $2,
             status = $3::VARCHAR(20),
             walkthrough_completed_at = CASE WHEN $3::VARCHAR(20) = 'questionnaire' THEN now() ELSE walkthrough_completed_at END
@@ -239,7 +283,8 @@ async function completeTask(session, accountId, taskNumber, { neededAssistance, 
 // Upserts whatever answers were submitted — used both by "Save progress"
 // (partial, any subset of the 17 items) and by the final "Submit
 // evaluation" (all 17). `answers` is [{ code, rating, remark }, ...].
-async function saveResponses(session, accountId, answers) {
+async function saveResponses(session, accountId, answers, role) {
+  const t = tablesFor(role);
   for (const answer of answers) {
     const item = TAM_ITEMS_BY_CODE.get(answer.code);
     if (!item) continue; // ignore anything not a real item code
@@ -247,7 +292,7 @@ async function saveResponses(session, accountId, answers) {
       ? null
       : Math.min(5, Math.max(1, parseInt(answer.rating, 10)));
     await pool.query(
-      `INSERT INTO evaluation_responses (session_id, account_id, item_code, domain, rating, remark)
+      `INSERT INTO ${t.responses} (session_id, account_id, item_code, domain, rating, remark)
        VALUES ($1, $2, $3, $4, $5, $6)
        ON CONFLICT (session_id, item_code)
        DO UPDATE SET rating = excluded.rating, remark = excluded.remark, answered_at = now()`,
@@ -260,8 +305,8 @@ async function saveResponses(session, accountId, answers) {
 // item must be rated, and any rating of 3 or below must carry a remark.
 // Returns { ok, missingCodes, needsRemarkCodes } — both arrays empty
 // means the questionnaire is ready to be marked complete.
-async function validateQuestionnaire(sessionId) {
-  const responses = await getResponses(sessionId);
+async function validateQuestionnaire(sessionId, role) {
+  const responses = await getResponses(sessionId, role);
   const missingCodes = [];
   const needsRemarkCodes = [];
   for (const item of TAM_ITEMS) {
@@ -277,9 +322,10 @@ async function validateQuestionnaire(sessionId) {
   return { ok: missingCodes.length === 0 && needsRemarkCodes.length === 0, missingCodes, needsRemarkCodes };
 }
 
-async function markCompleted(sessionId) {
+async function markCompleted(sessionId, role) {
+  const t = tablesFor(role);
   const { rows } = await pool.query(
-    `UPDATE evaluation_sessions SET status = 'completed', completed_at = now() WHERE id = $1 RETURNING *`,
+    `UPDATE ${t.sessions} SET status = 'completed', completed_at = now() WHERE id = $1 RETURNING *`,
     [sessionId]
   );
   return rows[0];
@@ -295,25 +341,28 @@ async function markCompleted(sessionId) {
 // started its evaluation yet should see "not started", not silently
 // enroll that account into the walkthrough. session is null when the
 // account has never visited /evaluation.
-async function getEvaluationStateReadOnly(accountId) {
+async function getEvaluationStateReadOnly(accountId, role) {
+  const t = tablesFor(role);
   const { rows } = await pool.query(
-    `SELECT * FROM evaluation_sessions WHERE account_id = $1`,
+    `SELECT * FROM ${t.sessions} WHERE account_id = $1`,
     [accountId]
   );
   const session = rows[0] || null;
   if (!session) return { session: null, taskLogs: [], responses: new Map() };
   const [taskLogs, responses] = await Promise.all([
-    getTaskLogs(session.id),
-    getResponses(session.id),
+    getTaskLogs(session.id, role),
+    getResponses(session.id, role),
   ]);
   return { session, taskLogs, responses };
 }
 
-// One row per sme_owner account (Admin accounts excluded — this
-// evaluation is end-user/SME-owner-facing only), left-joined to that
-// account's evaluation session if it has one, for the admin Evaluations
-// list: who's done, who's mid-walkthrough/questionnaire, who hasn't
-// started at all.
+// One row per sme_owner account, left-joined to that account's evaluation
+// session if it has one, for the admin "View Evaluation Report" list: who's
+// done, who's mid-walkthrough/questionnaire, who hasn't started at all.
+// Filters to role = 'SME Owner' explicitly (not just "!= 'Admin'") so that
+// adding the Expert Evaluator role never silently pulls those accounts
+// into this list — they have their own listAllExpertEvaluationStatuses()
+// below, reading an entirely different pair of tables.
 async function listAllEvaluationStatuses() {
   const { rows } = await pool.query(
     `SELECT a.id AS account_id, a.username, a.owner_name, a.business_name,
@@ -326,7 +375,32 @@ async function listAllEvaluationStatuses() {
               WHERE r.session_id = s.id AND r.rating IS NOT NULL) AS items_answered
        FROM sme_accounts a
        LEFT JOIN evaluation_sessions s ON s.account_id = a.id
-      WHERE a.role != 'Admin'
+      WHERE a.role = 'SME Owner'
+      ORDER BY a.created_at DESC`
+  );
+  return rows;
+}
+
+// Same shape as listAllEvaluationStatuses(), for Expert Evaluator accounts
+// against the separate expert_evaluation_* tables. Deliberately a
+// near-duplicate of the query above rather than a shared parameterized
+// helper: these two lists back two different admin pages
+// (/admin/evaluations vs /admin/expert-evaluations) that must never be
+// combined, so keeping them as textually separate queries makes it
+// obvious at a glance that neither one can leak into the other.
+async function listAllExpertEvaluationStatuses() {
+  const { rows } = await pool.query(
+    `SELECT a.id AS account_id, a.username, a.owner_name, a.business_name,
+            s.status, s.current_task, s.started_at,
+            s.consent_status, s.consent_decided_at,
+            s.walkthrough_completed_at, s.completed_at,
+            (SELECT COUNT(*)::int FROM expert_evaluation_task_logs tl
+              WHERE tl.session_id = s.id AND tl.completed_at IS NOT NULL) AS tasks_done,
+            (SELECT COUNT(*)::int FROM expert_evaluation_responses r
+              WHERE r.session_id = s.id AND r.rating IS NOT NULL) AS items_answered
+       FROM sme_accounts a
+       LEFT JOIN expert_evaluation_sessions s ON s.account_id = a.id
+      WHERE a.role = 'Expert Evaluator'
       ORDER BY a.created_at DESC`
   );
   return rows;
@@ -342,15 +416,15 @@ async function listAllEvaluationStatuses() {
 // instrument's own scoring plan assumes. %agree = the share of ratings
 // that are 4 or 5 (Agree/Strongly Agree on the 5-point scale), the
 // standard TAM reporting convention.
-async function getCompletedResponseSummary() {
+async function summarizeCompletedResponses(responsesTable, sessionsTable) {
   const { rows } = await pool.query(
     `SELECT r.item_code, r.domain, r.rating
-       FROM evaluation_responses r
-       JOIN evaluation_sessions s ON s.id = r.session_id
+       FROM ${responsesTable} r
+       JOIN ${sessionsTable} s ON s.id = r.session_id
       WHERE s.status = 'completed' AND r.rating IS NOT NULL`
   );
   const { rows: completedCountRows } = await pool.query(
-    `SELECT COUNT(*)::int AS n FROM evaluation_sessions WHERE status = 'completed'`
+    `SELECT COUNT(*)::int AS n FROM ${sessionsTable} WHERE status = 'completed'`
   );
 
   function summarize(values) {
@@ -383,7 +457,17 @@ async function getCompletedResponseSummary() {
   return { byItem, byDomain, completedCount: completedCountRows[0].n };
 }
 
+async function getCompletedResponseSummary() {
+  return summarizeCompletedResponses('evaluation_responses', 'evaluation_sessions');
+}
+
+async function getCompletedExpertResponseSummary() {
+  return summarizeCompletedResponses('expert_evaluation_responses', 'expert_evaluation_sessions');
+}
+
 module.exports = {
+  SME_ROLE,
+  EXPERT_ROLE,
   WALKTHROUGH_TASKS,
   TAM_ITEMS,
   DOMAIN_LABELS,
@@ -398,5 +482,7 @@ module.exports = {
   markCompleted,
   getEvaluationStateReadOnly,
   listAllEvaluationStatuses,
+  listAllExpertEvaluationStatuses,
   getCompletedResponseSummary,
+  getCompletedExpertResponseSummary,
 };

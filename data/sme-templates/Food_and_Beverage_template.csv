@@ -1,0 +1,1 @@
+record_id,transaction_date,customer_id,customer_segment,region,channel,product_service_id,product_service_name,category,quantity,unit_price,discount_amount,revenue,direct_cost,payment_method,status,promotion_flag,customer_rating,order_id,menu_item,meal_period,table_or_delivery,ingredient_cost,prep_time_minutes,delivery_time_minutes,waste_cost,order_source,repeat_customer_flag

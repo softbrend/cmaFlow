@@ -17,12 +17,13 @@ const { body, validationResult } = require('express-validator');
 const pool = require('../db/pool');
 const { requireAdmin } = require('../middleware/auth');
 const {
-  listAccounts, getAccountById, resetPassword, countAdmins,
+  listAccounts, listExpertAccounts, getAccountById, resetPassword, countAdmins,
   createAdminAccount, promoteToAdmin, demoteToOwner,
 } = require('../services/adminAccounts');
 const {
-  WALKTHROUGH_TASKS, groupItemsByDomain,
+  WALKTHROUGH_TASKS, groupItemsByDomain, EXPERT_ROLE,
   getEvaluationStateReadOnly, listAllEvaluationStatuses, getCompletedResponseSummary,
+  listAllExpertEvaluationStatuses, getCompletedExpertResponseSummary,
 } = require('../services/tamEvaluation');
 const { listAllDatasets, getDatasetForAdmin, deleteDataset } = require('../services/adminDatasets');
 const { getOrBuildFullProfile } = require('../services/fullDescriptiveAnalytics');
@@ -39,19 +40,30 @@ router.use(requireAdmin);
 // ------------------------------------------------------------------
 router.get('/admin', async (req, res, next) => {
   try {
-    const [{ rows: countRows }, statuses, allDatasets] = await Promise.all([
+    const [{ rows: countRows }, statuses, expertStatuses, allDatasets] = await Promise.all([
+      // Explicit role = equality for each count, not "!= 'Admin'" — now
+      // that a third role (Expert Evaluator) exists, "!= 'Admin'" would
+      // silently fold Expert Evaluator accounts into sme_count. Each
+      // count below matches exactly one role, so adding a future role
+      // again can only ever under-count here (an account matching none of
+      // the three), never mix two populations into one tile.
       pool.query(
-        `SELECT COUNT(*) FILTER (WHERE role != 'Admin')::int AS sme_count,
-                COUNT(*) FILTER (WHERE role = 'Admin')::int AS admin_count
+        `SELECT COUNT(*) FILTER (WHERE role = 'SME Owner')::int AS sme_count,
+                COUNT(*) FILTER (WHERE role = 'Admin')::int AS admin_count,
+                COUNT(*) FILTER (WHERE role = 'Expert Evaluator')::int AS expert_count
            FROM sme_accounts`
       ),
       listAllEvaluationStatuses(),
+      listAllExpertEvaluationStatuses(),
       listAllDatasets(),
     ]);
     const counts = countRows[0];
     const completed = statuses.filter((s) => s.status === 'completed').length;
     const inProgress = statuses.filter((s) => s.status === 'walkthrough' || s.status === 'questionnaire').length;
     const notStarted = statuses.filter((s) => !s.status).length;
+    const expertCompleted = expertStatuses.filter((s) => s.status === 'completed').length;
+    const expertInProgress = expertStatuses.filter((s) => s.status === 'walkthrough' || s.status === 'questionnaire').length;
+    const expertNotStarted = expertStatuses.filter((s) => !s.status).length;
 
     res.render('dashboard/admin-home', {
       title: 'Admin',
@@ -59,10 +71,14 @@ router.get('/admin', async (req, res, next) => {
       adminSection: 'home',
       smeCount: counts.sme_count,
       adminCount: counts.admin_count,
+      expertCount: counts.expert_count,
       datasetCount: allDatasets.length,
       completed,
       inProgress,
       notStarted,
+      expertCompleted,
+      expertInProgress,
+      expertNotStarted,
     });
   } catch (err) {
     next(err);
@@ -87,6 +103,31 @@ router.get('/admin/accounts', async (req, res, next) => {
       promoted: req.query.promoted || null,
       demoted: req.query.demoted || null,
       currentAdminId: req.session.userId,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
+// GET /admin/expert-accounts — same search-list-and-"Change password"
+// page as /admin/accounts above, but for role = 'Expert Evaluator'
+// accounts only (added 30 September 2026). A separate page rather than a
+// filter on the SME-owner one, per the "store/browse separately"
+// requirement for this round — nothing here ever appears mixed with an
+// SME owner's row. No make-admin/remove-admin actions: an Expert
+// Evaluator account is never promoted to Admin from here.
+// ------------------------------------------------------------------
+router.get('/admin/expert-accounts', async (req, res, next) => {
+  try {
+    const accounts = await listExpertAccounts(req.query.q);
+    res.render('dashboard/admin-expert-accounts', {
+      title: 'Manage Expert Evaluators',
+      active: 'admin',
+      adminSection: 'expert-accounts',
+      accounts,
+      q: req.query.q || '',
+      passwordReset: req.query.passwordReset || null,
     });
   } catch (err) {
     next(err);
@@ -261,10 +302,12 @@ router.get('/admin/accounts/:id/password', async (req, res, next) => {
   try {
     const account = await getAccountById(req.params.id);
     if (!account) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
+    const isExpert = account.role === EXPERT_ROLE;
     res.render('dashboard/admin-reset-password', {
       title: `Change password — ${account.username}`,
       active: 'admin',
-      adminSection: 'accounts',
+      adminSection: isExpert ? 'expert-accounts' : 'accounts',
+      backHref: isExpert ? '/admin/expert-accounts' : '/admin/accounts',
       account,
       errors: [],
     });
@@ -283,20 +326,23 @@ router.post('/admin/accounts/:id/password', resetPasswordValidators, async (req,
   try {
     const account = await getAccountById(req.params.id);
     if (!account) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
+    const isExpert = account.role === EXPERT_ROLE;
+    const listPath = isExpert ? '/admin/expert-accounts' : '/admin/accounts';
 
     const result = validationResult(req);
     if (!result.isEmpty()) {
       return res.status(400).render('dashboard/admin-reset-password', {
         title: `Change password — ${account.username}`,
         active: 'admin',
-        adminSection: 'accounts',
+        adminSection: isExpert ? 'expert-accounts' : 'accounts',
+        backHref: listPath,
         account,
         errors: result.array(),
       });
     }
 
     await resetPassword(account.id, req.body.new_password);
-    return res.redirect(`/admin/accounts?passwordReset=${encodeURIComponent(account.username)}`);
+    return res.redirect(`${listPath}?passwordReset=${encodeURIComponent(account.username)}`);
   } catch (err) {
     next(err);
   }
@@ -354,6 +400,60 @@ router.get('/admin/evaluations/:accountId', async (req, res, next) => {
 });
 
 // ------------------------------------------------------------------
+// GET /admin/expert-evaluations — same shape as /admin/evaluations above,
+// for Expert Evaluator accounts against the separate
+// expert_evaluation_* tables (added 30 September 2026). Deliberately a
+// distinct page, not a filter/tab on the SME-owner one: the "store and
+// report separately" requirement for this round means the two
+// cross-respondent summaries (and the manuscript counts drawn from them)
+// must never be computed from a single combined query.
+// ------------------------------------------------------------------
+router.get('/admin/expert-evaluations', async (req, res, next) => {
+  try {
+    const [statuses, summary] = await Promise.all([
+      listAllExpertEvaluationStatuses(),
+      getCompletedExpertResponseSummary(),
+    ]);
+    res.render('dashboard/admin-expert-evaluations', {
+      title: 'View Expert Evaluation Report',
+      active: 'admin',
+      adminSection: 'expert-evaluations',
+      statuses,
+      summary,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
+// GET /admin/expert-evaluations/:accountId — one Expert Evaluator
+// account's full evaluation detail, read from expert_evaluation_* via
+// getEvaluationStateReadOnly(id, EXPERT_ROLE).
+// ------------------------------------------------------------------
+router.get('/admin/expert-evaluations/:accountId', async (req, res, next) => {
+  try {
+    const account = await getAccountById(req.params.accountId);
+    if (!account) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
+
+    const { session, taskLogs, responses } = await getEvaluationStateReadOnly(account.id, EXPERT_ROLE);
+    res.render('dashboard/admin-expert-evaluation-detail', {
+      title: `Expert Evaluation — ${account.username}`,
+      active: 'admin',
+      adminSection: 'expert-evaluations',
+      account,
+      session,
+      tasks: WALKTHROUGH_TASKS,
+      taskLogs,
+      domains: groupItemsByDomain(),
+      responses,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
 // GET /admin/datasets — every dataset uploaded by every SME owner
 // account, with file/row counts and a Delete action per row. Grouped by
 // owner (alphabetical) with each owner's own datasets most-recently-
@@ -364,7 +464,7 @@ router.get('/admin/evaluations/:accountId', async (req, res, next) => {
 router.get('/admin/datasets', async (req, res, next) => {
   try {
     const q = req.query.q || '';
-    const datasets = await listAllDatasets(q);
+    const datasets = await listAllDatasets(q); // roleMode defaults to 'sme' — excludes Expert Evaluator uploads
     res.render('dashboard/admin-datasets', {
       title: 'Manage datasets',
       active: 'admin',
@@ -372,6 +472,35 @@ router.get('/admin/datasets', async (req, res, next) => {
       datasets,
       q,
       deleted: req.query.deleted || null,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
+// GET /admin/expert-datasets — same page as /admin/datasets above, for
+// Expert Evaluator uploads only (listAllDatasets(q, 'expert')). The
+// underlying uploaded_datasets table is shared (see db/schema.sql's note
+// on the Expert Evaluator role), but this keeps the two populations'
+// uploads from ever being browsed in the same list. The existing
+// /admin/datasets/:id/view, /erd, and /delete routes below work unchanged
+// for a dataset reached from here — they operate on the dataset's own
+// row id, not its owner's role.
+// ------------------------------------------------------------------
+router.get('/admin/expert-datasets', async (req, res, next) => {
+  try {
+    const q = req.query.q || '';
+    const datasets = await listAllDatasets(q, 'expert');
+    res.render('dashboard/admin-datasets', {
+      title: 'Expert Evaluator Datasets',
+      active: 'admin',
+      adminSection: 'expert-datasets',
+      datasets,
+      q,
+      deleted: req.query.deleted || null,
+      basePath: '/admin/expert-datasets',
+      ownerLabel: 'Expert Evaluator',
     });
   } catch (err) {
     next(err);
@@ -402,9 +531,20 @@ router.get('/admin/datasets/:id/view', async (req, res, next) => {
 // ------------------------------------------------------------------
 // GET /admin/exit-view — leaves "viewing as admin" mode.
 // ------------------------------------------------------------------
-router.get('/admin/exit-view', (req, res) => {
-  delete req.session.adminViewAccountId;
-  res.redirect('/admin/datasets');
+router.get('/admin/exit-view', async (req, res, next) => {
+  try {
+    const viewedAccountId = req.session.adminViewAccountId;
+    delete req.session.adminViewAccountId;
+    if (viewedAccountId) {
+      const account = await getAccountById(viewedAccountId);
+      if (account && account.role === EXPERT_ROLE) {
+        return res.redirect('/admin/expert-datasets');
+      }
+    }
+    res.redirect('/admin/datasets');
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ------------------------------------------------------------------
@@ -428,16 +568,17 @@ router.get('/admin/datasets/:id/erd', async (req, res, next) => {
 
     const bundle = await getOrBuildFullProfile(dataset.account_id, dataset.id);
     const erd = buildErdDefinition(bundle.files, bundle.relationships);
+    const isExpert = dataset.owner_role === EXPERT_ROLE;
 
     res.render('dashboard/erd', {
       title: `Entity-Relationship Diagram — ${dataset.dataset_name}`,
       active: 'admin',
-      adminSection: 'datasets',
+      adminSection: isExpert ? 'expert-datasets' : 'datasets',
       dataset,
       erd,
       humanizeFileType,
-      backHref: '/admin/datasets',
-      backLabel: '← Manage Datasets',
+      backHref: isExpert ? '/admin/expert-datasets' : '/admin/datasets',
+      backLabel: isExpert ? '← Expert Evaluator Datasets' : '← Manage Datasets',
     });
   } catch (err) {
     next(err);
@@ -455,10 +596,12 @@ router.get('/admin/datasets/:id/delete', async (req, res, next) => {
   try {
     const dataset = await getDatasetForAdmin(req.params.id);
     if (!dataset) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
+    const isExpert = dataset.owner_role === EXPERT_ROLE;
     res.render('dashboard/admin-dataset-delete-confirm', {
       title: `Delete dataset — ${dataset.dataset_name}`,
       active: 'admin',
-      adminSection: 'datasets',
+      adminSection: isExpert ? 'expert-datasets' : 'datasets',
+      backHref: isExpert ? '/admin/expert-datasets' : '/admin/datasets',
       dataset,
     });
   } catch (err) {
@@ -470,8 +613,9 @@ router.post('/admin/datasets/:id/delete', async (req, res, next) => {
   try {
     const dataset = await getDatasetForAdmin(req.params.id);
     if (!dataset) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
+    const listPath = dataset.owner_role === EXPERT_ROLE ? '/admin/expert-datasets' : '/admin/datasets';
     await deleteDataset(dataset.id);
-    return res.redirect(`/admin/datasets?deleted=${encodeURIComponent(dataset.dataset_name)}`);
+    return res.redirect(`${listPath}?deleted=${encodeURIComponent(dataset.dataset_name)}`);
   } catch (err) {
     next(err);
   }

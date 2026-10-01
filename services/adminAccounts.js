@@ -14,6 +14,12 @@ const SALT_ROUNDS = 12;
 // search matches username, owner name, business name, or email
 // (case-insensitive substring) — enough to find one account among a
 // modest evaluator/pilot-respondent list without a full filter UI.
+//
+// Excludes role = 'Expert Evaluator' (added 30 September 2026): this is
+// "Manage SME Accounts" — SME owners and Admins, same as before that role
+// existed. An Expert Evaluator account is managed from the separate
+// listExpertAccounts()/"Manage Expert Evaluators" page below, so the two
+// populations are never listed, searched, or counted together.
 async function listAccounts(search) {
   const trimmed = (search || '').trim();
   if (trimmed) {
@@ -21,7 +27,8 @@ async function listAccounts(search) {
     const { rows } = await pool.query(
       `SELECT id, username, owner_name, business_name, email, role, created_at
          FROM sme_accounts
-        WHERE username ILIKE $1 OR owner_name ILIKE $1 OR business_name ILIKE $1 OR email ILIKE $1
+        WHERE role != 'Expert Evaluator'
+          AND (username ILIKE $1 OR owner_name ILIKE $1 OR business_name ILIKE $1 OR email ILIKE $1)
         ORDER BY created_at DESC`,
       [like]
     );
@@ -30,6 +37,33 @@ async function listAccounts(search) {
   const { rows } = await pool.query(
     `SELECT id, username, owner_name, business_name, email, role, created_at
        FROM sme_accounts
+      WHERE role != 'Expert Evaluator'
+      ORDER BY created_at DESC`
+  );
+  return rows;
+}
+
+// Same shape and search behavior as listAccounts(), filtered to
+// role = 'Expert Evaluator' only — backs the separate "Manage Expert
+// Evaluators" admin page.
+async function listExpertAccounts(search) {
+  const trimmed = (search || '').trim();
+  if (trimmed) {
+    const like = `%${trimmed}%`;
+    const { rows } = await pool.query(
+      `SELECT id, username, owner_name, business_name, email, business_sector, role, created_at
+         FROM sme_accounts
+        WHERE role = 'Expert Evaluator'
+          AND (username ILIKE $1 OR owner_name ILIKE $1 OR business_name ILIKE $1 OR email ILIKE $1)
+        ORDER BY created_at DESC`,
+      [like]
+    );
+    return rows;
+  }
+  const { rows } = await pool.query(
+    `SELECT id, username, owner_name, business_name, email, business_sector, role, created_at
+       FROM sme_accounts
+      WHERE role = 'Expert Evaluator'
       ORDER BY created_at DESC`
   );
   return rows;
@@ -99,6 +133,6 @@ async function demoteToOwner(accountId) {
 }
 
 module.exports = {
-  listAccounts, getAccountById, resetPassword, countAdmins,
+  listAccounts, listExpertAccounts, getAccountById, resetPassword, countAdmins,
   createAdminAccount, promoteToAdmin, demoteToOwner,
 };

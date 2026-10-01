@@ -1,0 +1,11 @@
+topic,guidance
+Purpose,"CSV templates for CMA-Flow SME uploads designed for descriptive, diagnostic, predictive, and prescriptive analytics."
+Minimum useful history,Prefer 12+ months for monthly forecasting; 24+ months is stronger when seasonality matters.
+Row grain,Normally one transaction/order/booking/job/visit/project/batch per row. Do not mix grains in one CSV.
+Dates,Use ISO format YYYY-MM-DD whenever possible.
+Currency,Store numeric values without currency symbols; retain one consistent currency per file or add a currency_code field.
+Missing values,Leave genuinely unavailable values blank; do not encode missing numeric values as 0 unless zero is true.
+Identifiers,"Use stable IDs for customers, products/services, orders/jobs, staff, properties, vehicles, etc."
+Predictive analytics,"Requires a target variable such as revenue, demand/quantity, churn_flag, cancellation_flag, delay, defect, occupancy, or rating."
+Prescriptive analytics,"Uses controllable variables such as price, discount, capacity, inventory, staffing, ad spend, reorder level, delivery/service time, or resource cost."
+CMA-Flow compatibility,"Common fields are intentionally repeated across industries to support schema profiling, semantic-role detection, mechanism discovery, and cross-category analytics."

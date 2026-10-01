@@ -1,18 +1,24 @@
-// Forces an SME owner through the TAM six-task walkthrough (see
-// services/tamEvaluation.js, claude/tam-instrument-end-user-evaluation.md)
-// before unlocking the rest of the app's navigation. Per Brenda's own
-// choice, this applies to every sme_owner account whose evaluation isn't
-// yet 'completed' — not just accounts created from here on — so an
-// existing account that hasn't gone through it yet is gated too the next
-// time it loads a page. Admin accounts are never gated: they view
-// analytics read-only via "View analytics" on Manage Datasets, they never
-// take this evaluation on their own account (see the Admin branch of
-// views/partials/sidebar.ejs).
+// Forces an SME owner OR an Expert Evaluator through the TAM six-task
+// walkthrough (see services/tamEvaluation.js,
+// claude/tam-instrument-end-user-evaluation.md) before unlocking the rest
+// of the app's navigation. Per Brenda's own choice, this applies to every
+// sme_owner account whose evaluation isn't yet 'completed' — not just
+// accounts created from here on — so an existing account that hasn't
+// gone through it yet is gated too the next time it loads a page.
+//
+// Expert Evaluator accounts (added 30 September 2026) go through this
+// exact same gate — upload, then the four analytics modules, then the
+// TAM questionnaire, same as an SME owner — just reading/writing the
+// separate expert_evaluation_* tables (tablesFor() in tamEvaluation.js
+// picks the right set from the account's own role). Admin accounts are
+// the only ones never gated: they view analytics read-only via "View
+// analytics" on Manage Datasets, they never take this evaluation on their
+// own account (see the Admin branch of views/partials/sidebar.ejs).
 //
 // Two things happen here:
 //   1. res.locals.evaluationLocked is set on every request, so
-//      views/partials/sidebar.ejs can render only the "End-User
-//      Evaluation" link while true.
+//      views/partials/sidebar.ejs can render only the evaluation link
+//      while true.
 //   2. A direct visit (typed URL, bookmark, stale tab) to a route this
 //      gate covers is redirected back to /evaluation if it isn't reachable
 //      yet — sidebar-hiding alone wouldn't actually "force" anything.
@@ -23,9 +29,19 @@
 // Configuration, etc.) are deliberately left ungated: they're not
 // separate navigation choices, and gating them individually would risk
 // breaking the walkthrough's own in-task links rather than adding
-// anything the request asked for.
+// anything the request asked for. /sme-templates (the SME-business-
+// category CSV template downloads an Expert Evaluator uses to prepare
+// Task 1's upload) is always allowed for the same reason /evaluation
+// itself is — it has to be reachable before Task 1 is done.
 const pool = require('../db/pool');
-const { WALKTHROUGH_TASKS } = require('../services/tamEvaluation');
+const { WALKTHROUGH_TASKS, EXPERT_ROLE } = require('../services/tamEvaluation');
+
+const SESSIONS_TABLE = {
+  [EXPERT_ROLE]: 'expert_evaluation_sessions',
+};
+function sessionsTableFor(role) {
+  return SESSIONS_TABLE[role] || 'evaluation_sessions';
+}
 
 // Each task's module unlocks progressively as the walkthrough reaches it
 // (current_task advances via services/tamEvaluation.js's completeTask()),
@@ -40,7 +56,7 @@ const TASK_ROUTE_PREFIXES = WALKTHROUGH_TASKS.map((t) => ({ number: t.number, pr
 const COMPLETED_ONLY_PREFIXES = ['/monetization-discovery'];
 
 // Always reachable, whatever the lock state.
-const ALWAYS_ALLOWED_PREFIXES = ['/evaluation', '/logout', '/healthz'];
+const ALWAYS_ALLOWED_PREFIXES = ['/evaluation', '/logout', '/healthz', '/sme-templates'];
 
 function pathMatches(path, prefix) {
   return path === prefix || path.startsWith(`${prefix}/`);
@@ -60,7 +76,7 @@ async function evaluationGate(req, res, next) {
   let session;
   try {
     const { rows } = await pool.query(
-      `SELECT status, current_task FROM evaluation_sessions WHERE account_id = $1`,
+      `SELECT status, current_task FROM ${sessionsTableFor(user.role)} WHERE account_id = $1`,
       [user.id]
     );
     session = rows[0] || null;

@@ -1,0 +1,1 @@
+record_id,transaction_date,customer_id,customer_segment,region,channel,product_service_id,product_service_name,category,quantity,unit_price,discount_amount,revenue,direct_cost,payment_method,status,promotion_flag,customer_rating,order_id,sku,brand,inventory_level,reorder_level,shipping_cost,delivery_days,return_flag,website_sessions,cart_abandonment_flag

@@ -1,11 +1,18 @@
 // TAM End-User Evaluation — routes for the six-task walkthrough and the
-// 17-item questionnaire it unlocks. See services/tamEvaluation.js for the
-// task/item content and all the persistence logic; this file is just
-// routing + request handling on top of it.
+// 17-item questionnaire it unlocks. Shared by sme_owner accounts AND
+// Expert Evaluator accounts (added 30 September 2026) — every call into
+// services/tamEvaluation.js below passes the signed-in account's own
+// role, which is what picks evaluation_sessions/_task_logs/_responses
+// (SME owner) vs expert_evaluation_sessions/_task_logs/_responses (Expert
+// Evaluator); see that service's header comment and db/schema.sql's note
+// on the expert_* tables for why. Everything else here — routing,
+// request handling, the views rendered — is identical for both
+// populations, which is the point: the instrument itself does not
+// change, only where its answers are stored.
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const {
-  WALKTHROUGH_TASKS, TAM_ITEMS, groupItemsByDomain,
+  WALKTHROUGH_TASKS, TAM_ITEMS, groupItemsByDomain, EXPERT_ROLE,
   getEvaluationState, recordConsent, startTaskIfNeeded, completeTask,
   saveResponses, validateQuestionnaire, markCompleted,
 } = require('../services/tamEvaluation');
@@ -27,7 +34,9 @@ const CONSENT_DECISIONS = { agree: 'given', decline: 'declined', reconsider: 'pe
 router.get('/evaluation', async (req, res, next) => {
   try {
     const accountId = req.session.userId;
-    const { session, taskLogs, responses } = await getEvaluationState(accountId);
+    const role = req.session.user && req.session.user.role;
+    const isExpert = role === EXPERT_ROLE;
+    const { session, taskLogs, responses } = await getEvaluationState(accountId, role);
 
     // Republic Act No. 10173 (Data Privacy Act of 2012): no walkthrough or
     // questionnaire screen is ever served until the respondent has
@@ -39,6 +48,7 @@ router.get('/evaluation', async (req, res, next) => {
         title: 'End-User Evaluation — Informed Consent',
         active: 'evaluation',
         session,
+        isExpert,
       });
     }
 
@@ -47,12 +57,13 @@ router.get('/evaluation', async (req, res, next) => {
         title: 'End-User Evaluation',
         active: 'evaluation',
         session,
+        isExpert,
       });
     }
 
     if (session.status === 'walkthrough') {
-      await startTaskIfNeeded(session.id, accountId, session.current_task);
-      const refreshed = await getEvaluationState(accountId);
+      await startTaskIfNeeded(session.id, accountId, session.current_task, role);
+      const refreshed = await getEvaluationState(accountId, role);
       const currentTask = WALKTHROUGH_TASKS.find((t) => t.number === refreshed.session.current_task);
       return res.render('dashboard/evaluation-walkthrough', {
         title: 'End-User Evaluation',
@@ -61,6 +72,7 @@ router.get('/evaluation', async (req, res, next) => {
         tasks: WALKTHROUGH_TASKS,
         taskLogs: refreshed.taskLogs,
         currentTask,
+        isExpert,
       });
     }
 
@@ -72,6 +84,7 @@ router.get('/evaluation', async (req, res, next) => {
         domains: groupItemsByDomain(),
         responses,
         errors: null,
+        isExpert,
       });
     }
 
@@ -84,6 +97,7 @@ router.get('/evaluation', async (req, res, next) => {
       taskLogs,
       domains: groupItemsByDomain(),
       responses,
+      isExpert,
     });
   } catch (err) {
     next(err);
@@ -99,10 +113,11 @@ router.get('/evaluation', async (req, res, next) => {
 router.post('/evaluation/consent', async (req, res, next) => {
   try {
     const accountId = req.session.userId;
-    const { session } = await getEvaluationState(accountId);
+    const role = req.session.user && req.session.user.role;
+    const { session } = await getEvaluationState(accountId, role);
     const nextStatus = CONSENT_DECISIONS[req.body.decision];
     if (nextStatus) {
-      await recordConsent(session, nextStatus);
+      await recordConsent(session, nextStatus, role);
     }
     return res.redirect('/evaluation');
   } catch (err) {
@@ -118,8 +133,9 @@ router.post('/evaluation/consent', async (req, res, next) => {
 router.post('/evaluation/task/:n/complete', async (req, res, next) => {
   try {
     const accountId = req.session.userId;
+    const role = req.session.user && req.session.user.role;
     const taskNumber = parseInt(req.params.n, 10);
-    const { session } = await getEvaluationState(accountId);
+    const { session } = await getEvaluationState(accountId, role);
 
     // Consent must still be 'given' — a mid-evaluation withdrawal (see the
     // "Withdraw from this evaluation" link) must stop this from silently
@@ -135,7 +151,7 @@ router.post('/evaluation/task/:n/complete', async (req, res, next) => {
       neededAssistance: req.body.needed_assistance === 'on',
       hadError: req.body.had_error === 'on',
       notes: req.body.notes,
-    });
+    }, role);
 
     return res.redirect('/evaluation');
   } catch (err) {
@@ -153,7 +169,9 @@ router.post('/evaluation/task/:n/complete', async (req, res, next) => {
 router.post('/evaluation/questionnaire', async (req, res, next) => {
   try {
     const accountId = req.session.userId;
-    const { session } = await getEvaluationState(accountId);
+    const role = req.session.user && req.session.user.role;
+    const isExpert = role === EXPERT_ROLE;
+    const { session } = await getEvaluationState(accountId, role);
     if (session.consent_status !== 'given' || session.status !== 'questionnaire') {
       return res.redirect('/evaluation');
     }
@@ -163,12 +181,12 @@ router.post('/evaluation/questionnaire', async (req, res, next) => {
       rating: req.body[`rating_${item.code}`],
       remark: req.body[`remark_${item.code}`],
     }));
-    await saveResponses(session, accountId, answers);
+    await saveResponses(session, accountId, answers, role);
 
     if (req.body.action === 'submit') {
-      const validation = await validateQuestionnaire(session.id);
+      const validation = await validateQuestionnaire(session.id, role);
       if (!validation.ok) {
-        const { responses } = await getEvaluationState(accountId);
+        const { responses } = await getEvaluationState(accountId, role);
         return res.status(400).render('dashboard/evaluation-questionnaire', {
           title: 'End-User Evaluation — Questionnaire',
           active: 'evaluation',
@@ -176,9 +194,10 @@ router.post('/evaluation/questionnaire', async (req, res, next) => {
           domains: groupItemsByDomain(),
           responses,
           errors: validation,
+          isExpert,
         });
       }
-      await markCompleted(session.id);
+      await markCompleted(session.id, role);
     }
 
     return res.redirect('/evaluation');

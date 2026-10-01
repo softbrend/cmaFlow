@@ -2,13 +2,18 @@
   <div class="nav-heading">Navigation</div>
 
   <ul class="nav-list">
+    <% var isExpertEvaluator = currentUser && currentUser.role === 'Expert Evaluator'; %>
     <% if (currentUser && currentUser.role === 'Admin') { %>
       <%# Admin's own nav: the same four analytics stages an SME owner
           sees (read-only here — an Admin views them via "View analytics"
           on Manage Datasets, routes/dashboard.js's resolveAccountId()),
-          then the three admin-only tools. No Upload/Browse/Monetization
-          discovery/End-User Evaluation — those are SME-owner actions an
-          Admin account never performs on its own account. %>
+          then the admin-only tools — now split into an SME-owner set and
+          an Expert Evaluator set (added 30 September 2026) so the two
+          populations' accounts, datasets, and TAM evaluation reports are
+          never browsed from the same list. No Upload/Browse/Monetization
+          discovery/End-User Evaluation — those are SME-owner/Expert-
+          Evaluator actions an Admin account never performs on its own
+          account. %>
       <li><a href="/admin" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'home') ? 'active' : '' %>"><span class="nav-dot"></span>Admin home</a></li>
       <% (navSections || []).forEach(function(s) { %>
         <li><a href="/<%= s.slug %>" class="<%= active === s.slug ? 'active' : '' %>"><span class="nav-icon stage-<%= s.slug %>"><%= s.icon %></span><%= s.label %></a></li>
@@ -16,25 +21,40 @@
       <li><a href="/admin/evaluations" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'evaluations') ? 'active' : '' %>"><span class="nav-dot"></span>View Evaluation Report</a></li>
       <li><a href="/admin/accounts" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'accounts') ? 'active' : '' %>"><span class="nav-dot"></span>Manage SME Accounts</a></li>
       <li><a href="/admin/datasets" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'datasets') ? 'active' : '' %>"><span class="nav-dot"></span>Manage Datasets</a></li>
+      <li><a href="/admin/expert-evaluations" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'expert-evaluations') ? 'active' : '' %>"><span class="nav-dot"></span>View Expert Evaluation Report</a></li>
+      <li><a href="/admin/expert-accounts" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'expert-accounts') ? 'active' : '' %>"><span class="nav-dot"></span>Manage Expert Evaluators</a></li>
+      <li><a href="/admin/expert-datasets" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'expert-datasets') ? 'active' : '' %>"><span class="nav-dot"></span>Expert Evaluator Datasets</a></li>
     <% } else if (typeof evaluationLocked !== 'undefined' && evaluationLocked) { %>
-      <%# New (or not-yet-completed) SME owner: every other module is
-          hidden until the six-task walkthrough and 17-item questionnaire
-          are finished (middleware/evaluationGate.js enforces this
-          server-side too, so this isn't just cosmetic — see its header
-          comment for exactly what stays reachable and why). %>
-      <li><a href="/evaluation" class="<%= active === 'evaluation' ? 'active' : '' %>"><span class="nav-dot"></span>End-User Evaluation</a></li>
+      <%# New (or not-yet-completed) SME owner OR Expert Evaluator: every
+          other module is hidden until the six-task walkthrough and
+          17-item questionnaire are finished (middleware/evaluationGate.js
+          enforces this server-side too, so this isn't just cosmetic — see
+          its header comment for exactly what stays reachable and why).
+          An Expert Evaluator also gets the template-download page here,
+          since they need a category template before Task 1's upload. %>
+      <% if (isExpertEvaluator) { %>
+        <li><a href="/sme-templates" class="<%= active === 'sme-templates' ? 'active' : '' %>"><span class="nav-dot"></span>Download SME Templates</a></li>
+      <% } %>
+      <li><a href="/evaluation" class="<%= active === 'evaluation' ? 'active' : '' %>"><span class="nav-dot"></span><%= isExpertEvaluator ? 'Expert Evaluator Evaluation' : 'End-User Evaluation' %></a></li>
     <% } else { %>
       <%# The four analytics stages carry a stage-colored icon chip instead
           of the plain gold nav-dot — the same DESCRIPTIVE → DIAGNOSTIC →
           PREDICTIVE → PRESCRIPTIVE identity as the .stage-pipeline trademark
-          on their own pages (see views/partials/stage-pipeline.ejs). %>
+          on their own pages (see views/partials/stage-pipeline.ejs). Shown
+          to both SME owners and Expert Evaluators alike; Monetization
+          discovery and the template downloads are the only items that
+          differ between the two. %>
       <% (navSections || []).forEach(function(s) { %>
         <li><a href="/<%= s.slug %>" class="<%= active === s.slug ? 'active' : '' %>"><span class="nav-icon stage-<%= s.slug %>"><%= s.icon %></span><%= s.label %></a></li>
       <% }); %>
       <li><a href="/upload-dataset" class="<%= active === 'upload-new-dataset' ? 'active' : '' %>"><span class="nav-dot"></span>Upload New Dataset</a></li>
       <li><a href="/browse-dataset" class="<%= active === 'browse-dataset' ? 'active' : '' %>"><span class="nav-dot"></span>Browse Dataset</a></li>
-      <li><a href="/monetization-discovery" class="<%= active === 'monetization-discovery' ? 'active' : '' %>"><span class="nav-dot"></span>Monetization discovery</a></li>
-      <li><a href="/evaluation" class="<%= active === 'evaluation' ? 'active' : '' %>"><span class="nav-dot"></span>End-User Evaluation</a></li>
+      <% if (isExpertEvaluator) { %>
+        <li><a href="/sme-templates" class="<%= active === 'sme-templates' ? 'active' : '' %>"><span class="nav-dot"></span>Download SME Templates</a></li>
+      <% } else { %>
+        <li><a href="/monetization-discovery" class="<%= active === 'monetization-discovery' ? 'active' : '' %>"><span class="nav-dot"></span>Monetization discovery</a></li>
+      <% } %>
+      <li><a href="/evaluation" class="<%= active === 'evaluation' ? 'active' : '' %>"><span class="nav-dot"></span><%= isExpertEvaluator ? 'Expert Evaluator Evaluation' : 'End-User Evaluation' %></a></li>
     <% } %>
   </ul>
 

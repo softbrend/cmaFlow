@@ -1,0 +1,38 @@
+<div class="page-title">📄 <span class="page-title-text">Download SME Templates</span></div>
+<p class="page-subtitle">Pick the business category closest to the dataset you're preparing, and download its CSV template — the exact column set CMA-Flow expects for that category. Fill it with a realistic dataset of your own choosing, then upload it as your Task 1.</p>
+
+<div class="form-card wide" style="margin-bottom: 22px;">
+  <div class="form-title" style="font-size: 15px;">Reference materials</div>
+  <p class="form-hint" style="margin-bottom: 10px;">Common fields are intentionally repeated across categories to support CMA-Flow's schema profiling and semantic-role detection. See the full field dictionary for every column's suggested data type and which analytics stage(s) it feeds.</p>
+  <a class="btn btn-ghost btn-sm" href="/sme-templates/reference/field-data-dictionary">Download full field data dictionary</a>
+  <a class="btn btn-ghost btn-sm" href="/sme-templates/reference/analytics-guidance">Download analytics-readiness guidance</a>
+</div>
+
+<div class="form-card wide" style="max-width: none;">
+  <div class="table-scroll">
+    <table class="table-simple">
+      <thead>
+        <tr>
+          <th>Business category</th>
+          <th>Examples</th>
+          <th>Fields</th>
+          <th>Analytics supported</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% manifest.forEach(function(row) { %>
+          <tr>
+            <td><%= row.sme_business_category %></td>
+            <td style="color: var(--text-muted); font-size: 13px;"><%= row.examples %></td>
+            <td><%= row.field_count %></td>
+            <td style="color: var(--text-muted); font-size: 13px;"><%= row.analytics_supported %></td>
+            <td style="text-align: right;">
+              <a class="btn btn-accent btn-sm" href="/sme-templates/download/<%= row.template_file %>">Download CSV</a>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>

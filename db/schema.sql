@@ -35,18 +35,35 @@ CREATE TABLE IF NOT EXISTS sme_accounts (
     created_at       TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
--- Restricts role to the two values the app actually understands (routes/
+-- Restricts role to the values the app actually understands (routes/
 -- admin.js's requireAdmin checks for the literal string 'Admin'; every
--- other account is implicitly an SME owner). Added after the column
--- already existed in production, so it's a separate ALTER wrapped in a
--- DO block rather than an inline CHECK on the column above — Postgres has
--- no "ADD CONSTRAINT IF NOT EXISTS", so this is the idempotent-safe way
--- to let db:init re-run this file on every deploy without erroring on a
--- constraint that's already there.
+-- other SME-owner-flow account is implicitly an SME owner). Added after
+-- the column already existed in production, so it's a separate ALTER
+-- wrapped in a DO block rather than an inline CHECK on the column above —
+-- Postgres has no "ADD CONSTRAINT IF NOT EXISTS", so this is the
+-- idempotent-safe way to let db:init re-run this file on every deploy
+-- without erroring on a constraint that's already there.
+--
+-- 'Expert Evaluator' added alongside the original two (30 September 2026)
+-- for the field-generalization evaluation round: a purposively-recruited
+-- domain expert who signs up through the separate, access-code-gated
+-- /expert-signup flow (routes/auth.js), uploads their own dataset in an
+-- SME business category of their choosing (views/dashboard/sme-templates
+-- supplies the CSV template), runs it through the same four analytics
+-- modules an SME owner uses, and then completes the same TAM instrument —
+-- but every byte of that evaluation is written to its own
+-- expert_evaluation_sessions/_task_logs/_responses tables below, never
+-- evaluation_sessions/_task_logs/_responses, so the SME-owner respondent
+-- counts and TAM summary statistics already reported in the manuscript
+-- can never silently pick up an expert evaluator's rows. The role CHECK
+-- is dropped and recreated (not just ADD CONSTRAINT) because a constraint
+-- can't be altered in place — this runs every db:init, so it's a no-op
+-- once the live constraint already allows all three values.
 DO $$
 BEGIN
+  ALTER TABLE sme_accounts DROP CONSTRAINT IF EXISTS sme_accounts_role_check;
   ALTER TABLE sme_accounts
-      ADD CONSTRAINT sme_accounts_role_check CHECK (role IN ('SME Owner', 'Admin'));
+      ADD CONSTRAINT sme_accounts_role_check CHECK (role IN ('SME Owner', 'Admin', 'Expert Evaluator'));
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
@@ -640,3 +657,79 @@ END
 $$;
 
 CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+
+-- ---------------------------------------------------------------------
+-- Expert Evaluator TAM evaluation — same six-task walkthrough + 17-item
+-- questionnaire as evaluation_sessions/_task_logs/_responses above (same
+-- services/tamEvaluation.js task list and item list, same
+-- consent/validation rules), but a COMPLETELY SEPARATE set of tables so
+-- an Expert Evaluator's responses can never be queried, counted, or
+-- summarized together with an SME owner's, even by accident. See the
+-- 'Expert Evaluator' note on sme_accounts_role_check above for why this
+-- round exists. Column shapes are identical to their SME-owner
+-- counterparts on purpose — services/tamEvaluation.js picks which table
+-- set to read/write per-call based on the account's role, not by
+-- duplicating its logic.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS expert_evaluation_sessions (
+    id                        SERIAL PRIMARY KEY,
+    account_id                INTEGER     NOT NULL REFERENCES sme_accounts(id) ON DELETE CASCADE,
+    status                    VARCHAR(20) NOT NULL DEFAULT 'walkthrough' CHECK (status IN (
+                                  'walkthrough', 'questionnaire', 'completed'
+                              )),
+    current_task              SMALLINT    NOT NULL DEFAULT 1 CHECK (current_task BETWEEN 1 AND 6),
+    started_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
+    walkthrough_completed_at  TIMESTAMPTZ,
+    completed_at              TIMESTAMPTZ,
+    consent_status            VARCHAR(20) NOT NULL DEFAULT 'pending',
+    consent_decided_at        TIMESTAMPTZ,
+    UNIQUE (account_id)
+);
+
+DO $$
+BEGIN
+  ALTER TABLE expert_evaluation_sessions
+      ADD CONSTRAINT expert_evaluation_sessions_consent_status_check
+      CHECK (consent_status IN ('pending', 'given', 'declined'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE TABLE IF NOT EXISTS expert_evaluation_task_logs (
+    id                    SERIAL PRIMARY KEY,
+    session_id            INTEGER     NOT NULL REFERENCES expert_evaluation_sessions(id) ON DELETE CASCADE,
+    account_id            INTEGER     NOT NULL REFERENCES sme_accounts(id) ON DELETE CASCADE,
+    task_number           SMALLINT    NOT NULL CHECK (task_number BETWEEN 1 AND 6),
+    module_slug           VARCHAR(60) NOT NULL,
+    started_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+    completed_at          TIMESTAMPTZ,
+    time_on_task_seconds  INTEGER,
+    needed_assistance     BOOLEAN     NOT NULL DEFAULT false,
+    had_error             BOOLEAN     NOT NULL DEFAULT false,
+    notes                 TEXT,
+    UNIQUE (session_id, task_number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_expert_evaluation_task_logs_session
+    ON expert_evaluation_task_logs(session_id);
+
+CREATE INDEX IF NOT EXISTS idx_expert_evaluation_task_logs_account
+    ON expert_evaluation_task_logs(account_id);
+
+CREATE TABLE IF NOT EXISTS expert_evaluation_responses (
+    id            SERIAL PRIMARY KEY,
+    session_id    INTEGER     NOT NULL REFERENCES expert_evaluation_sessions(id) ON DELETE CASCADE,
+    account_id    INTEGER     NOT NULL REFERENCES sme_accounts(id) ON DELETE CASCADE,
+    item_code     VARCHAR(10) NOT NULL,
+    domain        VARCHAR(10) NOT NULL CHECK (domain IN ('PU', 'PEOU', 'BI')),
+    rating        SMALLINT    CHECK (rating BETWEEN 1 AND 5),
+    remark        TEXT,
+    answered_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (session_id, item_code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_expert_evaluation_responses_session
+    ON expert_evaluation_responses(session_id);
+
+CREATE INDEX IF NOT EXISTS idx_expert_evaluation_responses_account
+    ON expert_evaluation_responses(account_id);

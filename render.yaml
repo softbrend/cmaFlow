@@ -52,6 +52,13 @@ services:
           property: connectionString
       # DB_SSL is intentionally NOT set here — db/pool.js already enables
       # SSL automatically whenever DATABASE_URL is present.
+      - key: EXPERT_SIGNUP_CODE
+        sync: false # set this by hand in the Render dashboard, not here —
+          # Render prompts for a value on first deploy and leaves it alone
+          # after that. Required for the /expert-signup gate (routes/auth.js);
+          # if left unset in production the app falls back to the hardcoded
+          # dev-only default ('cmaflow-expert-2026'), which is NOT safe to
+          # rely on for a live deployment.
 
 databases:
   - name: cma-flow-db

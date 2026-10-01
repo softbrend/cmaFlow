@@ -1,15 +1,17 @@
-<div class="page-title">🗂️ <span class="page-title-text">Manage Datasets</span></div>
-<p class="page-subtitle">Every dataset uploaded by every SME owner account, grouped by owner (A–Z) with each owner's most recently uploaded dataset first. View analytics opens it read-only in the four analytics pages; ERD shows its entity-relationship diagram; Delete removes it and everything computed from it.</p>
+<% var basePath = typeof basePath !== 'undefined' ? basePath : '/admin/datasets'; %>
+<% var ownerLabel = typeof ownerLabel !== 'undefined' ? ownerLabel : 'SME owner'; %>
+<div class="page-title">🗂️ <span class="page-title-text"><%= title %></span></div>
+<p class="page-subtitle">Every dataset uploaded by every <%= ownerLabel %> account, grouped by owner (A–Z) with each owner's most recently uploaded dataset first. View analytics opens it read-only in the four analytics pages; ERD shows its entity-relationship diagram; Delete removes it and everything computed from it.</p>
 
 <% if (deleted) { %>
   <div class="alert-success">Deleted <strong><%= deleted %></strong>.</div>
 <% } %>
 
-<form method="GET" action="/admin/datasets" style="display: flex; gap: 10px; max-width: 520px; margin-bottom: 18px;">
-  <input type="text" name="q" value="<%= q %>" placeholder="Search SME owner (business, contact name, or username)"
+<form method="GET" action="<%= basePath %>" style="display: flex; gap: 10px; max-width: 520px; margin-bottom: 18px;">
+  <input type="text" name="q" value="<%= q %>" placeholder="Search <%= ownerLabel %> (business, contact name, or username)"
          style="flex: 1; padding: 11px 14px; border-radius: 10px; border: 1px solid transparent; background: var(--bg-input); color: #1c2a20; font-size: 14.5px;" />
   <button type="submit" class="btn btn-ghost">Search</button>
-  <% if (q) { %><a class="btn btn-ghost" href="/admin/datasets">Clear</a><% } %>
+  <% if (q) { %><a class="btn btn-ghost" href="<%= basePath %>">Clear</a><% } %>
 </form>
 
 <div class="form-card wide" style="max-width: none;">
@@ -28,7 +30,7 @@
       <tbody>
         <% if (datasets.length === 0) { %>
           <tr><td colspan="6" style="color: var(--text-muted);">
-            <% if (q) { %>No SME owner matches "<%= q %>".<% } else { %>No datasets uploaded yet.<% } %>
+            <% if (q) { %>No <%= ownerLabel %> matches "<%= q %>".<% } else { %>No datasets uploaded yet.<% } %>
           </td></tr>
         <% } %>
         <%

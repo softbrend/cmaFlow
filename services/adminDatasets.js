@@ -21,13 +21,22 @@ const { DATASETS_ROOT, sanitizeDatasetId } = require('../middleware/upload');
 // business name, owner name, or username — same case-insensitive-substring
 // idiom as services/adminAccounts.js's listAccounts(search), since an
 // installation can accumulate many SME owner accounts.
-async function listAllDatasets(search) {
+//
+// `roleMode` ('sme' | 'expert', default 'sme') picks which population's
+// datasets this returns: uploaded_datasets itself stays one shared table
+// (see db/schema.sql's note on the Expert Evaluator role — only the TAM
+// evaluation results get their own tables), but the two admin pages that
+// browse it ("Manage Datasets" vs the Expert Evaluator equivalent) must
+// still never show one population's uploads next to the other's, so the
+// role filter lives here instead of in the view.
+async function listAllDatasets(search, roleMode) {
   const trimmed = (search || '').trim();
+  const roleClause = roleMode === 'expert' ? `a.role = 'Expert Evaluator'` : `a.role != 'Expert Evaluator'`;
   const params = [];
-  let ownerFilter = '';
+  let searchClause = '';
   if (trimmed) {
     params.push(`%${trimmed}%`);
-    ownerFilter = `WHERE a.business_name ILIKE $1 OR a.owner_name ILIKE $1 OR a.username ILIKE $1`;
+    searchClause = `AND (a.business_name ILIKE $1 OR a.owner_name ILIKE $1 OR a.username ILIKE $1)`;
   }
   const { rows } = await pool.query(
     `SELECT ud.id, ud.dataset_id, ud.dataset_name, ud.domain, ud.created_at,
@@ -38,7 +47,7 @@ async function listAllDatasets(search) {
        FROM uploaded_datasets ud
        JOIN sme_accounts a ON a.id = ud.account_id
        LEFT JOIN dataset_files df ON df.dataset_id = ud.id
-       ${ownerFilter}
+      WHERE ${roleClause} ${searchClause}
       GROUP BY ud.id, a.id
       ORDER BY a.business_name ASC, ud.created_at DESC`,
     params
@@ -46,10 +55,15 @@ async function listAllDatasets(search) {
   return rows;
 }
 
+// Includes the owning account's role (as owner_role) so callers — the
+// shared /admin/datasets/:id/view|erd|delete routes, reachable from either
+// "Manage Datasets" or "Expert Evaluator Datasets" — can send the admin
+// back to whichever list they came from, and label the page correctly,
+// without a second query.
 async function getDatasetForAdmin(datasetRowId) {
   const { rows } = await pool.query(
     `SELECT ud.id, ud.dataset_id, ud.dataset_name, ud.domain, ud.created_at,
-            a.id AS account_id, a.username, a.owner_name, a.business_name
+            a.id AS account_id, a.username, a.owner_name, a.business_name, a.role AS owner_role
        FROM uploaded_datasets ud
        JOIN sme_accounts a ON a.id = ud.account_id
       WHERE ud.id = $1`,
