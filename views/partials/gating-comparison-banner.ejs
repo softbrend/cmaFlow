@@ -1,0 +1,24 @@
+<%# Shown on Predictive/Prescriptive only while an Admin has an active
+    Gating Comparison run (session.adminGatingRun, started from GET
+    /admin/gating-comparison — see routes/admin.js and db/schema.sql's
+    comment on gating_comparison_runs for the full design). res.locals
+    already carries adminGatingRun (routes/dashboard.js's
+    attachAdminViewingBanner), so every page including this partial gets
+    it for free. Deliberately a SEPARATE banner from admin-viewing-banner
+    (included right above this one on both pages) since it communicates a
+    materially different thing: which gate_mode is active and why the
+    page's own outputs might look different from normal right now. %>
+<% if (typeof adminGatingRun !== 'undefined' && adminGatingRun) { %>
+  <div class="<%= adminGatingRun.gateMode === 'off' ? 'alert-error' : 'ok-box' %>" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;">
+    <span>
+      🔬 Gating Comparison run active — mode <strong><%= adminGatingRun.gateMode.toUpperCase() %></strong>.
+      <%= adminGatingRun.gateMode === 'off'
+        ? 'Evidence-strength thresholds are relaxed on this page — outputs that would normally be suppressed are shown, tagged "would normally be suppressed."'
+        : 'Thresholds are enforced exactly as every real SME owner experiences them.' %>
+    </span>
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <a class="btn btn-ghost btn-sm" href="/admin/gating-comparison/<%= adminGatingRun.datasetRowId %>/report">View report</a>
+      <a class="btn btn-ghost btn-sm" href="/admin/gating-comparison/exit">Exit comparison</a>
+    </div>
+  </div>
+<% } %>

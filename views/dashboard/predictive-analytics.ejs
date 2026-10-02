@@ -1,6 +1,7 @@
 <div class="page-title"><span class="page-title-icon page-icon-predictive" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,17 9,11 13,15 21,5"/><polyline points="15,5 21,5 21,11"/></svg></span><span class="page-title-text">Predictive analytics</span></div>
 <p class="page-subtitle">See where your business is headed — churn risk, lifecycle stage, revenue forecasts, and price what-if scenarios, every score explainable by its own rule.</p>
 <%- include('../partials/admin-viewing-banner') %>
+<%- include('../partials/gating-comparison-banner') %>
 <%- include('../partials/stage-pipeline', { activeStage: 'predictive' }) %>
 <details class="info-disclosure">
   <summary>ⓘ How CMA-Flow analyzed this dataset</summary>
@@ -269,7 +270,23 @@
         <% } else { %>
           <div class="chart-subtitle" style="margin-bottom: 10px;">
             Baseline drawn from <strong><%= cards.whatIf.baselineMonthLabel %></strong>, the most recent month with transaction data<%= cards.whatIfSelectedProduct === 'All products/services' ? '' : ` for ${cards.whatIfSelectedProduct}` %>.
+            <% if (cards.whatIfGatingBypassed) { %><span class="badge badge-risk-high" style="margin-left:6px;" title="Gating Comparison: gate_mode=off — this elasticity read would normally be suppressed.">⚠️ would normally be suppressed</span><% } %>
           </div>
+          <% if (typeof adminGatingRun !== 'undefined' && adminGatingRun && cards.whatIfOutputKey) { %>
+            <form method="POST" action="/admin/gating-comparison/trust" style="margin:0 0 10px; display:flex; align-items:center; gap:6px; font-size:12px; color: var(--text-muted);">
+              <input type="hidden" name="output_key" value="<%= cards.whatIfOutputKey %>" />
+              <input type="hidden" name="return_to" value="/predictive-analytics?dataset=<%= selectedDataset.id %>&view=<%= activeView %>&source=<%= dataSource %>&product=<%= encodeURIComponent(cards.whatIfSelectedProduct) %>&pricePct=<%= cards.whatIfPricePctInput %>" />
+              <label for="trust-whatif">Rate your trust in this (1–5):</label>
+              <select id="trust-whatif" name="trust_rating" style="padding:3px 6px; border-radius:6px;">
+                <option value="1">1 — none</option>
+                <option value="2">2</option>
+                <option value="3" selected>3</option>
+                <option value="4">4</option>
+                <option value="5">5 — full</option>
+              </select>
+              <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+            </form>
+          <% } %>
           <div class="kpi-row"><%- cards.whatIf.kpiRow.join('') %></div>
           <div class="chart-card">
             <div class="chart-title">

@@ -1,0 +1,120 @@
+<div class="page-title">📊 <span class="page-title-text"><%= title %></span></div>
+<p class="page-subtitle">Every Gating Comparison run ever started against <strong><%= dataset.dataset_name %></strong> (<%= dataset.dataset_short_id %>), aggregated by mode.</p>
+
+<p><a class="btn btn-ghost btn-sm" href="/admin/gating-comparison">← Start another run</a></p>
+
+<% if (!summary.runs || summary.runs.length === 0) { %>
+  <div class="placeholder-card">
+    <div class="emoji">🔬</div>
+    <p>No Gating Comparison run has been started against this dataset yet.</p>
+  </div>
+<% } else { %>
+
+  <div class="form-card wide" style="max-width: none; margin-bottom: 18px;">
+    <div class="chart-title">Logged gate decisions, by mode</div>
+    <p class="form-hint" style="margin-bottom: 10px;">
+      "Unsupported shown" is the reviewer's own framing: an output whose evidence was below the real gate's own threshold, but shown anyway because gate_mode was OFF. This can only ever be nonzero in an OFF-mode row — a nonzero count there is a naively permissive tool producing an output the ON mode correctly withholds.
+    </p>
+    <div class="table-scroll">
+      <table class="table-simple">
+        <thead><tr><th>Mode</th><th>Events logged</th><th>Shown</th><th>Unsupported shown</th><th>Correctly suppressed</th><th>Avg. confidence</th></tr></thead>
+        <tbody>
+          <% ['on', 'off'].forEach(function (mode) { %>
+            <% var m = summary.byMode[mode]; %>
+            <tr>
+              <td><strong><%= mode.toUpperCase() %></strong></td>
+              <% if (!m) { %>
+                <td colspan="5" style="color: var(--text-muted);">No run started in this mode yet.</td>
+              <% } else { %>
+                <td><%= m.totalEvents %></td>
+                <td><%= m.totalShown %></td>
+                <td><span class="<%= mode === 'off' && m.unsupportedShown > 0 ? 'badge badge-risk-high' : '' %>"><%= m.unsupportedShown %></span></td>
+                <td><%= m.correctlySuppressed %></td>
+                <td><%= m.avgConfidence === null ? '—' : m.avgConfidence.toFixed(2) %></td>
+              <% } %>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="form-card wide" style="max-width: none; margin-bottom: 18px;">
+    <div class="chart-title">Why each suppressed output was suppressed</div>
+    <div class="table-scroll">
+      <table class="table-simple">
+        <thead><tr><th>Mode</th><th>Module</th><th>Reason</th><th>Occurrences</th><th>Shown anyway</th></tr></thead>
+        <tbody>
+          <% if (!summary.reasonBreakdown || summary.reasonBreakdown.length === 0) { %>
+            <tr><td colspan="5" style="color: var(--text-muted);">Nothing was below the gate's threshold in any logged view — every evaluated output already cleared the bar.</td></tr>
+          <% } %>
+          <% (summary.reasonBreakdown || []).forEach(function (r) { %>
+            <tr>
+              <td><%= r.gate_mode.toUpperCase() %></td>
+              <td><%= r.module %></td>
+              <td><%= r.reason %></td>
+              <td><%= r.occurrences %></td>
+              <td><%= r.shown_count %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="form-card wide" style="max-width: none; margin-bottom: 18px;">
+    <div class="chart-title">Trust ratings vs. evidence strength</div>
+    <p class="form-hint" style="margin-bottom: 10px;">Did a rater's stated trust track how strong the underlying evidence actually was? A well-calibrated rater's trust should run lower on rows flagged "would suppress."</p>
+    <% ['on', 'off'].forEach(function (mode) { %>
+      <% var pairs = (summary.trustByMode && summary.trustByMode[mode]) || []; %>
+      <div style="margin-bottom: 10px;"><strong><%= mode.toUpperCase() %></strong></div>
+      <% if (pairs.length === 0) { %>
+        <p class="form-hint" style="margin-bottom: 14px;">No trust ratings recorded in this mode yet.</p>
+      <% } else { %>
+        <%
+          var suppressedTrust = pairs.filter(function (p) { return p.wouldSuppress; }).map(function (p) { return p.trustRating; });
+          var cleanTrust = pairs.filter(function (p) { return !p.wouldSuppress; }).map(function (p) { return p.trustRating; });
+          var avg = function (arr) { return arr.length ? (arr.reduce(function (s, v) { return s + v; }, 0) / arr.length).toFixed(2) : '—'; };
+        %>
+        <p style="margin: 0 0 10px; font-size: 13.5px;">
+          Avg. trust on outputs that would normally be suppressed: <strong><%= avg(suppressedTrust) %></strong> (n=<%= suppressedTrust.length %>) —
+          avg. trust on outputs that clear the gate: <strong><%= avg(cleanTrust) %></strong> (n=<%= cleanTrust.length %>).
+        </p>
+        <div class="table-scroll" style="margin-bottom: 14px;">
+          <table class="table-simple">
+            <thead><tr><th>Output</th><th>Trust (1–5)</th><th>Evidence strength</th><th>Would suppress?</th></tr></thead>
+            <tbody>
+              <% pairs.forEach(function (p) { %>
+                <tr>
+                  <td><%= p.outputKey %></td>
+                  <td><%= p.trustRating %></td>
+                  <td><%= p.evidenceStrength === null ? '—' : p.evidenceStrength.toFixed(2) %></td>
+                  <td><%= p.wouldSuppress === null ? '—' : (p.wouldSuppress ? 'Yes' : 'No') %></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    <% }); %>
+  </div>
+
+  <div class="form-card wide" style="max-width: none;">
+    <div class="chart-title">Runs</div>
+    <div class="table-scroll">
+      <table class="table-simple">
+        <thead><tr><th>Mode</th><th>Started</th><th>Notes</th></tr></thead>
+        <tbody>
+          <% summary.runs.forEach(function (r) { %>
+            <tr>
+              <td><%= r.gate_mode.toUpperCase() %></td>
+              <td><%= new Date(r.started_at).toLocaleString() %></td>
+              <td><%= r.notes || '—' %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+<% } %>

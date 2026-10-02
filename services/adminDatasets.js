@@ -22,16 +22,21 @@ const { DATASETS_ROOT, sanitizeDatasetId } = require('../middleware/upload');
 // idiom as services/adminAccounts.js's listAccounts(search), since an
 // installation can accumulate many SME owner accounts.
 //
-// `roleMode` ('sme' | 'expert', default 'sme') picks which population's
-// datasets this returns: uploaded_datasets itself stays one shared table
-// (see db/schema.sql's note on the Expert Evaluator role — only the TAM
-// evaluation results get their own tables), but the two admin pages that
-// browse it ("Manage Datasets" vs the Expert Evaluator equivalent) must
-// still never show one population's uploads next to the other's, so the
-// role filter lives here instead of in the view.
+// `roleMode` ('sme' | 'expert' | 'all', default 'sme') picks which
+// population's datasets this returns: uploaded_datasets itself stays one
+// shared table (see db/schema.sql's note on the Expert Evaluator role —
+// only the TAM evaluation results get their own tables), but the two
+// owner-facing admin pages that browse it ("Manage Datasets" vs the
+// Expert Evaluator equivalent) must still never show one population's
+// uploads next to the other's, so the role filter lives here instead of
+// in the view. 'all' is for the Gating Comparison tool only (routes/
+// admin.js's /admin/gating-comparison) — a purely internal engineering
+// diagnostic with no owner-facing framing, where picking from EITHER
+// population (including the Expert Evaluator templates already built for
+// exactly this kind of controlled comparison) is exactly what's wanted.
 async function listAllDatasets(search, roleMode) {
   const trimmed = (search || '').trim();
-  const roleClause = roleMode === 'expert' ? `a.role = 'Expert Evaluator'` : `a.role != 'Expert Evaluator'`;
+  const roleClause = roleMode === 'all' ? 'TRUE' : (roleMode === 'expert' ? `a.role = 'Expert Evaluator'` : `a.role != 'Expert Evaluator'`);
   const params = [];
   let searchClause = '';
   if (trimmed) {
@@ -40,7 +45,7 @@ async function listAllDatasets(search, roleMode) {
   }
   const { rows } = await pool.query(
     `SELECT ud.id, ud.dataset_id, ud.dataset_name, ud.domain, ud.created_at,
-            a.id AS account_id, a.username, a.owner_name, a.business_name,
+            a.id AS account_id, a.username, a.owner_name, a.business_name, a.role AS owner_role,
             COUNT(df.id)::int AS file_count,
             COALESCE(SUM(df.row_count), 0)::int AS total_rows,
             MAX(df.uploaded_at) AS latest_upload

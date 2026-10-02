@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { body, validationResult } = require('express-validator');
 const pool = require('../db/pool');
+const { logGateEvent } = require('../services/gatingComparison');
 const { requireAuth } = require('../middleware/auth');
 const {
   uploadDatasetFiles, sanitizeDatasetId, pairFilesWithLabels, finalizeDatasetUpload, discardDatasetUpload,
@@ -247,6 +248,24 @@ function resolveAccountId(req) {
   return req.session.userId;
 }
 
+// Gating Comparison (claude/gating-comparison.md, routes/admin.js's
+// /admin/gating-comparison*) — req.session.adminGatingRun is set only by
+// that admin-gated flow starting a run, and is only ever honored here when
+// it matches the dataset actually being viewed right now (an Admin could
+// otherwise switch datasets mid-run via the existing dataset switcher and
+// silently misattribute a different dataset's gate decisions to the run).
+// Returns null for every ordinary SME owner request, and for an Admin
+// viewing any dataset other than the one the active run was started
+// against — in both cases the Predictive/Prescriptive routes below fall
+// straight back to their normal, ungated-by-choice gate_mode='on' call
+// signature.
+function resolveGatingRun(req, datasetRowId) {
+  const active = req.session.adminGatingRun;
+  if (!active || !req.session.user || req.session.user.role !== 'Admin') return null;
+  if (Number(active.datasetRowId) !== Number(datasetRowId)) return null;
+  return active;
+}
+
 // Attaches res.locals.adminViewingAccount (owner_name/business_name, or
 // null) so the four analytics templates can show a small "Viewing X as
 // admin" banner without every res.render() call in those routes needing
@@ -265,6 +284,7 @@ function resolveAccountId(req) {
 async function attachAdminViewingBanner(req, res, next) {
   res.locals.adminViewingAccount = null;
   res.locals.adminDatasetSwitcherOptions = null;
+  res.locals.adminGatingRun = (req.session.user && req.session.user.role === 'Admin') ? (req.session.adminGatingRun || null) : null;
   if (req.session.user && req.session.user.role === 'Admin') {
     try {
       const { rows: switcherRows } = await pool.query(
@@ -2600,8 +2620,26 @@ router.get('/predictive-analytics', attachAdminViewingBanner, async (req, res, n
           cards.whatIfPricePctInput = whatIfPricePct;
           cards.whatIfGroupLabel = 'Category';
 
-          const impacts = inferPriceElasticityFromFactTable(dynBi.ctx);
+          const gatingRun = resolveGatingRun(req, selectedDataset.id);
+          const impacts = inferPriceElasticityFromFactTable(dynBi.ctx, { gateMode: gatingRun ? gatingRun.gateMode : 'on' });
+          if (gatingRun) {
+            await Promise.all((impacts.evaluated || []).map((ev) => logGateEvent(gatingRun.runId, {
+              module: 'predictive',
+              outputKey: `price_elasticity:${ev.group}`,
+              wouldSuppress: !ev.bestAnyPassesStrict,
+              shown: gatingRun.gateMode === 'off' || ev.bestAnyPassesStrict,
+              evidenceStrength: ev.bestAny.confidence,
+              evidenceStrengthKind: 'elasticity_confidence',
+              reason: `Price-change read for "${ev.group}" didn't clear the sample-size/price-stability/minimum-change thresholds.`,
+            })));
+          }
           if (impacts.applicable && impacts.groupLabel) cards.whatIfGroupLabel = impacts.groupLabel;
+          cards.whatIfGatingBypassed = false;
+          cards.whatIfOutputKey = whatIfProduct ? `price_elasticity:${whatIfProduct}` : null;
+          if (gatingRun && whatIfProduct) {
+            const selectedImpact = (impacts.results || []).find((r) => r.group === whatIfProduct);
+            cards.whatIfGatingBypassed = !!(selectedImpact && selectedImpact.gatingBypassed);
+          }
           if (!impacts.applicable) {
             cards.whatIfNotApplicableReason = impacts.reason;
           } else if (whatIfProduct) {
@@ -2817,7 +2855,17 @@ router.get('/prescriptive-recommendations', attachAdminViewingBanner, async (req
       // request instead of twice.
       const bi = await getOrBuildBusinessIntelligence(accountId, selectedDataset.id);
       const built = await getOrBuildBusinessContext(accountId, selectedDataset.id);
-      const presc = buildDynamicPrescriptiveRecommendations({ bi, ctx: built.applicable ? built.ctx : null });
+      const gatingRun = resolveGatingRun(req, selectedDataset.id);
+      const gateEvents = [];
+      const presc = buildDynamicPrescriptiveRecommendations({
+        bi,
+        ctx: built.applicable ? built.ctx : null,
+        gateMode: gatingRun ? gatingRun.gateMode : 'on',
+        onGateEvent: (e) => gateEvents.push(e),
+      });
+      if (gatingRun) {
+        await Promise.all(gateEvents.map((e) => logGateEvent(gatingRun.runId, e)));
+      }
 
       const cards = {};
       cards.dynamicApplicable = presc.applicable;
@@ -2830,6 +2878,8 @@ router.get('/prescriptive-recommendations', attachAdminViewingBanner, async (req
         confidencePct: Math.round(r.confidence * 100),
         confidenceBand: r.confidenceBand,
         sourceLabel: r.sourceLabel,
+        gatingBypassed: !!r.gatingBypassed,
+        outputKey: `recommendation:${r.sourceFindingId}`,
       })) : [];
       cards.dataReadiness = presc.applicable ? presc.dataReadiness : [];
 

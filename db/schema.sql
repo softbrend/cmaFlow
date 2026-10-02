@@ -755,3 +755,82 @@ CREATE INDEX IF NOT EXISTS idx_expert_evaluation_responses_account
 -- ---------------------------------------------------------------------
 ALTER TABLE sme_accounts
     ADD COLUMN IF NOT EXISTS evaluation_template_file VARCHAR(150);
+
+-- ---------------------------------------------------------------------
+-- Gating comparison — Admin-only instrumentation answering a peer-review
+-- recommendation: does CAAGA's eligibility/suppression gate (the
+-- "applicable: false rather than a fabricated number" discipline already
+-- documented in claude/caaga-algorithm-revised.md) actually add value?
+-- An Admin picks one already-uploaded dataset and runs Predictive/
+-- Prescriptive Analytics against it twice — once with the gate's
+-- evidence-strength thresholds enforced as normal ("on"), once with them
+-- deliberately relaxed ("off", simulating a naively permissive tool that
+-- shows a best-guess number regardless of how weak the evidence is) —
+-- while every gate decision is logged, so the two runs can be counted
+-- and compared afterward: how many outputs did the "off" run show that
+-- "on" correctly suppressed, and did a rater's stated trust in an output
+-- track how strong its underlying evidence actually was.
+--
+-- Deliberately NOT a change to the gate itself, and NOT unifying the
+-- three independently-implemented gating systems flagged as a separate,
+-- larger refactor in claude/caaga-algorithm-revised.md — this only toggles
+-- the evidence-STRENGTH thresholds inside services/predictiveAnalyticsDynamic.js
+-- and services/prescriptiveEngine.js for the lifetime of one comparison
+-- run. A HARD gate (a column genuinely absent from the dataset, so there
+-- is literally nothing to compute from) is never relaxed by either mode —
+-- "off" only ever shows evidence that's weak, never evidence that's
+-- fabricated from data that isn't there.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS gating_comparison_runs (
+    id                SERIAL PRIMARY KEY,
+    dataset_row_id    INTEGER     NOT NULL REFERENCES uploaded_datasets(id) ON DELETE CASCADE,
+    admin_account_id  INTEGER     NOT NULL REFERENCES sme_accounts(id) ON DELETE CASCADE,
+    gate_mode         VARCHAR(10) NOT NULL CHECK (gate_mode IN ('on', 'off')),
+    started_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    notes             TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_gating_comparison_runs_dataset
+    ON gating_comparison_runs(dataset_row_id);
+
+-- One row per gate decision actually evaluated while a run's pages were
+-- viewed. `would_suppress` is the TRUE strict-gate verdict, computed the
+-- same way regardless of which mode the run is in — it is what makes an
+-- "off" run's rows directly comparable to an "on" run's: `shown` is the
+-- actual rendering decision given the run's own gate_mode, so
+-- `would_suppress = true AND shown = true` rows (only possible in an
+-- "off" run) are exactly "an unsupported output the naive version
+-- produced that the gate would have correctly suppressed."
+CREATE TABLE IF NOT EXISTS gating_comparison_events (
+    id                      SERIAL PRIMARY KEY,
+    run_id                  INTEGER      NOT NULL REFERENCES gating_comparison_runs(id) ON DELETE CASCADE,
+    module                  VARCHAR(30)  NOT NULL CHECK (module IN ('predictive', 'prescriptive')),
+    output_key              VARCHAR(150) NOT NULL,  -- e.g. 'revenue_forecast', 'price_elasticity:Electronics', 'recommendation:REVENUE_DRIVERS'
+    would_suppress          BOOLEAN      NOT NULL,
+    shown                   BOOLEAN      NOT NULL,
+    evidence_strength       NUMERIC,
+    evidence_strength_kind  VARCHAR(30),            -- 'confidence' | 'sample_size' | 'months' | 'price_cv' — so a 0..1 confidence is never averaged together with a raw sample count
+    reason                  TEXT,
+    created_at              TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_gating_comparison_events_run
+    ON gating_comparison_events(run_id);
+
+-- A rater's stated trust in one specific output (1-5, same Likert scale
+-- as the TAM instrument, for a familiar convention), tied to the run (and
+-- therefore to its gate_mode) and the same output_key gating_comparison_events
+-- uses — lets the report compare stated trust against the output's own
+-- logged evidence_strength, which is the "did trust track the strength
+-- of the evidence" measure the recommendation specifically asks for.
+CREATE TABLE IF NOT EXISTS gating_comparison_trust_ratings (
+    id            SERIAL PRIMARY KEY,
+    run_id        INTEGER     NOT NULL REFERENCES gating_comparison_runs(id) ON DELETE CASCADE,
+    output_key    VARCHAR(150) NOT NULL,
+    trust_rating  SMALLINT    NOT NULL CHECK (trust_rating BETWEEN 1 AND 5),
+    rater_label   VARCHAR(100),
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_gating_comparison_trust_ratings_run
+    ON gating_comparison_trust_ratings(run_id);

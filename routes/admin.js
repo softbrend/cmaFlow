@@ -26,6 +26,9 @@ const {
   listAllExpertEvaluationStatuses, getCompletedExpertResponseSummary,
 } = require('../services/tamEvaluation');
 const { listAllDatasets, getDatasetForAdmin, deleteDataset } = require('../services/adminDatasets');
+const {
+  startRun, logTrustRating, getDatasetComparisonSummary,
+} = require('../services/gatingComparison');
 const { getOrBuildFullProfile } = require('../services/fullDescriptiveAnalytics');
 const { buildSemanticModelHybrid } = require('../services/semanticFieldEngine');
 const { buildErdDefinition } = require('../services/erdDiagram');
@@ -616,6 +619,96 @@ router.post('/admin/datasets/:id/delete', async (req, res, next) => {
     const listPath = dataset.owner_role === EXPERT_ROLE ? '/admin/expert-datasets' : '/admin/datasets';
     await deleteDataset(dataset.id);
     return res.redirect(`${listPath}?deleted=${encodeURIComponent(dataset.dataset_name)}`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
+// Gating Comparison — answers a peer-review recommendation: does CAAGA's
+// eligibility/suppression gate actually add value? See db/schema.sql's
+// own comment on gating_comparison_runs for the full design, and
+// services/predictiveAnalyticsDynamic.js / services/prescriptiveEngine.js
+// for how gate_mode='off' is simulated without ever fabricating from
+// genuinely absent data. This never changes what an ordinary SME owner
+// sees — it only ever activates for the admin running the comparison,
+// via req.session.adminGatingRun (read by routes/dashboard.js's
+// Predictive/Prescriptive handlers), exactly the same "explicit opt-in,
+// not global middleware" pattern already used for adminViewAccountId.
+// ------------------------------------------------------------------
+router.get('/admin/gating-comparison', async (req, res, next) => {
+  try {
+    // 'all' — unlike every other admin dataset list, this internal
+    // diagnostic deliberately mixes SME owner and Expert Evaluator
+    // datasets (see services/adminDatasets.js's own comment on this mode).
+    const datasets = await listAllDatasets('', 'all');
+    res.render('dashboard/admin-gating-comparison-start', {
+      title: 'Gating Comparison',
+      active: 'admin',
+      adminSection: 'gating-comparison',
+      datasets,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/admin/gating-comparison/start', async (req, res, next) => {
+  try {
+    const datasetRowId = Number(req.body.dataset_row_id);
+    const gateMode = req.body.gate_mode === 'off' ? 'off' : 'on';
+    const dataset = await getDatasetForAdmin(datasetRowId);
+    if (!dataset) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
+
+    const run = await startRun(datasetRowId, req.session.userId, gateMode, req.body.notes || null);
+    req.session.adminViewAccountId = dataset.account_id;
+    req.session.adminGatingRun = { runId: run.id, datasetRowId, gateMode };
+    const target = req.body.module === 'prescriptive' ? 'prescriptive-recommendations' : 'predictive-analytics';
+    return res.redirect(`/${target}?dataset=${datasetRowId}`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET, not POST — reached from a plain link in the comparison banner, the
+// same convention as the pre-existing /admin/exit-view; nothing it does
+// is destructive (it only clears session state, same as exit-view).
+router.get('/admin/gating-comparison/exit', (req, res) => {
+  const { datasetRowId } = req.session.adminGatingRun || {};
+  delete req.session.adminGatingRun;
+  delete req.session.adminViewAccountId;
+  res.redirect(datasetRowId ? `/admin/gating-comparison/${datasetRowId}/report` : '/admin/gating-comparison');
+});
+
+router.post('/admin/gating-comparison/trust', async (req, res, next) => {
+  try {
+    const active = req.session.adminGatingRun;
+    const rating = Number(req.body.trust_rating);
+    if (active && Number.isInteger(rating) && rating >= 1 && rating <= 5) {
+      await logTrustRating(active.runId, req.body.output_key, rating, req.body.rater_label || null);
+    }
+    const returnTo = typeof req.body.return_to === 'string' && req.body.return_to.startsWith('/')
+      ? req.body.return_to
+      : '/predictive-analytics';
+    return res.redirect(returnTo);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/admin/gating-comparison/:datasetId/report', async (req, res, next) => {
+  try {
+    const datasetRowId = Number(req.params.datasetId);
+    const dataset = await getDatasetForAdmin(datasetRowId);
+    if (!dataset) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
+    const summary = await getDatasetComparisonSummary(datasetRowId);
+    res.render('dashboard/admin-gating-comparison-report', {
+      title: `Gating Comparison — ${dataset.dataset_name}`,
+      active: 'admin',
+      adminSection: 'gating-comparison',
+      dataset,
+      summary,
+    });
   } catch (err) {
     next(err);
   }

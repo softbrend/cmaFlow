@@ -445,6 +445,22 @@ const MAX_PRICE_CV = 0.15;
 const MIN_PRICE_CHANGE_PCT = 8;
 const WHOLE_DATASET_GROUP_LABEL = 'All products/services';
 
+// Admin-only "gating comparison" support (claude/gating-comparison.md) —
+// answers a peer-review recommendation asking whether CAAGA's eligibility
+// gate actually adds value, by letting an Admin run the SAME dataset
+// through this function twice: once with the evidence-strength thresholds
+// above enforced as normal ('on', the only mode any real SME owner ever
+// sees — passing no options at all defaults here), once with them
+// deliberately relaxed ('off', simulating a naively permissive tool that
+// reports a best-guess number regardless of how weak the evidence is).
+// HARD_MIN_SAMPLE_PER_SIDE is a structural floor, not an evidence-strength
+// choice, so it is NEVER relaxed by 'off' mode — below 2 transactions on a
+// side there is no variance to even measure, so there is nothing to show
+// in either mode. See inferPriceElasticityFromFactTable()'s own comment
+// for exactly how 'on' mode's selection is kept byte-for-byte identical to
+// its pre-existing behavior.
+const HARD_MIN_SAMPLE_PER_SIDE = 2;
+
 function unitPriceOf(t) {
   return t.qty > 0 ? t.amount / t.qty : t.amount;
 }
@@ -560,7 +576,14 @@ function resolveCatalogPriceForGroup(ctx, groupCol, group) {
   };
 }
 
-function inferPriceElasticityFromFactTable(ctx) {
+// `gateMode: 'off'` is ONLY ever set by the admin-only gating-comparison
+// flow (routes/admin.js's GET /admin/gating-comparison + routes/
+// dashboard.js's predictive/prescriptive handlers, gated behind
+// req.session.adminGatingRun) — every ordinary SME owner request calls
+// this with no second argument, so `gateMode` defaults to 'on' and the
+// function behaves exactly as it did before this comparison feature
+// existed.
+function inferPriceElasticityFromFactTable(ctx, { gateMode = 'on' } = {}) {
   const groupCol = resolveWhatIfGroupColumn(ctx);
   const dateCol = findRoleColumn(ctx.factFile, 'date');
   const revInfo = findRevenueColumn(ctx);
@@ -593,52 +616,93 @@ function inferPriceElasticityFromFactTable(ctx) {
   });
 
   const results = [];
+  // `evaluated` exists purely for the gating-comparison flow to log a
+  // per-group gate decision even for a group an 'on'-mode caller never
+  // sees in `results` at all (a group whose only computable boundary
+  // fails the strict thresholds produces no entry in `results` under
+  // 'on', same as always — but the comparison report still needs to know
+  // a weak candidate existed and was correctly suppressed). Ordinary
+  // callers (every real SME owner's Predictive/Prescriptive page) ignore
+  // this field entirely.
+  const evaluated = [];
   byGroup.forEach((txns, group) => {
     const sorted = [...txns].sort((a, b) => a.ts - b.ts);
     const months = [...new Set(sorted.map((t) => monthKeyOf(t.ts.toISOString())))].sort();
     if (months.length < 2) return;
 
-    let best = null;
+    // Tracks two independent maxima over the SAME scan: `bestStrict` only
+    // ever considers a boundary that already clears every evidence-
+    // strength threshold (MIN_SAMPLE_PER_SIDE/MAX_PRICE_CV/
+    // MIN_PRICE_CHANGE_PCT) — exactly the pre-existing `continue`-gated
+    // selection, so 'on' mode's output is unchanged. `bestAny` considers
+    // every boundary clearing only the structural floor
+    // (HARD_MIN_SAMPLE_PER_SIDE), i.e. what a naively permissive version
+    // with no evidence-strength gate at all would report. The two can
+    // legitimately disagree on which boundary is "best" once the strict
+    // filters are removed, which is itself part of what the comparison is
+    // meant to surface.
+    let bestStrict = null;
+    let bestAny = null;
     for (let i = 1; i < months.length; i += 1) {
       const boundary = new Date(`${months[i]}-01T00:00:00.000Z`);
       const before = sorted.filter((t) => t.ts < boundary);
       const after = sorted.filter((t) => t.ts >= boundary);
-      if (before.length < MIN_SAMPLE_PER_SIDE || after.length < MIN_SAMPLE_PER_SIDE) continue;
+      if (before.length < HARD_MIN_SAMPLE_PER_SIDE || after.length < HARD_MIN_SAMPLE_PER_SIDE) continue;
 
       const beforePrices = before.map(unitPriceOf);
       const afterPrices = after.map(unitPriceOf);
       const beforeCv = coefVar(beforePrices);
       const afterCv = coefVar(afterPrices);
-      if (beforeCv === null || afterCv === null || beforeCv > MAX_PRICE_CV || afterCv > MAX_PRICE_CV) continue;
+      if (beforeCv === null || afterCv === null) continue;
 
       const beforeMean = beforePrices.reduce((s, v) => s + v, 0) / beforePrices.length;
       const afterMean = afterPrices.reduce((s, v) => s + v, 0) / afterPrices.length;
       if (beforeMean === 0) continue;
       const pctChange = ((afterMean - beforeMean) / Math.abs(beforeMean)) * 100;
-      if (Math.abs(pctChange) < MIN_PRICE_CHANGE_PCT) continue;
 
       const confidence = Math.abs(pctChange) - (beforeCv + afterCv) * 20;
-      if (!best || confidence > best.confidence) {
-        best = {
-          confidence, boundary, before, after, beforeMean, afterMean, pctChange,
-        };
-      }
-    }
-    if (!best) return;
+      const candidate = {
+        confidence, boundary, before, after, beforeMean, afterMean, pctChange, beforeCv, afterCv,
+      };
+      if (!bestAny || confidence > bestAny.confidence) bestAny = candidate;
 
-    const beforeRevenue = best.before.reduce((s, t) => s + t.amount, 0);
-    const afterRevenue = best.after.reduce((s, t) => s + t.amount, 0);
-    const beforeVolume = best.before.reduce((s, t) => s + t.qty, 0);
-    const afterVolume = best.after.reduce((s, t) => s + t.qty, 0);
+      const passesStrict = before.length >= MIN_SAMPLE_PER_SIDE
+        && after.length >= MIN_SAMPLE_PER_SIDE
+        && beforeCv <= MAX_PRICE_CV
+        && afterCv <= MAX_PRICE_CV
+        && Math.abs(pctChange) >= MIN_PRICE_CHANGE_PCT;
+      if (passesStrict && (!bestStrict || confidence > bestStrict.confidence)) bestStrict = candidate;
+    }
+    if (!bestAny) return; // no boundary clears even the structural floor — nothing to compute or compare in either mode
+
+    const bestAnyPassesStrict = bestAny.before.length >= MIN_SAMPLE_PER_SIDE
+      && bestAny.after.length >= MIN_SAMPLE_PER_SIDE
+      && bestAny.beforeCv <= MAX_PRICE_CV
+      && bestAny.afterCv <= MAX_PRICE_CV
+      && Math.abs(bestAny.pctChange) >= MIN_PRICE_CHANGE_PCT;
+    evaluated.push({ group, bestAny, bestAnyPassesStrict, hasStrictCandidate: !!bestStrict });
+
+    const chosen = gateMode === 'off' ? bestAny : bestStrict;
+    if (!chosen) return; // 'on' mode, no boundary clears the strict gate — same as always: this group produces no result
+
+    const beforeRevenue = chosen.before.reduce((s, t) => s + t.amount, 0);
+    const afterRevenue = chosen.after.reduce((s, t) => s + t.amount, 0);
+    const beforeVolume = chosen.before.reduce((s, t) => s + t.qty, 0);
+    const afterVolume = chosen.after.reduce((s, t) => s + t.qty, 0);
     const volumePctChange = beforeVolume !== 0 ? ((afterVolume - beforeVolume) / beforeVolume) * 100 : null;
-    const elasticity = (best.pctChange && volumePctChange !== null) ? (volumePctChange / best.pctChange) : null;
+    const elasticity = (chosen.pctChange && volumePctChange !== null) ? (volumePctChange / chosen.pctChange) : null;
+    // In 'on' mode `chosen` is always `bestStrict`, which by construction
+    // already passes every strict threshold — `wouldSuppress` is only
+    // ever true when 'off' mode chose a boundary that 'on' mode would
+    // have rejected.
+    const wouldSuppress = gateMode === 'off' && !bestAnyPassesStrict;
 
     results.push({
       group,
-      effectiveDate: best.boundary.toISOString(),
-      oldPrice: best.beforeMean,
-      newPrice: best.afterMean,
-      pricePctChange: best.pctChange,
+      effectiveDate: chosen.boundary.toISOString(),
+      oldPrice: chosen.beforeMean,
+      newPrice: chosen.afterMean,
+      pricePctChange: chosen.pctChange,
       beforeRevenue,
       afterRevenue,
       revenuePctChange: beforeRevenue !== 0 ? ((afterRevenue - beforeRevenue) / beforeRevenue) * 100 : null,
@@ -647,6 +711,16 @@ function inferPriceElasticityFromFactTable(ctx) {
       volumePctChange,
       elasticity,
       inferred: true,
+      // Additive fields only the gating-comparison flow reads — every
+      // existing consumer of `results` (the What-if tab, the Pricing
+      // strategy recommendation) ignores unknown fields, so this is
+      // never a breaking change to the normal, ungated-by-choice path.
+      wouldSuppress,
+      gatingBypassed: wouldSuppress,
+      evidenceStrength: chosen.confidence,
+      evidenceDetail: {
+        beforeCv: chosen.beforeCv, afterCv: chosen.afterCv, sampleBefore: chosen.before.length, sampleAfter: chosen.after.length, pctChange: chosen.pctChange,
+      },
     });
   });
 
@@ -654,6 +728,7 @@ function inferPriceElasticityFromFactTable(ctx) {
   return {
     applicable: true,
     results,
+    evaluated,
     groupColumn: groupCol.wholeDataset ? null : groupCol.keyCol,
     groupLabel: whatIfGroupLabel(groupCol),
     revenueIsFallback: revInfo.isFallback,

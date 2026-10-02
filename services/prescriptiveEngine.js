@@ -457,7 +457,22 @@ function buildRetentionRecommendation(riskResult) {
 // number crowd a real recommendation off the page.
 const MIN_STRENGTH = 0.05;
 
-function buildDynamicPrescriptiveRecommendations({ bi, ctx }) {
+// Admin-only "gating comparison" support (claude/gating-comparison.md) —
+// `gateMode`/`onGateEvent` are ONLY ever passed by the admin-gated
+// comparison flow (routes/admin.js + routes/dashboard.js, behind
+// req.session.adminGatingRun). Every ordinary SME owner request calls
+// this with neither option, so gateMode defaults to 'on' and onGateEvent
+// defaults to a no-op — the function behaves exactly as it did before
+// this comparison feature existed. 'off' mode never changes WHICH
+// recommendations exist or what they say — it only changes whether one
+// whose own strength falls below MIN_STRENGTH is suppressed into Data
+// Readiness (the normal behavior) or shown anyway, explicitly tagged
+// gatingBypassed, simulating a naively permissive tool with no confidence
+// floor at all. A recommendation with no generator, or sourced from a
+// finding/function that is itself {applicable:false} (no computable
+// evidence whatsoever, not merely weak evidence), is a HARD gate and is
+// never affected by gateMode in either direction.
+function buildDynamicPrescriptiveRecommendations({ bi, ctx, gateMode = 'on', onGateEvent = () => {} }) {
   if (!bi || !bi.applicable) {
     return {
       applicable: false,
@@ -483,7 +498,14 @@ function buildDynamicPrescriptiveRecommendations({ bi, ctx }) {
       return;
     }
     const strength = clamp01(rec.strength);
-    if (strength < MIN_STRENGTH) {
+    const wouldSuppress = strength < MIN_STRENGTH;
+    const outputKey = `recommendation:${f.id}`;
+    onGateEvent({
+      module: 'prescriptive', outputKey, wouldSuppress, shown: gateMode === 'off' || !wouldSuppress,
+      evidenceStrength: strength, evidenceStrengthKind: 'confidence',
+      reason: 'The signal behind this finding is too small to support a confident recommendation yet (not enough of a change, or too little history, to act on).',
+    });
+    if (wouldSuppress && gateMode !== 'off') {
       dataReadiness.push({ source: f.label, reason: 'The signal behind this finding is too small to support a confident recommendation yet (not enough of a change, or too little history, to act on).' });
       return;
     }
@@ -496,16 +518,24 @@ function buildDynamicPrescriptiveRecommendations({ bi, ctx }) {
       confidenceBand: band(strength),
       sourceFindingId: f.id,
       sourceLabel: f.label,
+      gatingBypassed: wouldSuppress && gateMode === 'off',
     });
   });
 
-  const addPredictiveRec = (rec, sourceLabel) => {
+  const addPredictiveRec = (rec, sourceLabel, outputKey) => {
     if (!rec) return false;
-    if (clamp01(rec.confidence) < MIN_STRENGTH) {
+    const strength = clamp01(rec.confidence);
+    const wouldSuppress = strength < MIN_STRENGTH;
+    onGateEvent({
+      module: 'prescriptive', outputKey, wouldSuppress, shown: gateMode === 'off' || !wouldSuppress,
+      evidenceStrength: strength, evidenceStrengthKind: 'confidence',
+      reason: 'The signal here is too small to support a confident recommendation yet (not enough of a trend, or too little history, to act on).',
+    });
+    if (wouldSuppress && gateMode !== 'off') {
       dataReadiness.push({ source: sourceLabel, reason: 'The signal here is too small to support a confident recommendation yet (not enough of a trend, or too little history, to act on).' });
       return false;
     }
-    recommendations.push(rec);
+    recommendations.push({ ...rec, gatingBypassed: wouldSuppress && gateMode === 'off' });
     return true;
   };
 
@@ -514,15 +544,28 @@ function buildDynamicPrescriptiveRecommendations({ bi, ctx }) {
     if (trendResult.applicable) {
       const forecast = revenueForecast(trendResult.trend);
       const rec = buildRevenueOutlookRecommendation(forecast);
-      addPredictiveRec(rec, 'Revenue outlook (forecast)');
+      addPredictiveRec(rec, 'Revenue outlook (forecast)', 'recommendation:DYNAMIC_REVENUE_FORECAST');
     } else {
       dataReadiness.push({ source: 'Revenue outlook (forecast)', reason: trendResult.reason });
     }
 
-    const elasticityResult = inferPriceElasticityFromFactTable(ctx);
+    // Price elasticity's OWN per-group evidence-strength gate is handled
+    // inside inferPriceElasticityFromFactTable() itself (see that
+    // function's comment) — gateMode is forwarded so 'off' mode's weaker
+    // group-level reads reach the recommendation layer too, not just the
+    // What-if tab.
+    const elasticityResult = inferPriceElasticityFromFactTable(ctx, { gateMode });
+    (elasticityResult.evaluated || []).forEach(({ group, bestAny, bestAnyPassesStrict }) => {
+      onGateEvent({
+        module: 'predictive', outputKey: `price_elasticity:${group}`, wouldSuppress: !bestAnyPassesStrict,
+        shown: gateMode === 'off' || bestAnyPassesStrict, evidenceStrength: bestAny.confidence,
+        evidenceStrengthKind: 'elasticity_confidence',
+        reason: `Price-change read for "${group}" didn't clear the sample-size/price-stability/minimum-change thresholds.`,
+      });
+    });
     if (elasticityResult.applicable && elasticityResult.results.length) {
       const rec = buildPricingRecommendation(elasticityResult);
-      if (rec) addPredictiveRec(rec, 'Pricing scenario (elasticity)');
+      if (rec) addPredictiveRec(rec, 'Pricing scenario (elasticity)', 'recommendation:DYNAMIC_PRICE_ELASTICITY');
       else dataReadiness.push({ source: 'Pricing scenario (elasticity)', reason: 'No group had a usable elasticity read yet.' });
     } else {
       dataReadiness.push({ source: 'Pricing scenario (elasticity)', reason: elasticityResult.reason || 'No comparable price change was found in this fact table yet.' });
@@ -531,7 +574,7 @@ function buildDynamicPrescriptiveRecommendations({ bi, ctx }) {
     const riskResult = buildDynamicCustomerFeatures(ctx);
     if (riskResult.applicable) {
       const rec = buildRetentionRecommendation(riskResult);
-      if (rec) addPredictiveRec(rec, 'Customer retention targeting');
+      if (rec) addPredictiveRec(rec, 'Customer retention targeting', 'recommendation:DYNAMIC_CUSTOMER_RETENTION');
       else dataReadiness.push({ source: 'Customer retention targeting', reason: 'No customers in this fact table currently score as both high-risk and high-value.' });
     } else {
       dataReadiness.push({ source: 'Customer retention targeting', reason: riskResult.reason });

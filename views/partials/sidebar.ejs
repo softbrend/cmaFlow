@@ -24,6 +24,7 @@
       <li><a href="/admin/expert-evaluations" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'expert-evaluations') ? 'active' : '' %>"><span class="nav-dot"></span>View Expert Evaluation Report</a></li>
       <li><a href="/admin/expert-accounts" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'expert-accounts') ? 'active' : '' %>"><span class="nav-dot"></span>Manage Expert Evaluators</a></li>
       <li><a href="/admin/expert-datasets" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'expert-datasets') ? 'active' : '' %>"><span class="nav-dot"></span>Expert Evaluator Datasets</a></li>
+      <li><a href="/admin/gating-comparison" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'gating-comparison') ? 'active' : '' %>"><span class="nav-dot"></span>Gating Comparison</a></li>
     <% } else if (typeof evaluationLocked !== 'undefined' && evaluationLocked) { %>
       <%# New (or not-yet-completed) SME owner OR Expert Evaluator: every
           other module is hidden until the six-task walkthrough and

@@ -1,0 +1,50 @@
+<div class="page-title">🔬 <span class="page-title-text"><%= title %></span></div>
+<p class="page-subtitle">
+  Answers a peer-review recommendation: does CAAGA's eligibility/suppression gate actually add value? Pick one already-uploaded dataset and run Predictive or Prescriptive Analytics against it twice — once with <strong>gate_mode=on</strong> (the thresholds every real SME owner already experiences), once with <strong>gate_mode=off</strong> (the same thresholds deliberately relaxed, simulating a naively permissive tool). Every gate decision made while you view the page is logged automatically; rate your trust in each output while a run is active, then compare the two runs on the <a href="#" style="color: var(--accent);">report page</a> reachable from either mode's banner.
+</p>
+
+<div class="info-box" style="margin-bottom: 16px;">
+  A HARD gate — a column genuinely absent from the dataset, so there is nothing to compute from — is never relaxed by either mode. Only evidence-STRENGTH thresholds (sample size, price stability, minimum confidence) are toggled: price elasticity read-by-group (Predictive's What-if tab) and every Prescriptive recommendation card's confidence floor.
+</div>
+
+<div class="form-card wide" style="max-width: 640px;">
+  <form method="POST" action="/admin/gating-comparison/start">
+    <label for="dataset_row_id">Dataset</label>
+    <select id="dataset_row_id" name="dataset_row_id" required>
+      <%
+        var groupedByBusiness = {};
+        (datasets || []).forEach(function (d) {
+          (groupedByBusiness[d.business_name] = groupedByBusiness[d.business_name] || []).push(d);
+        });
+      %>
+      <% Object.keys(groupedByBusiness).forEach(function (biz) { %>
+        <optgroup label="<%= biz %>">
+          <% groupedByBusiness[biz].forEach(function (d) { %>
+            <option value="<%= d.id %>"><%= d.dataset_id %> — <%= d.dataset_name %> (<%= d.owner_role %>)</option>
+          <% }); %>
+        </optgroup>
+      <% }); %>
+    </select>
+
+    <label style="margin-top: 14px;">Module to open</label>
+    <div style="display: flex; gap: 16px; margin-bottom: 4px;">
+      <label style="font-weight: 500;"><input type="radio" name="module" value="predictive" checked /> Predictive Analytics (forecast + price elasticity)</label>
+      <label style="font-weight: 500;"><input type="radio" name="module" value="prescriptive" /> Prescriptive Recommendations</label>
+    </div>
+
+    <label style="margin-top: 14px;">Gate mode</label>
+    <div style="display: flex; gap: 16px; margin-bottom: 4px;">
+      <label style="font-weight: 500;"><input type="radio" name="gate_mode" value="on" checked /> ON — thresholds enforced (normal behavior)</label>
+      <label style="font-weight: 500;"><input type="radio" name="gate_mode" value="off" /> OFF — thresholds relaxed (comparison)</label>
+    </div>
+
+    <label for="notes" style="margin-top: 14px;">Notes (optional — e.g. which rater/session this run is for)</label>
+    <input type="text" id="notes" name="notes" maxlength="500" />
+
+    <button type="submit" class="btn btn-accent" style="margin-top: 16px;">Start run</button>
+  </form>
+</div>
+
+<p class="form-hint" style="margin-top: 18px;">
+  Run the SAME dataset through both modes (two separate "Start run" submissions — one ON, one OFF) to get a real comparison. Each run stays active until you click "Exit comparison" on the page banner. The report page aggregates every run ever started against a given dataset, so re-running either mode again later just adds more logged views to the same comparison.
+</p>
