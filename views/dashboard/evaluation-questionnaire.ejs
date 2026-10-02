@@ -17,17 +17,18 @@
   // One accent color per questionnaire domain — distinct from the four
   // analytics-pipeline stage colors (this instrument measures something
   // else entirely) and from gold, which stays reserved for CTAs. Covers
-  // both the original 17-item TAM domains (PU/PEOU/BI — Template
-  // Evaluator accounts) and the 15-item ISO/IEC 25010 Quality-in-Use
-  // domains added 2 October 2026 for SME Owner accounts (EFF/RISK/SAT/
-  // EFFIC — see tamEvaluation.js's ISO25010_ITEMS). Falls back to the
-  // shared accent for any domain code not listed here.
+  // both the original 17-item TAM domains (PU/PEOU/BI — SME Owner and
+  // Template Evaluator accounts) and the 15-item ISO/IEC 25010
+  // Quality-in-Use domains added 2 October 2026 for the new Business
+  // Owner Evaluator role only (EFF/RISK/SAT/EFFIC — see
+  // tamEvaluation.js's ISO25010_ITEMS). Falls back to the shared accent
+  // for any domain code not listed here.
   var domainAccent = {
     PU: 'var(--cyan)', PEOU: 'var(--secondary)', BI: 'var(--stage-predictive)',
     EFF: 'var(--cyan)', RISK: 'var(--stage-diagnostic)', SAT: 'var(--stage-predictive)', EFFIC: 'var(--secondary)',
   };
 %>
-<div class="page-title">📋 <span class="page-title-text"><%= isExpert ? 'Template Evaluator Evaluation' : 'End-User Evaluation' %> — Questionnaire</span></div>
+<div class="page-title">📋 <span class="page-title-text"><%= evalRoleLabel %> — Questionnaire</span></div>
 <p class="page-subtitle"><%= isDirectFlow ? 'Rate each statement' : 'Six-task walkthrough complete. Rate each statement' %> 5 (Strongly Agree) to 1 (Strongly Disagree) based on the modules you just used. Any rating of 3 or below needs a short remark explaining why. Save your progress anytime and come back to finish later.</p>
 
 <div class="q-progress-card">

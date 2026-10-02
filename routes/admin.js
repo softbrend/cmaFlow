@@ -1,15 +1,29 @@
 // Admin section — a role='Admin' account (see db/schema.sql's
 // sme_accounts.role column, and scripts/promoteToAdmin.js for how an
-// account gets that role) can manage SME owner accounts (reset a
-// forgotten/locked-out password) and browse the end-user evaluation data
-// every SME owner account logs at /evaluation (routes/evaluation.js,
-// services/tamEvaluation.js): each account's six-task walkthrough log,
-// its questionnaire answers (the 15-item ISO/IEC 25010 Quality-in-Use
-// instrument as of 2 October 2026 — see tamEvaluation.js's itemsFor()),
-// and a cross-respondent descriptive summary matching the instrument's
-// own Section 6 scoring plan. Template Evaluator accounts still take the
-// original 17-item TAM instrument, browsed separately below at
-// /admin/expert-evaluations against its own, never-merged tables.
+// account gets that role) can manage accounts for THREE separate
+// populations and browse each one's own evaluation data, never mixed:
+//   - SME Owner — the original population, takes the 17-item TAM
+//     questionnaire (services/tamEvaluation.js's TAM_ITEMS), browsed at
+//     /admin/evaluations against evaluation_*.
+//   - Template Evaluator (added 30 September 2026) — also takes TAM,
+//     unchanged (Brenda's own instruction, see claude/direct-flow-
+//     template-evaluator.md: "the previous evaluation done by the 15
+//     that they upload their own datasets should not be touched"),
+//     browsed separately at /admin/expert-evaluations against the
+//     parallel expert_evaluation_* tables.
+//   - Business Owner Evaluator (added 2 October 2026, access-code-gated
+//     /businessOwner-signup) — the new, purpose-built population that
+//     alone takes the 15-item ISO/IEC 25010 Quality-in-Use instrument
+//     (tamEvaluation.js's ISO25010_ITEMS), browsed at
+//     /admin/business-owner-evaluations against business_owner_
+//     evaluation_*. Neither TAM population's instrument or already-
+//     collected data is touched by this role's existence.
+// Each population also gets its own accounts page (/admin/accounts,
+// /admin/expert-accounts, /admin/business-owner-accounts) and dataset
+// list (/admin/datasets, /admin/expert-datasets, /admin/business-owner-
+// datasets) — see services/adminAccounts.js and services/
+// adminDatasets.js for why these are kept as separate, near-duplicate
+// queries rather than one shared parameterized helper.
 //
 // Entirely separate router from routes/dashboard.js's SME Owner Portal —
 // an Admin account has no datasets/analytics of its own, so none of that
@@ -21,13 +35,14 @@ const { body, validationResult } = require('express-validator');
 const pool = require('../db/pool');
 const { requireAdmin } = require('../middleware/auth');
 const {
-  listAccounts, listExpertAccounts, getAccountById, resetPassword, countAdmins,
+  listAccounts, listExpertAccounts, listBusinessOwnerAccounts, getAccountById, resetPassword, countAdmins,
   createAdminAccount, promoteToAdmin, demoteToOwner, setCohort, COHORT_LABELS,
 } = require('../services/adminAccounts');
 const {
-  WALKTHROUGH_TASKS, groupItemsByDomain, EXPERT_ROLE, SME_ROLE, itemsFor,
+  WALKTHROUGH_TASKS, groupItemsByDomain, EXPERT_ROLE, BUSINESS_ROLE, SME_ROLE, itemsFor,
   getEvaluationStateReadOnly, listAllEvaluationStatuses, getCompletedResponseSummary,
-  listAllExpertEvaluationStatuses, getCompletedExpertResponseSummary, getModuleVisits,
+  listAllExpertEvaluationStatuses, getCompletedExpertResponseSummary,
+  listAllBusinessOwnerEvaluationStatuses, getCompletedBusinessOwnerResponseSummary, getModuleVisits,
 } = require('../services/tamEvaluation');
 const { listAllDatasets, getDatasetForAdmin, deleteDataset } = require('../services/adminDatasets');
 const {
@@ -47,21 +62,24 @@ router.use(requireAdmin);
 // ------------------------------------------------------------------
 router.get('/admin', async (req, res, next) => {
   try {
-    const [{ rows: countRows }, statuses, expertStatuses, allDatasets] = await Promise.all([
+    const [{ rows: countRows }, statuses, expertStatuses, businessOwnerStatuses, allDatasets] = await Promise.all([
       // Explicit role = equality for each count, not "!= 'Admin'" — now
-      // that a third role (Template Evaluator) exists, "!= 'Admin'" would
-      // silently fold Template Evaluator accounts into sme_count. Each
-      // count below matches exactly one role, so adding a future role
-      // again can only ever under-count here (an account matching none of
-      // the three), never mix two populations into one tile.
+      // that a third and fourth role (Template Evaluator, Business Owner
+      // Evaluator) exist, "!= 'Admin'" would silently fold them into
+      // sme_count. Each count below matches exactly one role, so adding a
+      // future role again can only ever under-count here (an account
+      // matching none of the four), never mix two populations into one
+      // tile.
       pool.query(
         `SELECT COUNT(*) FILTER (WHERE role = 'SME Owner')::int AS sme_count,
                 COUNT(*) FILTER (WHERE role = 'Admin')::int AS admin_count,
-                COUNT(*) FILTER (WHERE role = 'Template Evaluator')::int AS expert_count
+                COUNT(*) FILTER (WHERE role = 'Template Evaluator')::int AS expert_count,
+                COUNT(*) FILTER (WHERE role = 'Business Owner Evaluator')::int AS business_owner_count
            FROM sme_accounts`
       ),
       listAllEvaluationStatuses(),
       listAllExpertEvaluationStatuses(),
+      listAllBusinessOwnerEvaluationStatuses(),
       listAllDatasets(),
     ]);
     const counts = countRows[0];
@@ -71,6 +89,9 @@ router.get('/admin', async (req, res, next) => {
     const expertCompleted = expertStatuses.filter((s) => s.status === 'completed').length;
     const expertInProgress = expertStatuses.filter((s) => s.status === 'walkthrough' || s.status === 'questionnaire').length;
     const expertNotStarted = expertStatuses.filter((s) => !s.status).length;
+    const businessOwnerCompleted = businessOwnerStatuses.filter((s) => s.status === 'completed').length;
+    const businessOwnerInProgress = businessOwnerStatuses.filter((s) => s.status === 'walkthrough' || s.status === 'questionnaire').length;
+    const businessOwnerNotStarted = businessOwnerStatuses.filter((s) => !s.status).length;
 
     res.render('dashboard/admin-home', {
       title: 'Admin',
@@ -79,6 +100,7 @@ router.get('/admin', async (req, res, next) => {
       smeCount: counts.sme_count,
       adminCount: counts.admin_count,
       expertCount: counts.expert_count,
+      businessOwnerCount: counts.business_owner_count,
       datasetCount: allDatasets.length,
       completed,
       inProgress,
@@ -86,6 +108,9 @@ router.get('/admin', async (req, res, next) => {
       expertCompleted,
       expertInProgress,
       expertNotStarted,
+      businessOwnerCompleted,
+      businessOwnerInProgress,
+      businessOwnerNotStarted,
     });
   } catch (err) {
     next(err);
@@ -134,6 +159,31 @@ router.get('/admin/expert-accounts', async (req, res, next) => {
       title: 'Manage Template Evaluators',
       active: 'admin',
       adminSection: 'expert-accounts',
+      accounts,
+      q: req.query.q || '',
+      passwordReset: req.query.passwordReset || null,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
+// GET /admin/business-owner-accounts — same search-list-and-"Change
+// password" page again, for role = 'Business Owner Evaluator' accounts
+// only (added 2 October 2026, registered through the separate
+// access-code signup at /businessOwner-signup). Never listed alongside
+// SME owner or Template Evaluator accounts, same discipline as
+// /admin/expert-accounts above. No make-admin/remove-admin actions here
+// either.
+// ------------------------------------------------------------------
+router.get('/admin/business-owner-accounts', async (req, res, next) => {
+  try {
+    const accounts = await listBusinessOwnerAccounts(req.query.q);
+    res.render('dashboard/admin-business-owner-accounts', {
+      title: 'Manage Business Owner Evaluators',
+      active: 'admin',
+      adminSection: 'business-owner-accounts',
       accounts,
       q: req.query.q || '',
       passwordReset: req.query.passwordReset || null,
@@ -307,16 +357,27 @@ router.post('/admin/accounts/:id/remove-admin', async (req, res, next) => {
 // account on its behalf (no need to know the old one — this is an admin
 // override, e.g. for a locked-out SME owner during a pilot session).
 // ------------------------------------------------------------------
+// Picks which of the three accounts pages (and admin nav section) this
+// account's "Change password" action belongs under — added 2 October
+// 2026 as a 3-way version of the old isExpert ? ... : ... ternary, now
+// that Business Owner Evaluator is a third accounts-page population
+// alongside SME Owner/Admin and Template Evaluator.
+function accountsSectionFor(role) {
+  if (role === EXPERT_ROLE) return { adminSection: 'expert-accounts', listPath: '/admin/expert-accounts' };
+  if (role === BUSINESS_ROLE) return { adminSection: 'business-owner-accounts', listPath: '/admin/business-owner-accounts' };
+  return { adminSection: 'accounts', listPath: '/admin/accounts' };
+}
+
 router.get('/admin/accounts/:id/password', async (req, res, next) => {
   try {
     const account = await getAccountById(req.params.id);
     if (!account) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
-    const isExpert = account.role === EXPERT_ROLE;
+    const { adminSection, listPath } = accountsSectionFor(account.role);
     res.render('dashboard/admin-reset-password', {
       title: `Change password — ${account.username}`,
       active: 'admin',
-      adminSection: isExpert ? 'expert-accounts' : 'accounts',
-      backHref: isExpert ? '/admin/expert-accounts' : '/admin/accounts',
+      adminSection,
+      backHref: listPath,
       account,
       errors: [],
     });
@@ -335,15 +396,14 @@ router.post('/admin/accounts/:id/password', resetPasswordValidators, async (req,
   try {
     const account = await getAccountById(req.params.id);
     if (!account) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
-    const isExpert = account.role === EXPERT_ROLE;
-    const listPath = isExpert ? '/admin/expert-accounts' : '/admin/accounts';
+    const { adminSection, listPath } = accountsSectionFor(account.role);
 
     const result = validationResult(req);
     if (!result.isEmpty()) {
       return res.status(400).render('dashboard/admin-reset-password', {
         title: `Change password — ${account.username}`,
         active: 'admin',
-        adminSection: isExpert ? 'expert-accounts' : 'accounts',
+        adminSection,
         backHref: listPath,
         account,
         errors: result.array(),
@@ -389,8 +449,11 @@ router.post('/admin/accounts/:id/cohort', async (req, res, next) => {
 // ------------------------------------------------------------------
 // GET /admin/evaluations — every SME owner account's evaluation
 // progress, plus the cross-respondent descriptive summary for the
-// ISO/IEC 25010 Quality-in-Use questionnaire (completed evaluations
-// only — see getCompletedResponseSummary()).
+// 17-item TAM questionnaire (completed evaluations only — see
+// getCompletedResponseSummary()). The ISO/IEC 25010 Quality-in-Use
+// instrument is a different population entirely (Business Owner
+// Evaluator, added 2 October 2026) — browsed separately below at
+// /admin/business-owner-evaluations, never here.
 // ------------------------------------------------------------------
 router.get('/admin/evaluations', async (req, res, next) => {
   try {
@@ -498,6 +561,63 @@ router.get('/admin/expert-evaluations/:accountId', async (req, res, next) => {
 });
 
 // ------------------------------------------------------------------
+// GET /admin/business-owner-evaluations — same shape as /admin/evaluations
+// and /admin/expert-evaluations above, for Business Owner Evaluator
+// accounts against the separate business_owner_evaluation_* tables
+// (added 2 October 2026) — the population that takes the 15-item
+// ISO/IEC 25010 Quality-in-Use instrument. Its own distinct page, same
+// "store and report separately" discipline as the other two: never
+// computed from, or shown alongside, either TAM population's summary.
+// ------------------------------------------------------------------
+router.get('/admin/business-owner-evaluations', async (req, res, next) => {
+  try {
+    const [statuses, summary] = await Promise.all([
+      listAllBusinessOwnerEvaluationStatuses(),
+      getCompletedBusinessOwnerResponseSummary(),
+    ]);
+    res.render('dashboard/admin-business-owner-evaluations', {
+      title: 'View Business Owner Evaluation Report',
+      active: 'admin',
+      adminSection: 'business-owner-evaluations',
+      statuses,
+      summary,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
+// GET /admin/business-owner-evaluations/:accountId — one Business Owner
+// Evaluator account's full evaluation detail, read from
+// business_owner_evaluation_* via getEvaluationStateReadOnly(id,
+// BUSINESS_ROLE). Always walkthrough-flow (no direct-flow variant for
+// this role — see middleware/evaluationGate.js), so unlike the Template
+// Evaluator detail page above, this never needs getModuleVisits().
+// ------------------------------------------------------------------
+router.get('/admin/business-owner-evaluations/:accountId', async (req, res, next) => {
+  try {
+    const account = await getAccountById(req.params.accountId);
+    if (!account) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
+
+    const { session, taskLogs, responses } = await getEvaluationStateReadOnly(account.id, BUSINESS_ROLE);
+    res.render('dashboard/admin-business-owner-evaluation-detail', {
+      title: `Business Owner Evaluation — ${account.username}`,
+      active: 'admin',
+      adminSection: 'business-owner-evaluations',
+      account,
+      session,
+      tasks: WALKTHROUGH_TASKS,
+      taskLogs,
+      domains: groupItemsByDomain(BUSINESS_ROLE),
+      responses,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
 // GET /admin/datasets — every dataset uploaded by every SME owner
 // account, with file/row counts and a Delete action per row. Grouped by
 // owner (alphabetical) with each owner's own datasets most-recently-
@@ -552,6 +672,32 @@ router.get('/admin/expert-datasets', async (req, res, next) => {
 });
 
 // ------------------------------------------------------------------
+// GET /admin/business-owner-datasets — same page again, for Business
+// Owner Evaluator uploads only (listAllDatasets(q, 'businessOwner'),
+// added 2 October 2026). Kept separate for the same reason
+// /admin/expert-datasets is: so this role's uploads are never browsed
+// in the same list as an SME owner's or Template Evaluator's.
+// ------------------------------------------------------------------
+router.get('/admin/business-owner-datasets', async (req, res, next) => {
+  try {
+    const q = req.query.q || '';
+    const datasets = await listAllDatasets(q, 'businessOwner');
+    res.render('dashboard/admin-datasets', {
+      title: 'Business Owner Evaluator Datasets',
+      active: 'admin',
+      adminSection: 'business-owner-datasets',
+      datasets,
+      q,
+      deleted: req.query.deleted || null,
+      basePath: '/admin/business-owner-datasets',
+      ownerLabel: 'Business Owner Evaluator',
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
 // GET /admin/datasets/:id/view — enters read-only "viewing as admin"
 // mode for this dataset's account, then sends the admin to Descriptive
 // analytics with that dataset selected. routes/dashboard.js's
@@ -572,6 +718,17 @@ router.get('/admin/datasets/:id/view', async (req, res, next) => {
   }
 });
 
+// Picks which of the three dataset-list pages (and admin nav section) a
+// dataset's owner_role belongs under — added 2 October 2026 as a 3-way
+// version of the old isExpert ? ... : ... ternary, now that Business
+// Owner Evaluator is a third dataset-list population alongside SME
+// Owner and Template Evaluator.
+function datasetsSectionFor(role) {
+  if (role === EXPERT_ROLE) return { adminSection: 'expert-datasets', listPath: '/admin/expert-datasets', label: '← Template Evaluator Datasets' };
+  if (role === BUSINESS_ROLE) return { adminSection: 'business-owner-datasets', listPath: '/admin/business-owner-datasets', label: '← Business Owner Evaluator Datasets' };
+  return { adminSection: 'datasets', listPath: '/admin/datasets', label: '← Manage Datasets' };
+}
+
 // ------------------------------------------------------------------
 // GET /admin/exit-view — leaves "viewing as admin" mode.
 // ------------------------------------------------------------------
@@ -581,8 +738,9 @@ router.get('/admin/exit-view', async (req, res, next) => {
     delete req.session.adminViewAccountId;
     if (viewedAccountId) {
       const account = await getAccountById(viewedAccountId);
-      if (account && account.role === EXPERT_ROLE) {
-        return res.redirect('/admin/expert-datasets');
+      if (account) {
+        const { listPath } = datasetsSectionFor(account.role);
+        if (listPath !== '/admin/datasets') return res.redirect(listPath);
       }
     }
     res.redirect('/admin/datasets');
@@ -612,17 +770,17 @@ router.get('/admin/datasets/:id/erd', async (req, res, next) => {
 
     const bundle = await getOrBuildFullProfile(dataset.account_id, dataset.id);
     const erd = buildErdDefinition(bundle.files, bundle.relationships);
-    const isExpert = dataset.owner_role === EXPERT_ROLE;
+    const { adminSection, listPath, label } = datasetsSectionFor(dataset.owner_role);
 
     res.render('dashboard/erd', {
       title: `Entity-Relationship Diagram — ${dataset.dataset_name}`,
       active: 'admin',
-      adminSection: isExpert ? 'expert-datasets' : 'datasets',
+      adminSection,
       dataset,
       erd,
       humanizeFileType,
-      backHref: isExpert ? '/admin/expert-datasets' : '/admin/datasets',
-      backLabel: isExpert ? '← Template Evaluator Datasets' : '← Manage Datasets',
+      backHref: listPath,
+      backLabel: label,
     });
   } catch (err) {
     next(err);
@@ -640,12 +798,12 @@ router.get('/admin/datasets/:id/delete', async (req, res, next) => {
   try {
     const dataset = await getDatasetForAdmin(req.params.id);
     if (!dataset) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
-    const isExpert = dataset.owner_role === EXPERT_ROLE;
+    const { adminSection, listPath } = datasetsSectionFor(dataset.owner_role);
     res.render('dashboard/admin-dataset-delete-confirm', {
       title: `Delete dataset — ${dataset.dataset_name}`,
       active: 'admin',
-      adminSection: isExpert ? 'expert-datasets' : 'datasets',
-      backHref: isExpert ? '/admin/expert-datasets' : '/admin/datasets',
+      adminSection,
+      backHref: listPath,
       dataset,
     });
   } catch (err) {
@@ -657,7 +815,7 @@ router.post('/admin/datasets/:id/delete', async (req, res, next) => {
   try {
     const dataset = await getDatasetForAdmin(req.params.id);
     if (!dataset) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
-    const listPath = dataset.owner_role === EXPERT_ROLE ? '/admin/expert-datasets' : '/admin/datasets';
+    const { listPath } = datasetsSectionFor(dataset.owner_role);
     await deleteDataset(dataset.id);
     return res.redirect(`${listPath}?deleted=${encodeURIComponent(dataset.dataset_name)}`);
   } catch (err) {
@@ -780,17 +938,19 @@ router.get('/admin/debug-schema', async (req, res, next) => {
 
 // ------------------------------------------------------------------
 // TEMPORARY — GET /admin/debug-tam-reliability — Cronbach's alpha for
-// each SME Owner questionnaire domain, computed from the raw
-// per-respondent, per-item ratings already stored in evaluation_responses.
-// Added 26 September 2026 (originally for the TAM domains PU/PEOU/BI; as
-// of 2 October 2026 evaluation_responses holds the ISO/IEC 25010
-// Quality-in-Use domains EFF/RISK/SAT/EFFIC instead — groupItemsByDomain
-// (SME_ROLE) below always reflects whichever instrument this account
-// population is currently on) to fill in the manuscript's reliability
-// placeholder without needing external database access (pgAdmin, etc.) —
-// same reasoning as /admin/debug-schema above. Plain text, admin-gated.
-// Safe to delete once you have the numbers — it's a diagnostic, not a
-// feature. Template Evaluator / TAM reliability is unaffected — it is
+// each SME Owner questionnaire domain (PU/PEOU/BI, the 17-item TAM
+// instrument), computed from the raw per-respondent, per-item ratings
+// already stored in evaluation_responses. Added 26 September 2026 to
+// fill in the manuscript's reliability placeholder without needing
+// external database access (pgAdmin, etc.) — same reasoning as
+// /admin/debug-schema above. groupItemsByDomain(SME_ROLE) below reflects
+// the TAM domains, unchanged — SME Owner was never switched to the new
+// ISO/IEC 25010 Quality-in-Use instrument (that one belongs solely to
+// the separate Business Owner Evaluator population added 2 October
+// 2026, scored by its own getCompletedBusinessOwnerResponseSummary()
+// instead, never through this route). Plain text, admin-gated. Safe to
+// delete once you have the numbers — it's a diagnostic, not a feature.
+// Template Evaluator / TAM reliability is unaffected either — it is
 // scored separately and still reads TAM_ITEMS via EXPERT_ROLE elsewhere
 // in this file, never through this route.
 //

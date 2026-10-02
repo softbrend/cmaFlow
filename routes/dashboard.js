@@ -381,15 +381,26 @@ router.get('/', async (req, res, next) => {
     const user = req.session.user;
     const isExpertEvaluator = !!(user && user.role === 'Template Evaluator');
     const isDirectFlowEvaluator = isExpertEvaluator && user.evaluation_flow === 'direct';
+    // Portal title only (added 2 October 2026 for Business Owner Evaluator)
+    // — kept separate from isExpertEvaluator above, which still decides
+    // the Template-Evaluator-specific upload-or-pick-a-template/direct-
+    // flow module links a few lines below; Business Owner Evaluator gets
+    // none of those (it's always walkthrough-gated, plain upload-your-
+    // own-dataset flow, same as an SME Owner) — only this page's title
+    // needs a third label.
+    const portalTitle = isExpertEvaluator ? 'Template Evaluator Portal'
+      : (user && user.role === 'Business Owner Evaluator') ? 'Business Owner Evaluator Portal'
+      : 'SME Owner Portal';
 
     res.render('dashboard/index', {
-      title: isExpertEvaluator ? 'Template Evaluator Portal' : 'SME Owner Portal',
+      title: portalTitle,
       active: 'monetization-intelligence',
       datasets,
       defaultDataset,
       configs,
       isExpertEvaluator,
       isDirectFlowEvaluator,
+      portalTitle,
     });
   } catch (err) {
     next(err);

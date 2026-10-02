@@ -23,7 +23,22 @@
       <% if (currentUser.business_name) { %>
         <div class="header-sme">
           <div class="header-sme-name"><%= currentUser.business_name %></div>
-          <div class="header-sme-tag"><%= currentUser.role === 'Admin' ? 'Administrator' : 'SME Account' %></div>
+          <%
+            // Was a two-way Admin/"SME Account" label — inaccurate for a
+            // Template Evaluator account (shown as "SME Account" same as
+            // a real SME Owner, which is how an evaluator's own test
+            // account got mistaken for an SME Owner one while checking
+            // the ISO/IEC 25010 questionnaire). Now reflects all four
+            // roles, including Business Owner Evaluator (added 2 October
+            // 2026) — without its own branch here it would silently fall
+            // through to the generic "SME Account" label, the same bug
+            // this comment originally described for Template Evaluator.
+            var roleTag = currentUser.role === 'Admin' ? 'Administrator'
+              : currentUser.role === 'Template Evaluator' ? 'Template Evaluator Account'
+              : currentUser.role === 'Business Owner Evaluator' ? 'Business Owner Evaluator Account'
+              : 'SME Account';
+          %>
+          <div class="header-sme-tag"><%= roleTag %></div>
         </div>
         <span class="header-divider header-sme-divider"></span>
       <% } %>

@@ -48,10 +48,15 @@
 // Task 1's upload) is always allowed for the same reason /evaluation
 // itself is — it has to be reachable before Task 1 is done.
 const pool = require('../db/pool');
-const { WALKTHROUGH_TASKS, EXPERT_ROLE } = require('../services/tamEvaluation');
+const { WALKTHROUGH_TASKS, EXPERT_ROLE, BUSINESS_ROLE } = require('../services/tamEvaluation');
 
 const SESSIONS_TABLE = {
   [EXPERT_ROLE]: 'expert_evaluation_sessions',
+  // Business Owner Evaluator (added 2 October 2026) — always
+  // walkthrough-gated like an SME Owner, no 'direct'-flow variant, so it
+  // only ever needs this table-name mapping and none of the
+  // EXPERT_ROLE-specific direct-flow bypass below.
+  [BUSINESS_ROLE]: 'business_owner_evaluation_sessions',
 };
 function sessionsTableFor(role) {
   return SESSIONS_TABLE[role] || 'evaluation_sessions';

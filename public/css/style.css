@@ -795,6 +795,57 @@ body.stage-evaluation-questionnaire .q-actions .btn { font-size: 15.5px; padding
   .likert-option { width: 100%; flex-direction: row; align-items: center; gap: 10px; padding: 12px 16px 12px 40px; }
 }
 
+/* ---------------- Browse Evaluation CSV — wide layout, bigger type,
+   Excel-style grid ----------------
+   Added 2 October 2026 per Brenda's request: this page previously sat
+   inside the same 760px .form-card.wide as every short form in the app
+   (signup, templates, admin), leaving a large empty gap on wide screens,
+   with Filters labels/inputs and the records table at the same small
+   size as everywhere else and no cell borders. Scoped to
+   body.stage-evaluation-data-browser (set only by routes/templates.js's
+   GET /sme-templates/evaluation-data route — see its own comment there)
+   so nothing else that still relies on .form-card.wide staying narrow,
+   or on .table-simple staying compact, is affected — the same approach
+   already used above for body.stage-evaluation-questionnaire. */
+body.stage-evaluation-data-browser .main-inner { max-width: 1600px; }
+
+/* .data-browser-card replaces .form-card.wide's 760px cap for this
+   page's two cards (Filters, Records) only — a dedicated class rather
+   than widening .form-card.wide itself, same reasoning as .q-card above.
+   .form-card.wide.data-browser-card (two classes) is needed to outrank
+   .form-card.wide on specificity alone. */
+.form-card.wide.data-browser-card { max-width: none; width: 100%; }
+
+body.stage-evaluation-data-browser .field label { font-size: 15px; }
+body.stage-evaluation-data-browser .field input,
+body.stage-evaluation-data-browser .field select { font-size: 16px; padding: 13px 15px; }
+body.stage-evaluation-data-browser .form-hint { font-size: 15px; }
+
+/* Excel-style grid for the Records table: a visible border around every
+   cell (table-simple's default is a bottom rule only), a shaded, sticky
+   header row that stays put while scrolling a long record list, bigger
+   15.5px cell text (table-simple's base is 14.5px, sized for compact
+   admin tables, not a page meant to be read row by row like a
+   spreadsheet), and light zebra banding plus a hover highlight — the
+   visual cues people expect from Excel. Layered on top of .table-simple
+   (kept on the element too) rather than replacing it, so this table
+   still gets table-simple's border-collapse/width rules. */
+.excel-table { border: 1px solid var(--border); font-size: 15.5px; }
+.excel-table th, .excel-table td {
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+  white-space: nowrap;
+}
+.excel-table thead th {
+  background: var(--bg-input);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  font-size: 13px;
+}
+.excel-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--heading, var(--primary)) 4%, transparent); }
+.excel-table tbody tr:hover td { background: var(--row-current-bg); }
+
 .alert-error {
   background: var(--alert-error-bg);
   border: 1px solid var(--danger);

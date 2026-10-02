@@ -84,11 +84,22 @@ CREATE TABLE IF NOT EXISTS sme_accounts (
 -- on every db:init: the DROP/ADD is already idempotent by construction,
 -- the UPDATE matches zero rows once none are left holding the old value,
 -- and validating an already-valid constraint is a fast no-op.
+-- 'Business Owner Evaluator' (added 2 October 2026): a THIRD population,
+-- alongside SME Owner and Template Evaluator — a purposively-recruited
+-- respondent who signs up through its own access-code-gated
+-- /businessOwner-signup flow (routes/auth.js), takes the same six-task
+-- walkthrough as an SME Owner (uploading their own real dataset, same as
+-- the original/non-template flow), but then answers the NEW 15-item
+-- ISO/IEC 25010 Quality-in-Use questionnaire instead of TAM — persisted
+-- to its own business_owner_evaluation_sessions/_task_logs/_responses
+-- tables below, never evaluation_*/expert_evaluation_*, so neither the
+-- SME Owner nor the Template Evaluator TAM datasets are ever touched by
+-- this new instrument. See services/tamEvaluation.js's header comment.
 DO $$
 BEGIN
   ALTER TABLE sme_accounts DROP CONSTRAINT IF EXISTS sme_accounts_role_check;
   ALTER TABLE sme_accounts
-      ADD CONSTRAINT sme_accounts_role_check CHECK (role IN ('SME Owner', 'Admin', 'Template Evaluator')) NOT VALID;
+      ADD CONSTRAINT sme_accounts_role_check CHECK (role IN ('SME Owner', 'Admin', 'Template Evaluator', 'Business Owner Evaluator')) NOT VALID;
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
@@ -639,27 +650,22 @@ CREATE INDEX IF NOT EXISTS idx_evaluation_responses_session
 CREATE INDEX IF NOT EXISTS idx_evaluation_responses_account
     ON evaluation_responses(account_id);
 
--- Widen evaluation_responses.domain to also allow the ISO/IEC 25010
--- Quality-in-Use domain codes (EFF, RISK, SAT, EFFIC) used by the SME
--- Owner questionnaire as of 2 October 2026 — see tamEvaluation.js's
--- ISO25010_ITEMS / itemsFor(). The original PU/PEOU/BI values stay valid
--- too, so every row already logged under the earlier TAM-based SME Owner
--- instrument is untouched and still satisfies the constraint — this is a
--- widen, not a replace. This ONLY touches evaluation_responses;
--- expert_evaluation_responses's own, separately-named domain constraint
--- further down this file is deliberately left at PU/PEOU/BI only, because
--- Template Evaluator accounts still take the original 17-item TAM
--- instrument and the already-collected results from the previous 15
--- evaluators must keep scoring against exactly those three domains.
--- DROP+re-ADD rather than the usual bare "ADD CONSTRAINT ... EXCEPTION
--- WHEN duplicate_object" pattern, because this one needs to actually
--- change an existing constraint's definition, not just tolerate it
--- already existing.
+-- evaluation_responses.domain stays PU/PEOU/BI-only — SME Owner accounts
+-- keep taking the original TAM instrument, unchanged (an earlier revision
+-- of this file briefly widened this constraint to also allow the new
+-- ISO/IEC 25010 domain codes here; that instrument was moved onto the new
+-- Business Owner Evaluator role and its own business_owner_evaluation_*
+-- tables below instead — see services/tamEvaluation.js's header comment —
+-- so this is reverted back to its original, strict definition). DROP+
+-- re-ADD (not the usual bare "ADD CONSTRAINT ... EXCEPTION WHEN
+-- duplicate_object" pattern) so this also actively reverts a database
+-- that already picked up the briefly-widened version, not just a
+-- brand-new one.
 ALTER TABLE evaluation_responses DROP CONSTRAINT IF EXISTS evaluation_responses_domain_check;
 DO $$ BEGIN
   ALTER TABLE evaluation_responses
       ADD CONSTRAINT evaluation_responses_domain_check
-      CHECK (domain IN ('PU', 'PEOU', 'BI', 'EFF', 'RISK', 'SAT', 'EFFIC'));
+      CHECK (domain IN ('PU', 'PEOU', 'BI'));
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
@@ -886,6 +892,86 @@ CREATE INDEX IF NOT EXISTS idx_expert_evaluation_responses_session
 
 CREATE INDEX IF NOT EXISTS idx_expert_evaluation_responses_account
     ON expert_evaluation_responses(account_id);
+
+-- ---------------------------------------------------------------------
+-- Business Owner Evaluator accounts (added 2 October 2026) — a third
+-- population, signed up through its own access-code-gated
+-- /businessOwner-signup flow (routes/auth.js), that takes the same
+-- six-task walkthrough as an SME Owner (uploading its own real dataset as
+-- Task 1, always walkthrough-gated — no 'direct'-flow variant exists for
+-- this role, unlike Template Evaluator, so there's no
+-- business_owner_evaluation_module_visits table), but then answers the
+-- NEW 15-item ISO/IEC 25010 Quality-in-Use questionnaire
+-- (services/tamEvaluation.js's ISO25010_ITEMS) instead of TAM. Column
+-- shapes mirror evaluation_sessions/_task_logs/_responses and
+-- expert_evaluation_sessions/_task_logs/_responses above exactly, for the
+-- same reason: services/tamEvaluation.js picks which table set to
+-- read/write per-call from the account's role, not by duplicating its
+-- logic. domain is constrained to the ISO/IEC 25010 codes only — this
+-- population never takes TAM, so there's no PU/PEOU/BI to allow for.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS business_owner_evaluation_sessions (
+    id                        SERIAL PRIMARY KEY,
+    account_id                INTEGER     NOT NULL REFERENCES sme_accounts(id) ON DELETE CASCADE,
+    status                    VARCHAR(20) NOT NULL DEFAULT 'walkthrough' CHECK (status IN (
+                                  'walkthrough', 'questionnaire', 'completed'
+                              )),
+    current_task              SMALLINT    NOT NULL DEFAULT 1 CHECK (current_task BETWEEN 1 AND 6),
+    started_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
+    walkthrough_completed_at  TIMESTAMPTZ,
+    completed_at              TIMESTAMPTZ,
+    consent_status            VARCHAR(20) NOT NULL DEFAULT 'pending',
+    consent_decided_at        TIMESTAMPTZ,
+    UNIQUE (account_id)
+);
+
+DO $$
+BEGIN
+  ALTER TABLE business_owner_evaluation_sessions
+      ADD CONSTRAINT business_owner_evaluation_sessions_consent_status_check
+      CHECK (consent_status IN ('pending', 'given', 'declined'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE TABLE IF NOT EXISTS business_owner_evaluation_task_logs (
+    id                    SERIAL PRIMARY KEY,
+    session_id            INTEGER     NOT NULL REFERENCES business_owner_evaluation_sessions(id) ON DELETE CASCADE,
+    account_id            INTEGER     NOT NULL REFERENCES sme_accounts(id) ON DELETE CASCADE,
+    task_number           SMALLINT    NOT NULL CHECK (task_number BETWEEN 1 AND 6),
+    module_slug           VARCHAR(60) NOT NULL,
+    started_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+    completed_at          TIMESTAMPTZ,
+    time_on_task_seconds  INTEGER,
+    needed_assistance     BOOLEAN     NOT NULL DEFAULT false,
+    had_error             BOOLEAN     NOT NULL DEFAULT false,
+    notes                 TEXT,
+    UNIQUE (session_id, task_number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_business_owner_evaluation_task_logs_session
+    ON business_owner_evaluation_task_logs(session_id);
+
+CREATE INDEX IF NOT EXISTS idx_business_owner_evaluation_task_logs_account
+    ON business_owner_evaluation_task_logs(account_id);
+
+CREATE TABLE IF NOT EXISTS business_owner_evaluation_responses (
+    id            SERIAL PRIMARY KEY,
+    session_id    INTEGER     NOT NULL REFERENCES business_owner_evaluation_sessions(id) ON DELETE CASCADE,
+    account_id    INTEGER     NOT NULL REFERENCES sme_accounts(id) ON DELETE CASCADE,
+    item_code     VARCHAR(10) NOT NULL,
+    domain        VARCHAR(10) NOT NULL CHECK (domain IN ('EFF', 'RISK', 'SAT', 'EFFIC')),
+    rating        SMALLINT    CHECK (rating BETWEEN 1 AND 5),
+    remark        TEXT,
+    answered_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (session_id, item_code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_business_owner_evaluation_responses_session
+    ON business_owner_evaluation_responses(session_id);
+
+CREATE INDEX IF NOT EXISTS idx_business_owner_evaluation_responses_account
+    ON business_owner_evaluation_responses(account_id);
 
 -- ---------------------------------------------------------------------
 -- Automatic time-on-module logging for 'direct'-flow Template Evaluators

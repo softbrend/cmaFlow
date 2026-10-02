@@ -272,6 +272,128 @@ router.post('/expert-signup/register', redirectIfAuthed, expertSignupValidators,
 });
 
 // ------------------------------------------------------------------
+// Business Owner Evaluator signup — added 2 October 2026, the population
+// that takes the new ISO/IEC 25010 Quality-in-Use questionnaire (see
+// services/tamEvaluation.js's header comment). Mirrors the Template
+// Evaluator signup above almost exactly (access-code gate before the
+// registration form, the same one-time req.session.businessOwnerCodeVerified
+// flag), deliberately kept as its own separate code path rather than a
+// third branch grafted onto the expert-signup routes — this is a
+// different population answering a different instrument, and the two
+// access codes must never be interchangeable.
+//
+// Unlike Template Evaluator, this role has no business-category/template
+// system: an evaluator here uploads their own real dataset as Task 1,
+// same as the original (non-template) SME Owner flow — so the signup form
+// uses the same owner_name/business_name/email/phone/business_sector/
+// business_region fields the public /signup form does, just behind the
+// access-code gate and assigned the new role.
+//
+// GET  /businessOwner-signup            -> the access-code form
+// POST /businessOwner-signup            -> verifies the code, flags the session
+// GET  /businessOwner-signup/register   -> the actual signup form (code-gated)
+// POST /businessOwner-signup/register   -> creates the role='Business Owner Evaluator' account
+// ------------------------------------------------------------------
+const BUSINESS_OWNER_SIGNUP_CODE = process.env.BUSINESS_OWNER_SIGNUP_CODE || 'cmaflow-bizowner-2026';
+
+router.get('/businessOwner-signup', redirectIfAuthed, (req, res) => {
+  res.render('auth/businessOwner-signup-code', {
+    title: 'Business Owner Evaluator Access',
+    layout: 'layout-auth',
+    error: null,
+  });
+});
+
+router.post('/businessOwner-signup', redirectIfAuthed, (req, res) => {
+  const submitted = (req.body.access_code || '').trim();
+  if (!submitted || submitted !== BUSINESS_OWNER_SIGNUP_CODE) {
+    return res.status(400).render('auth/businessOwner-signup-code', {
+      title: 'Business Owner Evaluator Access',
+      layout: 'layout-auth',
+      error: 'That access code is not correct.',
+    });
+  }
+  req.session.businessOwnerCodeVerified = true;
+  return res.redirect('/businessOwner-signup/register');
+});
+
+router.get('/businessOwner-signup/register', redirectIfAuthed, (req, res) => {
+  if (!req.session.businessOwnerCodeVerified) {
+    return res.redirect('/businessOwner-signup');
+  }
+  res.render('auth/businessOwner-signup', {
+    title: 'Create your Business Owner Evaluator account',
+    layout: 'layout-auth',
+    errors: [],
+    old: {},
+  });
+});
+
+const businessOwnerSignupValidators = [
+  body('username')
+    .trim()
+    .matches(/^[A-Za-z0-9_-]{3,50}$/)
+    .withMessage('Username must be 3-50 characters (letters, numbers, - or _ only).'),
+  body('owner_name').trim().notEmpty().withMessage('Full name is required.'),
+  body('business_name').trim().notEmpty().withMessage('Business / SME name is required.'),
+  body('email').trim().isEmail().withMessage('A valid business email is required.').normalizeEmail(),
+  body('phone').trim().optional({ checkFalsy: true }),
+  body('business_sector').trim().notEmpty().withMessage('Business sector is required.'),
+  body('business_region').trim().notEmpty().withMessage('Business region is required.'),
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters.'),
+  body('confirm_password').custom((value, { req }) => value === req.body.password)
+    .withMessage('Passwords do not match.'),
+];
+
+router.post('/businessOwner-signup/register', redirectIfAuthed, businessOwnerSignupValidators, async (req, res, next) => {
+  if (!req.session.businessOwnerCodeVerified) {
+    return res.redirect('/businessOwner-signup');
+  }
+
+  const result = validationResult(req);
+  if (!result.isEmpty()) {
+    return res.status(400).render('auth/businessOwner-signup', {
+      title: 'Create your Business Owner Evaluator account',
+      layout: 'layout-auth',
+      errors: result.array(),
+      old: req.body,
+    });
+  }
+
+  const {
+    username, owner_name, business_name, email, phone,
+    business_sector, business_region, password,
+  } = req.body;
+
+  try {
+    const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
+    const { rows } = await pool.query(
+      `INSERT INTO sme_accounts
+         (username, owner_name, business_name, email, phone, business_sector, business_region, password_hash, role)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Business Owner Evaluator')
+       RETURNING id, username, owner_name, business_name, email, role, assigned_dataset`,
+      [username, owner_name, business_name, email, phone || null, business_sector, business_region, password_hash]
+    );
+
+    const account = rows[0];
+    delete req.session.businessOwnerCodeVerified; // one-time: re-entering the code is required for the next account
+    req.session.userId = account.id;
+    req.session.user = account;
+    return res.redirect('/');
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(400).render('auth/businessOwner-signup', {
+        title: 'Create your Business Owner Evaluator account',
+        layout: 'layout-auth',
+        errors: [{ msg: 'That username or business email is already registered.' }],
+        old: req.body,
+      });
+    }
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
 // GET /login
 // ------------------------------------------------------------------
 router.get('/login', redirectIfAuthed, (req, res) => {

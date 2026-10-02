@@ -1,0 +1,56 @@
+<div class="page-title">🏢 <span class="page-title-text">View Business Owner Evaluation Report</span></div>
+<p class="page-subtitle">Every Business Owner Evaluator account's evaluation progress, and a cross-respondent summary of the 15-item ISO/IEC 25010 Quality-in-Use questionnaire. Kept separate from the SME owner and Template Evaluator reports — see <a href="/admin/evaluations">View Evaluation Report</a> and <a href="/admin/expert-evaluations">View Template Evaluation Report</a> for those populations.</p>
+
+<div class="form-card wide" style="max-width: none; margin-bottom: 26px;">
+  <div class="form-title" style="font-size: 18px;">Respondents</div>
+  <div class="table-scroll">
+    <table class="table-simple">
+      <thead>
+        <tr>
+          <th>Account</th>
+          <th>Business</th>
+          <th>Consent</th>
+          <th>Status</th>
+          <th>Progress</th>
+          <th>Items answered</th>
+          <th>Completed</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% statuses.forEach(function(s) {
+             var statusLabel, statusClass;
+             if (s.status === 'completed') { statusLabel = 'Completed'; statusClass = 'badge-active'; }
+             else if (s.status === 'questionnaire') { statusLabel = 'Questionnaire'; statusClass = 'badge-risk-medium'; }
+             else if (s.status === 'walkthrough') { statusLabel = 'Walkthrough (task ' + s.current_task + '/6)'; statusClass = 'badge-risk-medium'; }
+             else { statusLabel = 'Not started'; statusClass = 'badge-inactive'; }
+
+             var consentLabel, consentClass;
+             if (s.consent_status === 'given') { consentLabel = 'Given'; consentClass = 'badge-active'; }
+             else if (s.consent_status === 'declined') { consentLabel = 'Declined'; consentClass = 'badge-risk-high'; }
+             else if (s.consent_status === 'pending') { consentLabel = 'Pending'; consentClass = 'badge-inactive'; }
+             else { consentLabel = '—'; consentClass = 'badge-inactive'; }
+        %>
+          <tr>
+            <td><%= s.owner_name %> <span style="color: var(--text-muted);">(<%= s.username %>)</span></td>
+            <td><%= s.business_name %></td>
+            <td><span class="badge <%= consentClass %>"><%= consentLabel %></span></td>
+            <td><span class="badge <%= statusClass %>"><%= statusLabel %></span></td>
+            <td><%= (s.tasks_done || 0) %> / 6 tasks</td>
+            <td><%= s.items_answered || 0 %> / 15</td>
+            <td><%= s.completed_at ? new Date(s.completed_at).toLocaleDateString() : '—' %></td>
+            <td style="text-align: right;">
+              <% if (s.status) { %>
+                <a class="btn btn-ghost btn-sm" href="/admin/business-owner-evaluations/<%= s.account_id %>">View</a>
+              <% } else { %>
+                <span style="color: var(--text-muted); font-size: 12.5px;">—</span>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%- include('_business-owner-summary-block', { s: summary }) %>

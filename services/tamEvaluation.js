@@ -1,33 +1,51 @@
-// TAM End-User Evaluation — six-task walkthrough + 17-item Technology
-// Acceptance Model questionnaire, embedded in the running app. Same task
-// order, same item wording, same "rating <=3 needs a remark" rule, same
-// six modules, for BOTH of the two populations that take it:
-//   - an sme_owner account (persisted in
-//     evaluation_sessions / evaluation_task_logs / evaluation_responses)
+// End-User Evaluation — six-task walkthrough + questionnaire, embedded in
+// the running app, for THREE populations, each with its own fully
+// separate table set (never queried, counted, or summarized together):
+//   - an SME Owner account (persisted in
+//     evaluation_sessions / evaluation_task_logs / evaluation_responses) —
+//     the original population (incl. the MIT 267 course cohort whose TAM
+//     results are already reported in the manuscript) — takes the
+//     original 17-item TAM questionnaire, unchanged.
 //   - a Template Evaluator account, added 30 September 2026 for the
-//     field-generalization round (persisted in the parallel
-//     expert_evaluation_sessions / _task_logs / _responses tables)
+//     synthetic-template validation round (persisted in the parallel
+//     expert_evaluation_sessions / _task_logs / _responses tables) — also
+//     takes TAM, unchanged. Brenda's explicit instruction (see
+//     claude/direct-flow-template-evaluator.md): "the previous evaluation
+//     done by the 15 that they upload their own datasets should not be
+//     touched" — so this population's instrument was deliberately left
+//     alone rather than being switched to ISO/IEC 25010.
+//   - a Business Owner Evaluator account, added 2 October 2026 (persisted
+//     in business_owner_evaluation_sessions / _task_logs / _responses) —
+//     a third, access-code-gated population (routes/auth.js's
+//     /businessOwner-signup) created specifically to take the NEW
+//     15-item ISO/IEC 25010 Quality-in-Use questionnaire (ISO25010_ITEMS
+//     below), answering the editorial letter's decision-support-
+//     effectiveness critique without touching either TAM population's
+//     already-collected data.
 // Every function below takes the account's role as its last argument and
-// picks the matching table set via tablesFor() — the task list, item
-// list, and all the business rules are shared code; only the storage
-// target differs. This is deliberate: db/schema.sql's comment on the
-// expert_* tables explains why they must never be queried together with
-// the SME-owner ones, and keeping one copy of this logic (instead of a
-// forked sibling file) is what keeps both populations' evaluations
-// actually identical in how they're administered and scored.
+// picks the matching table set via tablesFor() — the task list and all
+// the business rules (consent, the six-task walkthrough, the "rating <=3
+// needs a remark" validation) are shared code; only the storage target
+// and the question set differ. This is deliberate: db/schema.sql's
+// comments on the expert_*/business_owner_evaluation_* tables explain why
+// they must never be queried together with the SME-owner ones, and
+// keeping one copy of this logic (instead of three forked sibling files)
+// is what keeps every population's evaluation actually identical in how
+// it's administered and scored, modulo only the question set.
 const pool = require('../db/pool');
 const { quantile, mean } = require('./statsUtils');
 
 const SME_ROLE = 'SME Owner';
 const EXPERT_ROLE = 'Template Evaluator';
+const BUSINESS_ROLE = 'Business Owner Evaluator';
 
-// The only two table sets this ever resolves to — role is always either
-// an account's own sme_accounts.role (SME Owner/Admin/Template Evaluator)
-// or explicitly passed by a caller that already knows which population
-// it's asking about; anything other than the literal 'Template Evaluator'
-// string (including undefined, for every pre-existing call site written
-// before this round) resolves to the original SME-owner tables, so this
-// is purely additive.
+// The three table sets this ever resolves to — role is always either an
+// account's own sme_accounts.role or explicitly passed by a caller that
+// already knows which population it's asking about; anything other than
+// the literal 'Template Evaluator'/'Business Owner Evaluator' strings
+// (including undefined, for every call site written before the Template
+// Evaluator round) resolves to the original SME-owner tables, so this has
+// stayed purely additive across both rounds.
 const TABLE_SETS = {
   sme: {
     sessions: 'evaluation_sessions',
@@ -39,10 +57,17 @@ const TABLE_SETS = {
     taskLogs: 'expert_evaluation_task_logs',
     responses: 'expert_evaluation_responses',
   },
+  businessOwner: {
+    sessions: 'business_owner_evaluation_sessions',
+    taskLogs: 'business_owner_evaluation_task_logs',
+    responses: 'business_owner_evaluation_responses',
+  },
 };
 
 function tablesFor(role) {
-  return role === EXPERT_ROLE ? TABLE_SETS.expert : TABLE_SETS.sme;
+  if (role === EXPERT_ROLE) return TABLE_SETS.expert;
+  if (role === BUSINESS_ROLE) return TABLE_SETS.businessOwner;
+  return TABLE_SETS.sme;
 }
 
 // ------------------------------------------------------------------
@@ -136,14 +161,21 @@ const TAM_ITEMS_BY_CODE = new Map(TAM_ITEMS.map((item) => [item.code, item]));
 const TAM_DOMAIN_CODES = ['PU', 'PEOU', 'BI'];
 
 // ------------------------------------------------------------------
-// ISO/IEC 25010 Quality-in-Use instrument — replaces TAM for SME Owner
-// accounts only, added 2 October 2026 in response to the editorial
-// decision letter's core complaint: TAM measures acceptance (would a
-// respondent adopt the tool), not decision-support effectiveness
-// (did using it produce a good decision). Template Evaluator accounts
-// are explicitly UNCHANGED — they keep taking TAM_ITEMS above, in the
-// expert_evaluation_* tables, so the already-analyzed 15/17-respondent
-// TAM dataset is never touched by this. See
+// ISO/IEC 25010 Quality-in-Use instrument — added 2 October 2026 in
+// response to the editorial decision letter's core complaint: TAM
+// measures acceptance (would a respondent adopt the tool), not
+// decision-support effectiveness (did using it produce a good decision).
+//
+// Taken ONLY by the new Business Owner Evaluator role (BUSINESS_ROLE,
+// business_owner_evaluation_* tables, routes/auth.js's access-code-gated
+// /businessOwner-signup) — a third, purpose-built population created
+// specifically for this instrument. Both SME Owner AND Template Evaluator
+// accounts are explicitly UNCHANGED — they keep taking TAM_ITEMS above,
+// so neither the manuscript's already-reported SME Owner TAM dataset nor
+// the Template Evaluator synthetic-validation round's TAM dataset
+// (Brenda's own words, claude/direct-flow-template-evaluator.md: "the
+// previous evaluation done by the 15 that they upload their own datasets
+// should not be touched") is ever touched by this. See
 // claude/field-study-and-semantic-retest-plan.md for the companion
 // external decision-report form + blind-rating rubric this pairs with;
 // this questionnaire alone is still self-report and does not by itself
@@ -199,22 +231,23 @@ const ISO25010_ITEMS_BY_CODE = new Map(ISO25010_ITEMS.map((item) => [item.code, 
 // Role-aware lookups — every place in this file (and its callers in
 // routes/evaluation.js, routes/admin.js) that used to reach straight
 // for TAM_ITEMS / TAM_ITEMS_BY_CODE / DOMAIN_LABELS now goes through
-// one of these instead, exactly mirroring tablesFor()'s own
-// EXPERT_ROLE-vs-everything-else split above: a Template Evaluator
-// gets the original TAM instrument; an SME Owner (or any other/absent
-// role, same default tablesFor() already uses) gets ISO/IEC 25010.
+// one of these instead, mirroring tablesFor()'s own three-way split
+// above: only BUSINESS_ROLE gets the new ISO/IEC 25010 instrument —
+// SME Owner and Template Evaluator (or any other/absent role, same
+// default tablesFor() already uses) both get the original TAM
+// instrument, unchanged.
 // ------------------------------------------------------------------
 function itemsFor(role) {
-  return role === EXPERT_ROLE ? TAM_ITEMS : ISO25010_ITEMS;
+  return role === BUSINESS_ROLE ? ISO25010_ITEMS : TAM_ITEMS;
 }
 function itemsByCodeFor(role) {
-  return role === EXPERT_ROLE ? TAM_ITEMS_BY_CODE : ISO25010_ITEMS_BY_CODE;
+  return role === BUSINESS_ROLE ? ISO25010_ITEMS_BY_CODE : TAM_ITEMS_BY_CODE;
 }
 function domainCodesFor(role) {
-  return role === EXPERT_ROLE ? TAM_DOMAIN_CODES : ISO_DOMAIN_CODES;
+  return role === BUSINESS_ROLE ? ISO_DOMAIN_CODES : TAM_DOMAIN_CODES;
 }
 function domainLabelsFor(role) {
-  return role === EXPERT_ROLE ? DOMAIN_LABELS : ISO_DOMAIN_LABELS;
+  return role === BUSINESS_ROLE ? ISO_DOMAIN_LABELS : DOMAIN_LABELS;
 }
 
 function groupItemsByDomain(role) {
@@ -513,6 +546,30 @@ async function listAllExpertEvaluationStatuses() {
   return rows;
 }
 
+// Same shape again, for Business Owner Evaluator accounts against the
+// separate business_owner_evaluation_* tables — the population that takes
+// the new ISO/IEC 25010 instrument. No evaluation_flow/modules_opened
+// columns here: unlike Template Evaluator, this role has only ever had
+// one flow (always six-task walkthrough-gated, see
+// middleware/evaluationGate.js), so there's no split to report.
+async function listAllBusinessOwnerEvaluationStatuses() {
+  const { rows } = await pool.query(
+    `SELECT a.id AS account_id, a.username, a.owner_name, a.business_name,
+            s.status, s.current_task, s.started_at,
+            s.consent_status, s.consent_decided_at,
+            s.walkthrough_completed_at, s.completed_at,
+            (SELECT COUNT(*)::int FROM business_owner_evaluation_task_logs tl
+              WHERE tl.session_id = s.id AND tl.completed_at IS NOT NULL) AS tasks_done,
+            (SELECT COUNT(*)::int FROM business_owner_evaluation_responses r
+              WHERE r.session_id = s.id AND r.rating IS NOT NULL) AS items_answered
+       FROM sme_accounts a
+       LEFT JOIN business_owner_evaluation_sessions s ON s.account_id = a.id
+      WHERE a.role = 'Business Owner Evaluator'
+      ORDER BY a.created_at DESC`
+  );
+  return rows;
+}
+
 // Cross-respondent descriptive summary of the 17-item questionnaire —
 // the instrument's own Section 6 scoring/analysis plan (median/IQR per
 // item and domain, %agree; see claude/tam-instrument-end-user-evaluation.md
@@ -534,13 +591,11 @@ async function listAllExpertEvaluationStatuses() {
 // filtering would be a no-op there, not an omission.
 //
 // role picks which item list/domain set this summary is scored against —
-// itemsFor(role)/domainCodesFor(role)/domainLabelsFor(role): the 17-item
-// TAM instrument for EXPERT_ROLE callers (getCompletedExpertResponseSummary,
-// unchanged), or the 15-item ISO/IEC 25010 instrument for everyone else
-// (getCompletedResponseSummary, the SME Owner population this was revised
-// for). Defaults to SME_ROLE's own ISO/IEC 25010 scoring exactly like
-// tablesFor()/itemsFor() default everywhere else in this file, so this
-// stays additive rather than a breaking signature change.
+// itemsFor(role)/domainCodesFor(role)/domainLabelsFor(role): the 15-item
+// ISO/IEC 25010 instrument for BUSINESS_ROLE callers
+// (getCompletedBusinessOwnerResponseSummary), or the original 17-item TAM
+// instrument for everyone else (getCompletedResponseSummary,
+// getCompletedExpertResponseSummary — both unchanged).
 async function summarizeCompletedResponses(responsesTable, sessionsTable, evaluationFlowFilter, role) {
   const params = [];
   let flowJoin = '';
@@ -610,6 +665,13 @@ async function getCompletedExpertResponseSummary() {
     summarizeCompletedResponses('expert_evaluation_responses', 'expert_evaluation_sessions', 'direct', EXPERT_ROLE),
   ]);
   return { walkthrough, direct };
+}
+
+// Single summary (no flow split — this role has only one flow) for
+// Business Owner Evaluator accounts, scored against the 15-item ISO/IEC
+// 25010 instrument via business_owner_evaluation_responses/_sessions.
+async function getCompletedBusinessOwnerResponseSummary() {
+  return summarizeCompletedResponses('business_owner_evaluation_responses', 'business_owner_evaluation_sessions', undefined, BUSINESS_ROLE);
 }
 
 // ------------------------------------------------------------------
@@ -692,6 +754,7 @@ async function getModuleVisits(sessionId) {
 module.exports = {
   SME_ROLE,
   EXPERT_ROLE,
+  BUSINESS_ROLE,
   WALKTHROUGH_TASKS,
   TAM_ITEMS,
   DOMAIN_LABELS,
@@ -713,8 +776,10 @@ module.exports = {
   getEvaluationStateReadOnly,
   listAllEvaluationStatuses,
   listAllExpertEvaluationStatuses,
+  listAllBusinessOwnerEvaluationStatuses,
   getCompletedResponseSummary,
   getCompletedExpertResponseSummary,
+  getCompletedBusinessOwnerResponseSummary,
   recordModuleVisit,
   getModuleVisits,
   MODULE_VISIT_SLUG_ORDER,

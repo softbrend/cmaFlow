@@ -3,6 +3,19 @@
 
   <ul class="nav-list">
     <% var isExpertEvaluator = currentUser && currentUser.role === 'Template Evaluator'; %>
+    <%
+      // Nav-link text only (added 2 October 2026 for Business Owner
+      // Evaluator) — kept separate from isExpertEvaluator above, which
+      // stays Template-Evaluator-only on purpose: it still decides the
+      // "Download SME Templates" vs "Monetization discovery" structural
+      // branch below, and Business Owner Evaluator deliberately falls
+      // into the SAME else-branch as SME Owner there (plain
+      // Upload Dataset flow, no template system) — only the evaluation
+      // link's own label needs a third option.
+      var evalRoleLabel = currentUser && currentUser.role === 'Template Evaluator' ? 'Template Evaluator Evaluation'
+        : currentUser && currentUser.role === 'Business Owner Evaluator' ? 'Business Owner Evaluator Evaluation'
+        : 'End-User Evaluation';
+    %>
     <% if (currentUser && currentUser.role === 'Admin') { %>
       <%# Admin's own nav: the same four analytics stages an SME owner
           sees (read-only here — an Admin views them via "View analytics"
@@ -24,6 +37,12 @@
       <li><a href="/admin/expert-evaluations" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'expert-evaluations') ? 'active' : '' %>"><span class="nav-dot"></span>View Template Evaluation Report</a></li>
       <li><a href="/admin/expert-accounts" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'expert-accounts') ? 'active' : '' %>"><span class="nav-dot"></span>Manage Template Evaluators</a></li>
       <li><a href="/admin/expert-datasets" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'expert-datasets') ? 'active' : '' %>"><span class="nav-dot"></span>Template Evaluator Datasets</a></li>
+      <%# Business Owner Evaluator (added 2 October 2026) — its own
+          three admin pages, same "never listed alongside another
+          population" discipline as the Template Evaluator set above. %>
+      <li><a href="/admin/business-owner-evaluations" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'business-owner-evaluations') ? 'active' : '' %>"><span class="nav-dot"></span>View Business Owner Evaluation Report</a></li>
+      <li><a href="/admin/business-owner-accounts" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'business-owner-accounts') ? 'active' : '' %>"><span class="nav-dot"></span>Manage Business Owner Evaluators</a></li>
+      <li><a href="/admin/business-owner-datasets" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'business-owner-datasets') ? 'active' : '' %>"><span class="nav-dot"></span>Business Owner Evaluator Datasets</a></li>
       <li><a href="/admin/gating-comparison" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'gating-comparison') ? 'active' : '' %>"><span class="nav-dot"></span>Gating Comparison</a></li>
     <% } else if (typeof evaluationLocked !== 'undefined' && evaluationLocked) { %>
       <%# New (or not-yet-completed) SME owner OR Template Evaluator: every
@@ -33,14 +52,18 @@
           its header comment for exactly what stays reachable and why).
           A Template Evaluator also gets the template-download page here,
           since they need a category template before Task 1's upload. %>
+      <%# active is 'evaluation-data-browser' (not 'sme-templates') specifically
+          on the Browse Evaluation CSV screen — its own wider, Excel-style
+          layout, see public/css/style.css's body.stage-evaluation-data-browser
+          rules — so this link still has to light up for both values. %>
       <% if (isExpertEvaluator) { %>
-        <li><a href="/sme-templates" class="<%= active === 'sme-templates' ? 'active' : '' %>"><span class="nav-dot"></span>Download SME Templates</a></li>
+        <li><a href="/sme-templates" class="<%= (active === 'sme-templates' || active === 'evaluation-data-browser') ? 'active' : '' %>"><span class="nav-dot"></span>Download SME Templates</a></li>
       <% } %>
       <%# active is 'evaluation-questionnaire' (not 'evaluation') specifically
           on the questionnaire screen — its own wider layout, see
           public/css/style.css's body.stage-evaluation-questionnaire rules —
           so this link still has to light up for both values. %>
-      <li><a href="/evaluation" class="<%= (active === 'evaluation' || active === 'evaluation-questionnaire') ? 'active' : '' %>"><span class="nav-dot"></span><%= isExpertEvaluator ? 'Template Evaluator Evaluation' : 'End-User Evaluation' %></a></li>
+      <li><a href="/evaluation" class="<%= (active === 'evaluation' || active === 'evaluation-questionnaire') ? 'active' : '' %>"><span class="nav-dot"></span><%= evalRoleLabel %></a></li>
     <% } else { %>
       <%# The four analytics stages carry a stage-colored icon chip instead
           of the plain gold nav-dot — the same DESCRIPTIVE → DIAGNOSTIC →
@@ -55,11 +78,11 @@
       <li><a href="/upload-dataset" class="<%= active === 'upload-new-dataset' ? 'active' : '' %>"><span class="nav-dot"></span>Upload New Dataset</a></li>
       <li><a href="/browse-dataset" class="<%= active === 'browse-dataset' ? 'active' : '' %>"><span class="nav-dot"></span>Browse Dataset</a></li>
       <% if (isExpertEvaluator) { %>
-        <li><a href="/sme-templates" class="<%= active === 'sme-templates' ? 'active' : '' %>"><span class="nav-dot"></span>Download SME Templates</a></li>
+        <li><a href="/sme-templates" class="<%= (active === 'sme-templates' || active === 'evaluation-data-browser') ? 'active' : '' %>"><span class="nav-dot"></span>Download SME Templates</a></li>
       <% } else { %>
         <li><a href="/monetization-discovery" class="<%= active === 'monetization-discovery' ? 'active' : '' %>"><span class="nav-dot"></span>Monetization discovery</a></li>
       <% } %>
-      <li><a href="/evaluation" class="<%= (active === 'evaluation' || active === 'evaluation-questionnaire') ? 'active' : '' %>"><span class="nav-dot"></span><%= isExpertEvaluator ? 'Template Evaluator Evaluation' : 'End-User Evaluation' %></a></li>
+      <li><a href="/evaluation" class="<%= (active === 'evaluation' || active === 'evaluation-questionnaire') ? 'active' : '' %>"><span class="nav-dot"></span><%= evalRoleLabel %></a></li>
     <% } %>
   </ul>
 

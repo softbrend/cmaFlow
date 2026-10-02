@@ -1,0 +1,18 @@
+<div class="form-card">
+  <div class="form-title"><img src="/img/cma-flow-icon.png" alt="CMA-Flow" style="width:28px; height:28px; border-radius:7px; background:#fff; padding:2px; vertical-align:-6px; margin-right:8px;" />Business Owner Evaluator Access</div>
+  <p class="form-hint">This registration is reserved for invited business-owner evaluators. Enter the access code you were given to continue.</p>
+
+  <% if (error) { %>
+    <div class="alert-error"><ul><li><%= error %></li></ul></div>
+  <% } %>
+
+  <form method="POST" action="/businessOwner-signup" autocomplete="off">
+    <div class="field">
+      <label for="access_code">Access code</label>
+      <input type="password" id="access_code" name="access_code" required autofocus />
+    </div>
+    <button type="submit" class="btn btn-accent btn-block">Continue</button>
+  </form>
+
+  <div class="form-footer">Not an invited evaluator? <a href="/login">Back to sign in</a></div>
+</div>

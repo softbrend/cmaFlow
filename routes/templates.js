@@ -164,7 +164,16 @@ router.get('/sme-templates/evaluation-data', requireExpertEvaluator, (req, res, 
     const columns = records.length ? Object.keys(records[0]) : [];
     res.render('dashboard/evaluation-data-browser', {
       title: 'Browse Evaluation CSV',
-      active: 'sme-templates',
+      // Its own active value (not 'sme-templates') so public/css/style.css
+      // can give this page a wider layout and bigger, Excel-style table
+      // without touching the Download SME Templates listing page, which
+      // shares that route's 'sme-templates' value and must stay narrow —
+      // see the body.stage-evaluation-data-browser rules there, and the
+      // matching lookup in views/partials/sidebar.ejs that still treats
+      // this value as "on the Download SME Templates page" for nav
+      // highlighting (same pattern already used for 'evaluation-questionnaire'
+      // next to 'evaluation').
+      active: 'evaluation-data-browser',
       categoryLabel: resolved.row.sme_business_category,
       templateFile: resolved.row.template_file,
       columns,

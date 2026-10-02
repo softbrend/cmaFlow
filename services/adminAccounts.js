@@ -15,11 +15,14 @@ const SALT_ROUNDS = 12;
 // (case-insensitive substring) — enough to find one account among a
 // modest evaluator/pilot-respondent list without a full filter UI.
 //
-// Excludes role = 'Template Evaluator' (added 30 September 2026): this is
-// "Manage SME Accounts" — SME owners and Admins, same as before that role
-// existed. A Template Evaluator account is managed from the separate
-// listExpertAccounts()/"Manage Template Evaluators" page below, so the two
-// populations are never listed, searched, or counted together.
+// Excludes role = 'Template Evaluator' (added 30 September 2026) AND
+// role = 'Business Owner Evaluator' (added 2 October 2026): this is
+// "Manage SME Accounts" — SME owners and Admins, same as before either
+// role existed. Each of those two roles is managed from its own separate
+// page (listExpertAccounts()/"Manage Template Evaluators",
+// listBusinessOwnerAccounts()/"Manage Business Owner Evaluators" below),
+// so none of the three populations are ever listed, searched, or counted
+// together.
 async function listAccounts(search) {
   const trimmed = (search || '').trim();
   if (trimmed) {
@@ -27,7 +30,7 @@ async function listAccounts(search) {
     const { rows } = await pool.query(
       `SELECT id, username, owner_name, business_name, email, role, cohort, created_at
          FROM sme_accounts
-        WHERE role != 'Template Evaluator'
+        WHERE role NOT IN ('Template Evaluator', 'Business Owner Evaluator')
           AND (username ILIKE $1 OR owner_name ILIKE $1 OR business_name ILIKE $1 OR email ILIKE $1)
         ORDER BY created_at DESC`,
       [like]
@@ -37,7 +40,7 @@ async function listAccounts(search) {
   const { rows } = await pool.query(
     `SELECT id, username, owner_name, business_name, email, role, cohort, created_at
        FROM sme_accounts
-      WHERE role != 'Template Evaluator'
+      WHERE role NOT IN ('Template Evaluator', 'Business Owner Evaluator')
       ORDER BY created_at DESC`
   );
   return rows;
@@ -64,6 +67,35 @@ async function listExpertAccounts(search) {
     `SELECT id, username, owner_name, business_name, email, business_sector, role, evaluation_flow, created_at
        FROM sme_accounts
       WHERE role = 'Template Evaluator'
+      ORDER BY created_at DESC`
+  );
+  return rows;
+}
+
+// Same shape and search behavior again, filtered to
+// role = 'Business Owner Evaluator' only (added 2 October 2026) — backs
+// the separate "Manage Business Owner Evaluators" admin page. No
+// evaluation_flow column selected here: unlike Template Evaluator, this
+// role has only ever had one flow (always walkthrough-gated), so there's
+// nothing to show for it.
+async function listBusinessOwnerAccounts(search) {
+  const trimmed = (search || '').trim();
+  if (trimmed) {
+    const like = `%${trimmed}%`;
+    const { rows } = await pool.query(
+      `SELECT id, username, owner_name, business_name, email, business_sector, business_region, role, created_at
+         FROM sme_accounts
+        WHERE role = 'Business Owner Evaluator'
+          AND (username ILIKE $1 OR owner_name ILIKE $1 OR business_name ILIKE $1 OR email ILIKE $1)
+        ORDER BY created_at DESC`,
+      [like]
+    );
+    return rows;
+  }
+  const { rows } = await pool.query(
+    `SELECT id, username, owner_name, business_name, email, business_sector, business_region, role, created_at
+       FROM sme_accounts
+      WHERE role = 'Business Owner Evaluator'
       ORDER BY created_at DESC`
   );
   return rows;
@@ -168,6 +200,6 @@ async function demoteToOwner(accountId) {
 }
 
 module.exports = {
-  listAccounts, listExpertAccounts, getAccountById, resetPassword, countAdmins,
+  listAccounts, listExpertAccounts, listBusinessOwnerAccounts, getAccountById, resetPassword, countAdmins,
   createAdminAccount, promoteToAdmin, demoteToOwner, setCohort, COHORT_LABELS,
 };

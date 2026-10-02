@@ -12,7 +12,7 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const {
-  WALKTHROUGH_TASKS, itemsFor, groupItemsByDomain, EXPERT_ROLE,
+  WALKTHROUGH_TASKS, itemsFor, groupItemsByDomain, EXPERT_ROLE, BUSINESS_ROLE,
   getEvaluationState, recordConsent, startTaskIfNeeded, completeTask,
   saveResponses, validateQuestionnaire, markCompleted, getModuleVisits,
 } = require('../services/tamEvaluation');
@@ -23,6 +23,19 @@ router.use(requireAuth);
 // Only these three decisions are ever written, and each maps to exactly
 // one consent_status value — see recordConsent() in tamEvaluation.js.
 const CONSENT_DECISIONS = { agree: 'given', decline: 'declined', reconsider: 'pending' };
+
+// Page-title label for the five evaluation-*.ejs views — added 2 October
+// 2026 alongside the Business Owner Evaluator role. isExpert (below) is
+// still kept and passed separately: it also decides isDirectFlow, which
+// is Template-Evaluator-specific and has nothing to do with this third
+// role. Business Owner Evaluator is always walkthrough-gated, same as
+// an SME Owner, so it needs no equivalent of isDirectFlow — only its own
+// label here.
+function evalRoleLabelFor(role) {
+  if (role === EXPERT_ROLE) return 'Template Evaluator Evaluation';
+  if (role === BUSINESS_ROLE) return 'Business Owner Evaluator Evaluation';
+  return 'End-User Evaluation';
+}
 
 // ------------------------------------------------------------------
 // GET /evaluation — single entry point. Always resumes wherever this
@@ -41,6 +54,7 @@ router.get('/evaluation', async (req, res, next) => {
     // ever sets it otherwise), so this check is effectively isExpert-only
     // in practice, written out in full for clarity.
     const isDirectFlow = isExpert && req.session.user.evaluation_flow === 'direct';
+    const evalRoleLabel = evalRoleLabelFor(role);
     const { session, taskLogs, responses } = await getEvaluationState(accountId, role, req.session.user && req.session.user.evaluation_flow);
 
     // Republic Act No. 10173 (Data Privacy Act of 2012): no walkthrough or
@@ -55,6 +69,7 @@ router.get('/evaluation', async (req, res, next) => {
         session,
         isExpert,
         isDirectFlow,
+        evalRoleLabel,
         questionnaireItemCount: itemsFor(role).length,
       });
     }
@@ -66,6 +81,7 @@ router.get('/evaluation', async (req, res, next) => {
         session,
         isExpert,
         isDirectFlow,
+        evalRoleLabel,
       });
     }
 
@@ -85,6 +101,7 @@ router.get('/evaluation', async (req, res, next) => {
         currentTask,
         isExpert,
         isDirectFlow,
+        evalRoleLabel,
       });
     }
 
@@ -104,6 +121,7 @@ router.get('/evaluation', async (req, res, next) => {
         errors: null,
         isExpert,
         isDirectFlow,
+        evalRoleLabel,
       });
     }
 
@@ -120,6 +138,7 @@ router.get('/evaluation', async (req, res, next) => {
       responses,
       isExpert,
       isDirectFlow,
+      evalRoleLabel,
     });
   } catch (err) {
     next(err);
@@ -194,6 +213,7 @@ router.post('/evaluation/questionnaire', async (req, res, next) => {
     const role = req.session.user && req.session.user.role;
     const isExpert = role === EXPERT_ROLE;
     const isDirectFlow = isExpert && req.session.user.evaluation_flow === 'direct';
+    const evalRoleLabel = evalRoleLabelFor(role);
     const { session } = await getEvaluationState(accountId, role, req.session.user && req.session.user.evaluation_flow);
     if (session.consent_status !== 'given' || session.status !== 'questionnaire') {
       return res.redirect('/evaluation');
@@ -219,6 +239,7 @@ router.post('/evaluation/questionnaire', async (req, res, next) => {
           errors: validation,
           isExpert,
           isDirectFlow,
+          evalRoleLabel,
         });
       }
       await markCompleted(session.id, role);

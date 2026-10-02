@@ -25,8 +25,8 @@ var hasDate = columns.indexOf('transaction_date') !== -1;
   <a href="/sme-templates" style="margin-left: 6px;">Change default CSV</a>
 </p>
 
-<div class="form-card wide" style="margin-bottom: 18px;">
-  <div class="form-title" style="font-size: 15px;">Filters</div>
+<div class="form-card wide data-browser-card" style="margin-bottom: 18px;">
+  <div class="form-title" style="font-size: 18px;">Filters</div>
   <div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;">
     <div class="field" style="min-width: 220px; margin-bottom: 0;">
       <label for="eval-search">Search (any column)</label>
@@ -58,9 +58,9 @@ var hasDate = columns.indexOf('transaction_date') !== -1;
   <p class="form-hint" style="margin: 10px 0 0;" id="eval-count">Showing <%= records.length %> of <%= records.length %> records.</p>
 </div>
 
-<div class="form-card wide" style="max-width: none;">
+<div class="form-card wide data-browser-card" style="max-width: none;">
   <div class="table-scroll">
-    <table class="table-simple" id="eval-table">
+    <table class="table-simple excel-table" id="eval-table">
       <thead>
         <tr>
           <% columns.forEach(function (col) { %><th><%= col.replace(/_/g, ' ') %></th><% }); %>
