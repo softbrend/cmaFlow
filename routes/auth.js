@@ -5,6 +5,7 @@ const pool = require('../db/pool');
 const { redirectIfAuthed } = require('../middleware/auth');
 const { ensureDefaultDataset } = require('../services/accountDatasets');
 const { loadCategories, isValidCategory } = require('../services/smeCategories');
+const { ingestDefaultTemplateForCategory } = require('../services/templateEvaluationIngest');
 
 const router = express.Router();
 const SALT_ROUNDS = 12;
@@ -229,6 +230,30 @@ router.post('/expert-signup/register', redirectIfAuthed, expertSignupValidators,
 
     const account = rows[0];
     delete req.session.expertCodeVerified; // one-time: re-entering the code is required for the next account
+
+    // Auto-default (added 2 October 2026, per Brenda's explicit request):
+    // the business category just declared above becomes this account's
+    // default CSV for evaluation immediately, through the exact same
+    // ingest a manual "Use for evaluation" click on /sme-templates runs
+    // (services/templateEvaluationIngest.js) — so a brand-new evaluator
+    // sees real output on all four analytics modules right away, with no
+    // extra trip required. They can still switch to any OTHER category's
+    // template at any time from that same page; this only sets the
+    // starting point. Non-fatal and never allowed to fail the signup
+    // itself: on any error here the account still exists and is usable,
+    // just starting with no dataset assigned (today's behavior), exactly
+    // as if this line didn't exist.
+    try {
+      const ingested = await ingestDefaultTemplateForCategory(account.id, business_category);
+      if (ingested) {
+        await pool.query('UPDATE sme_accounts SET evaluation_template_file = $1 WHERE id = $2', [ingested.templateFile, account.id]);
+        account.evaluation_template_file = ingested.templateFile;
+        account.default_dataset_id = ingested.datasetRowId;
+      }
+    } catch (ingestErr) {
+      console.error('[expert-signup] auto-default template ingest failed:', ingestErr.message);
+    }
+
     req.session.userId = account.id;
     req.session.user = account;
     return res.redirect('/');

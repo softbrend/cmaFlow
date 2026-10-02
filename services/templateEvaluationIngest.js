@@ -30,11 +30,15 @@
 // nothing has to be cleaned up by hand.
 const fs = require('fs');
 const path = require('path');
+const { parse } = require('csv-parse/sync');
 const pool = require('../db/pool');
 const { insertDatasetRecords } = require('../db/ingest');
 const { upsertFileProfile } = require('./fullDescriptiveAnalytics');
 const { DATASETS_ROOT, sanitizeDatasetId, sanitizeFileType } = require('../middleware/upload');
 const { setDefaultDataset } = require('./accountDatasets');
+
+const TEMPLATES_ROOT = path.join(__dirname, '..', 'data', 'sme-templates');
+const MANIFEST_PATH = path.join(TEMPLATES_ROOT, '00_CMAFlow_SME_Template_Manifest.csv');
 
 const EVAL_DATASET_ID = 'EVALUATION_DEFAULT';
 const EVAL_FILE_TYPE = sanitizeFileType('transactions');
@@ -126,4 +130,61 @@ async function ingestTemplateForEvaluation(accountId, resolvedTemplate, records)
   }
 }
 
-module.exports = { ingestTemplateForEvaluation, EVAL_DATASET_ID };
+// ------------------------------------------------------------------
+// Auto-default at signup (added 2 October 2026, per Brenda's explicit
+// request): the business category a Template Evaluator declares at
+// signup (routes/auth.js's business_category field — validated there
+// against services/smeCategories.js's isValidCategory(), which reads
+// this exact manifest, so the lookup below can never miss) becomes their
+// default CSV for evaluation automatically, with no separate "Use for
+// evaluation" click required. They can still pick a DIFFERENT category's
+// template at any time from /sme-templates — this only sets the
+// starting point, through the exact same ingestTemplateForEvaluation()
+// above a manual "Use for evaluation" click already runs, so the two
+// paths can never drift out of sync with each other.
+// ------------------------------------------------------------------
+
+// Re-reads the manifest fresh each call, same reasoning as services/
+// smeCategories.js's own loadCategories() (a 20-row CSV, never a hot
+// path) — kept as its own small read here rather than importing that
+// module's, since the two serve different shapes (name/examples for the
+// signup dropdown vs. the full row + file path needed to actually ingest
+// a template) and duplicating one tiny parse is simpler than threading a
+// shared internal helper across modules for this.
+function loadManifest() {
+  const raw = fs.readFileSync(MANIFEST_PATH, 'utf-8');
+  return parse(raw, { columns: true, skip_empty_lines: true });
+}
+
+// Resolves a manifest row by its EXACT sme_business_category string
+// (never by filename — that's routes/templates.js's own
+// resolveTemplateFile(), a separate lookup this deliberately doesn't
+// duplicate) to the same { row, fullPath } shape ingestTemplateForEvaluation()
+// expects. Returns null if nothing matches, which should never happen
+// for a category that passed signup validation — checked anyway rather
+// than assumed, since a mismatch here must never fail account creation.
+function resolveTemplateForCategory(categoryName) {
+  const manifest = loadManifest();
+  const row = manifest.find((r) => r.sme_business_category === categoryName);
+  if (!row) return null;
+  return { row, fullPath: path.join(TEMPLATES_ROOT, row.template_file) };
+}
+
+// Called once, right after a Template Evaluator account is created.
+// Returns { templateFile, datasetRowId } on success (for the caller to
+// persist sme_accounts.evaluation_template_file and refresh
+// req.session.user, matching exactly what routes/templates.js's POST
+// /sme-templates/set-evaluation-default already does for a manual pick),
+// or null if the category didn't resolve to a manifest row.
+async function ingestDefaultTemplateForCategory(accountId, categoryName) {
+  const resolved = resolveTemplateForCategory(categoryName);
+  if (!resolved) return null;
+  const raw = fs.readFileSync(resolved.fullPath, 'utf-8');
+  const records = parse(raw, { columns: true, skip_empty_lines: true });
+  const { datasetRowId } = await ingestTemplateForEvaluation(accountId, resolved, records);
+  return { templateFile: resolved.row.template_file, datasetRowId };
+}
+
+module.exports = {
+  ingestTemplateForEvaluation, EVAL_DATASET_ID, resolveTemplateForCategory, ingestDefaultTemplateForCategory,
+};
