@@ -21,6 +21,9 @@
         <input type="hidden" name="template_file" value="<%= evaluationTemplateFile %>" />
         <button type="submit" class="btn btn-ghost btn-sm">Use</button>
       </form>
+      <% if (typeof isBusinessOwnerRole !== 'undefined' && isBusinessOwnerRole) { %>
+        <a class="btn btn-ghost btn-sm" href="/sme-templates/evaluation-dataset">Add / edit / delete rows →</a>
+      <% } %>
     </div>
   <% } %>
 

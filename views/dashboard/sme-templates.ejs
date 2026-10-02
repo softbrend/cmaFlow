@@ -17,8 +17,8 @@
     <div class="form-title" style="font-size: 15px;">Default CSV for evaluation</div>
     <% if (evaluationTemplateFile) {
          var defaultRow = manifest.find(function (r) { return r.template_file === evaluationTemplateFile; }); %>
-      <p class="form-hint" style="margin-bottom: 10px;">You're currently using <strong><%= defaultRow ? defaultRow.sme_business_category : evaluationTemplateFile %></strong> as your default CSV for evaluation — its 50 rows are what you'll browse and filter below. Pick "Use for evaluation" on a different row any time to switch.</p>
-      <a class="btn btn-accent btn-sm" href="/sme-templates/evaluation-data">Browse records in table format</a>
+      <p class="form-hint" style="margin-bottom: 10px;">You're currently using <strong><%= defaultRow ? defaultRow.sme_business_category : evaluationTemplateFile %></strong> as your default CSV for evaluation<% if (isBusinessOwner) { %> — add, edit, or delete rows below and the four analytics modules (Descriptive, Diagnostic, Predictive, Prescriptive) will reflect your changes next time you open them.<% } else { %> — its 50 rows are what you'll browse and filter below. Pick "Use for evaluation" on a different row any time to switch.<% } %></p>
+      <a class="btn btn-accent btn-sm" href="<%= isBusinessOwner ? '/sme-templates/evaluation-dataset' : '/sme-templates/evaluation-data' %>"><%= isBusinessOwner ? 'Open editable dataset (add / edit / delete rows) →' : 'Browse records in table format' %></a>
     <% } else { %>
       <p class="form-hint" style="margin-bottom: 0;">Pick "Use for evaluation" on any row below to set that template's 50 synthetic rows as your reference dataset — you'll then be able to browse and filter them in a table to check record values against the generated reports.</p>
     <% } %>
@@ -53,7 +53,7 @@
             <% if (isExpertEvaluator) { %>
               <td style="text-align: right;">
                 <% if (isEvalDefault) { %>
-                  <a class="btn btn-ghost btn-sm" href="/sme-templates/evaluation-data">Browse records</a>
+                  <a class="btn btn-ghost btn-sm" href="<%= isBusinessOwner ? '/sme-templates/evaluation-dataset' : '/sme-templates/evaluation-data' %>"><%= isBusinessOwner ? 'Edit records' : 'Browse records' %></a>
                 <% } else { %>
                   <form method="POST" action="/sme-templates/set-evaluation-default" style="display:inline;">
                     <input type="hidden" name="template_file" value="<%= row.template_file %>" />

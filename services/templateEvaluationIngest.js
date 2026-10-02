@@ -186,5 +186,5 @@ async function ingestDefaultTemplateForCategory(accountId, categoryName) {
 }
 
 module.exports = {
-  ingestTemplateForEvaluation, EVAL_DATASET_ID, resolveTemplateForCategory, ingestDefaultTemplateForCategory,
+  ingestTemplateForEvaluation, EVAL_DATASET_ID, EVAL_FILE_TYPE, resolveTemplateForCategory, ingestDefaultTemplateForCategory,
 };

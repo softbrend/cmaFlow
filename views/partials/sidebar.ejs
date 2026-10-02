@@ -58,9 +58,13 @@
       <%# active is 'evaluation-data-browser' (not 'sme-templates') specifically
           on the Browse Evaluation CSV screen — its own wider, Excel-style
           layout, see public/css/style.css's body.stage-evaluation-data-browser
-          rules — so this link still has to light up for both values. %>
+          rules — so this link still has to light up for both values.
+          'evaluation-dataset-editor' (added 2 October 2026) is the same
+          idea for Business Owner Evaluator's own editable CRUD grid at
+          GET /sme-templates/evaluation-dataset — see that route's comment
+          in routes/templates.js. %>
       <% if (isExpertEvaluator) { %>
-        <li><a href="/sme-templates" class="<%= (active === 'sme-templates' || active === 'evaluation-data-browser') ? 'active' : '' %>"><span class="nav-dot"></span>Download SME Templates</a></li>
+        <li><a href="/sme-templates" class="<%= (active === 'sme-templates' || active === 'evaluation-data-browser' || active === 'evaluation-dataset-editor') ? 'active' : '' %>"><span class="nav-dot"></span>Download SME Templates</a></li>
       <% } %>
       <%# active is 'evaluation-questionnaire' (not 'evaluation') specifically
           on the questionnaire screen — its own wider layout, see
@@ -82,7 +86,7 @@
       <li><a href="/upload-dataset" class="<%= active === 'upload-new-dataset' ? 'active' : '' %>"><span class="nav-dot"></span>Upload New Dataset</a></li>
       <li><a href="/browse-dataset" class="<%= active === 'browse-dataset' ? 'active' : '' %>"><span class="nav-dot"></span>Browse Dataset</a></li>
       <% if (isExpertEvaluator) { %>
-        <li><a href="/sme-templates" class="<%= (active === 'sme-templates' || active === 'evaluation-data-browser') ? 'active' : '' %>"><span class="nav-dot"></span>Download SME Templates</a></li>
+        <li><a href="/sme-templates" class="<%= (active === 'sme-templates' || active === 'evaluation-data-browser' || active === 'evaluation-dataset-editor') ? 'active' : '' %>"><span class="nav-dot"></span>Download SME Templates</a></li>
       <% } else { %>
         <li><a href="/monetization-discovery" class="<%= active === 'monetization-discovery' ? 'active' : '' %>"><span class="nav-dot"></span>Monetization discovery</a></li>
       <% } %>

@@ -1,0 +1,215 @@
+<div class="page-title">✏️ <span class="page-title-text">Edit Your Evaluation Dataset</span></div>
+<p class="page-subtitle">
+  <% if (categoryLabel) { %><strong><%= categoryLabel %></strong> — <% } %><%= records.length %> row<%= records.length === 1 ? '' : 's' %>, this is your own working copy of the dataset Descriptive, Diagnostic, Predictive, and Prescriptive Analytics compute from. Click any cell to edit it (like a spreadsheet) — it saves automatically when you click away. Add or delete rows below. Changes here are picked up the next time you open one of the four analytics modules.
+  <a href="/sme-templates" style="margin-left: 6px;">Back to Download SME Templates</a>
+</p>
+
+<div id="eval-editor-alert" class="alert-error" style="display:none;" role="alert"></div>
+
+<% if (columns.length === 0) { %>
+  <div class="form-card wide data-browser-card" style="max-width: none;">
+    <p class="form-hint" style="margin: 0;">This dataset has no rows yet, so there are no columns to show or edit. Go back to Download SME Templates and pick (or re-pick) a business category to get a fresh 50-row dataset to work with.</p>
+  </div>
+<% } else { %>
+  <div class="form-card wide data-browser-card" style="margin-bottom: 18px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap: 14px; flex-wrap: wrap;">
+      <p class="form-hint" style="margin: 0;" id="eval-editor-count">Showing <%= records.length %> row<%= records.length === 1 ? '' : 's' %>.</p>
+      <button type="button" id="eval-add-row" class="btn btn-accent btn-sm">+ Add row</button>
+    </div>
+  </div>
+
+  <div class="form-card wide data-browser-card" style="max-width: none;">
+    <div class="table-scroll">
+      <table class="table-simple excel-table" id="eval-editor-table" data-columns="<%= columns.join('|') %>">
+        <thead>
+          <tr>
+            <% columns.forEach(function (col) { %><th><%= col.replace(/_/g, ' ') %></th><% }); %>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% records.forEach(function (r) { %>
+            <tr data-record-id="<%= r.id %>">
+              <% columns.forEach(function (col) { %>
+                <td contenteditable="true" data-column="<%= col %>"><%= r.data[col] === undefined || r.data[col] === null ? '' : r.data[col] %></td>
+              <% }); %>
+              <td style="white-space: nowrap;">
+                <button type="button" class="btn btn-danger btn-sm eval-delete-row">Delete</button>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% } %>
+
+<script>
+(function () {
+  var table = document.getElementById('eval-editor-table');
+  if (!table) return; // no columns — nothing to wire up
+
+  var tbody = table.querySelector('tbody');
+  var countEl = document.getElementById('eval-editor-count');
+  var alertEl = document.getElementById('eval-editor-alert');
+  var addBtn = document.getElementById('eval-add-row');
+  var columns = table.getAttribute('data-columns').split('|');
+
+  function showError(message) {
+    alertEl.textContent = message;
+    alertEl.style.display = '';
+  }
+  function clearError() {
+    alertEl.style.display = 'none';
+  }
+
+  function rowCount() {
+    return tbody.querySelectorAll('tr').length;
+  }
+  function refreshCount() {
+    var n = rowCount();
+    countEl.textContent = 'Showing ' + n + ' row' + (n === 1 ? '' : 's') + '.';
+  }
+  function refreshDeleteButtons() {
+    var disable = rowCount() <= 1;
+    Array.prototype.forEach.call(tbody.querySelectorAll('.eval-delete-row'), function (btn) {
+      btn.disabled = disable;
+      btn.title = disable ? "Can't delete the last remaining row." : '';
+    });
+  }
+
+  function flashCell(cell, ok) {
+    cell.classList.remove('cell-saved', 'cell-error');
+    cell.classList.add(ok ? 'cell-saved' : 'cell-error');
+    setTimeout(function () { cell.classList.remove('cell-saved', 'cell-error'); }, 900);
+  }
+
+  function buildRow(recordId, data) {
+    var tr = document.createElement('tr');
+    tr.setAttribute('data-record-id', recordId);
+    columns.forEach(function (col) {
+      var td = document.createElement('td');
+      td.setAttribute('contenteditable', 'true');
+      td.setAttribute('data-column', col);
+      td.textContent = (data && data[col] !== undefined && data[col] !== null) ? data[col] : '';
+      wireCell(td);
+      tr.appendChild(td);
+    });
+    var actionsTd = document.createElement('td');
+    actionsTd.style.whiteSpace = 'nowrap';
+    var delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'btn btn-danger btn-sm eval-delete-row';
+    delBtn.textContent = 'Delete';
+    wireDeleteButton(delBtn);
+    actionsTd.appendChild(delBtn);
+    tr.appendChild(actionsTd);
+    return tr;
+  }
+
+  function wireCell(cell) {
+    cell.addEventListener('focus', function () {
+      cell.dataset.originalValue = cell.textContent;
+      clearError();
+    });
+    cell.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        cell.blur();
+      }
+    });
+    cell.addEventListener('paste', function (e) {
+      e.preventDefault();
+      var text = (e.clipboardData || window.clipboardData).getData('text/plain');
+      document.execCommand('insertText', false, text);
+    });
+    cell.addEventListener('blur', function () {
+      var newValue = cell.textContent;
+      if (newValue === cell.dataset.originalValue) return;
+      var tr = cell.closest('tr');
+      var recordId = tr.getAttribute('data-record-id');
+      var column = cell.getAttribute('data-column');
+      tr.classList.add('row-pending');
+      fetch('/sme-templates/evaluation-dataset/rows/' + recordId, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ column: column, value: newValue }),
+      })
+        .then(function (resp) { return resp.json().then(function (body) { return { ok: resp.ok, body: body }; }); })
+        .then(function (result) {
+          tr.classList.remove('row-pending');
+          if (!result.ok) {
+            cell.textContent = cell.dataset.originalValue;
+            flashCell(cell, false);
+            showError((result.body && result.body.message) || "Couldn't save that change — please try again.");
+            return;
+          }
+          flashCell(cell, true);
+        })
+        .catch(function () {
+          tr.classList.remove('row-pending');
+          cell.textContent = cell.dataset.originalValue;
+          flashCell(cell, false);
+          showError('A network error prevented saving that change — please try again.');
+        });
+    });
+  }
+
+  function wireDeleteButton(btn) {
+    btn.addEventListener('click', function () {
+      if (rowCount() <= 1) return;
+      var tr = btn.closest('tr');
+      var recordId = tr.getAttribute('data-record-id');
+      if (!window.confirm('Delete this row? This cannot be undone.')) return;
+      tr.classList.add('row-pending');
+      btn.disabled = true;
+      fetch('/sme-templates/evaluation-dataset/rows/' + recordId, { method: 'DELETE' })
+        .then(function (resp) { return resp.json().then(function (body) { return { ok: resp.ok, body: body }; }); })
+        .then(function (result) {
+          if (!result.ok) {
+            tr.classList.remove('row-pending');
+            btn.disabled = rowCount() <= 1;
+            showError((result.body && result.body.message) || "Couldn't delete that row — please try again.");
+            return;
+          }
+          tr.parentNode.removeChild(tr);
+          refreshCount();
+          refreshDeleteButtons();
+        })
+        .catch(function () {
+          tr.classList.remove('row-pending');
+          btn.disabled = rowCount() <= 1;
+          showError('A network error prevented deleting that row — please try again.');
+        });
+    });
+  }
+
+  Array.prototype.forEach.call(tbody.querySelectorAll('td[contenteditable="true"]'), wireCell);
+  Array.prototype.forEach.call(tbody.querySelectorAll('.eval-delete-row'), wireDeleteButton);
+  refreshDeleteButtons();
+
+  addBtn.addEventListener('click', function () {
+    clearError();
+    addBtn.disabled = true;
+    fetch('/sme-templates/evaluation-dataset/rows', { method: 'POST' })
+      .then(function (resp) { return resp.json().then(function (body) { return { ok: resp.ok, body: body }; }); })
+      .then(function (result) {
+        addBtn.disabled = false;
+        if (!result.ok) {
+          showError((result.body && result.body.message) || "Couldn't add a new row — please try again.");
+          return;
+        }
+        var tr = buildRow(result.body.row.id, result.body.row.data);
+        tbody.appendChild(tr);
+        refreshCount();
+        refreshDeleteButtons();
+        var firstCell = tr.querySelector('td[contenteditable="true"]');
+        if (firstCell) firstCell.focus();
+      })
+      .catch(function () {
+        addBtn.disabled = false;
+        showError('A network error prevented adding a new row — please try again.');
+      });
+  });
+})();
+</script>
