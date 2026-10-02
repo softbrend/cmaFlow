@@ -1,0 +1,961 @@
+dataset_id,dataset_name,file_type,column_name,rater1_label,rater2_label,resolved_label
+AVR_Airbnb_01,Seattle Airbnb Open Data,calendar,listing_id,Identifier,Identifier,Identifier
+AVR_Airbnb_01,Seattle Airbnb Open Data,calendar,date,Date/time,Date/time,Date/time
+AVR_Airbnb_01,Seattle Airbnb Open Data,calendar,available,Status,Status,Status
+AVR_Airbnb_01,Seattle Airbnb Open Data,calendar,price,Monetary amount,Monetary amount,Monetary amount
+AVR_Airbnb_01,Seattle Airbnb Open Data,calendar,payment_method,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,calendar,payment_status,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,calendar,amount_paid,Monetary amount,Monetary amount,Monetary amount
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,id,Identifier,Identifier,Identifier
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,listing_url,other,other,other
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,scrape_id,Identifier,Identifier,Identifier
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,last_scraped,Date/time,Date/time,Date/time
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,name,Category,Free text,Free text
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,summary,Free text,Free text,Free text
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,space,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,description,Free text,Free text,Free text
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,experiences_offered,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,neighborhood_overview,Free text,Free text,Free text
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,notes,Free text,Free text,Free text
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,transit,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,thumbnail_url,other,other,other
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,medium_url,other,other,other
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,picture_url,other,other,other
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,xl_picture_url,other,other,other
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,host_id,Identifier,Identifier,Identifier
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,host_url,other,other,other
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,host_name,Category,Free text,Free text
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,host_since,Date/time,Date/time,Date/time
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,host_location,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,host_about,Free text,Free text,Free text
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,host_response_time,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,host_response_rate,Quantity,Quantity,Quantity
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,host_acceptance_rate,Quantity,Quantity,Quantity
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,host_is_superhost,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,host_thumbnail_url,other,other,other
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,host_picture_url,other,other,other
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,host_neighbourhood,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,host_listings_count,Quantity,Quantity,Quantity
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,host_total_listings_count,Quantity,Quantity,Quantity
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,host_verifications,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,host_has_profile_pic,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,host_identity_verified,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,street,Free text,Free text,Free text
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,neighbourhood,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,neighbourhood_cleansed,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,neighbourhood_group_cleansed,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,city,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,state,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,zipcode,Identifier,Identifier,Identifier
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,market,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,smart_location,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,country_code,Identifier,Identifier,Identifier
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,country,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,latitude,Geography,Geography,Geography
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,longitude,Geography,Geography,Geography
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,is_location_exact,Status,Status,Status
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,property_type,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,room_type,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,accommodates,Quantity,Quantity,Quantity
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,bathrooms,Quantity,Quantity,Quantity
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,bedrooms,Quantity,Quantity,Quantity
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,beds,Quantity,Quantity,Quantity
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,bed_type,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,amenities,Free text,Free text,Free text
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,square_feet,Quantity,Quantity,Quantity
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,price,Monetary amount,Monetary amount,Monetary amount
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,weekly_price,Monetary amount,Monetary amount,Monetary amount
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,monthly_price,Monetary amount,Monetary amount,Monetary amount
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,security_deposit,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,cleaning_fee,Monetary amount,Monetary amount,Monetary amount
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,guests_included,Quantity,Quantity,Quantity
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,extra_people,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,minimum_nights,Quantity,Quantity,Quantity
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,maximum_nights,Quantity,Quantity,Quantity
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,calendar_updated,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,has_availability,Status,Status,Status
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,availability_30,Quantity,Quantity,Quantity
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,availability_60,Quantity,Quantity,Quantity
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,availability_90,Quantity,Quantity,Quantity
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,availability_365,Quantity,Quantity,Quantity
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,calendar_last_scraped,Date/time,Date/time,Date/time
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,number_of_reviews,Quantity,Quantity,Quantity
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,first_review,Date/time,Date/time,Date/time
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,last_review,Date/time,Date/time,Date/time
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,review_scores_rating,Rating,Rating,Rating
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,review_scores_accuracy,Rating,Rating,Rating
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,review_scores_cleanliness,Rating,Rating,Rating
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,review_scores_checkin,Rating,Rating,Rating
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,review_scores_communication,Rating,Rating,Rating
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,review_scores_location,Rating,Rating,Rating
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,review_scores_value,Rating,Rating,Rating
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,requires_license,Status,Status,Status
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,license,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,jurisdiction_names,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,instant_bookable,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,cancellation_policy,Category,Category,Category
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,require_guest_profile_picture,Status,Status,Status
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,require_guest_phone_verification,Status,Status,Status
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,calculated_host_listings_count,Quantity,Quantity,Quantity
+AVR_Airbnb_01,Seattle Airbnb Open Data,listings,reviews_per_month,Quantity,Quantity,Quantity
+AVR_Airbnb_01,Seattle Airbnb Open Data,reviews,listing_id,Identifier,Identifier,Identifier
+AVR_Airbnb_01,Seattle Airbnb Open Data,reviews,id,Identifier,Identifier,Identifier
+AVR_Airbnb_01,Seattle Airbnb Open Data,reviews,date,Date/time,Date/time,Date/time
+AVR_Airbnb_01,Seattle Airbnb Open Data,reviews,reviewer_id,Identifier,Identifier,Identifier
+AVR_Airbnb_01,Seattle Airbnb Open Data,reviews,reviewer_name,Category,Free text,Free text
+AVR_Airbnb_01,Seattle Airbnb Open Data,reviews,comments,Free text,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,admin_users,id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,admin_users,name,Category,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,admin_users,email,Free text,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,admin_users,password,Free text,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,admin_users,phone,Free text,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,admin_users,profile_image,other,other,other
+AVR_Airbnb_02,Seattle Airbnb Open Data,admin_users,is_active,Status,Status,Status
+AVR_Airbnb_02,Seattle Airbnb Open Data,admin_users,failed_login_count,Quantity,Quantity,Quantity
+AVR_Airbnb_02,Seattle Airbnb Open Data,admin_users,locked_until,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,admin_users,last_login_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,admin_users,remember_token,Free text,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,admin_users,created_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,admin_users,updated_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,audit_logs,id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,audit_logs,actor_type,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,audit_logs,actor_id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,audit_logs,actor_role,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,audit_logs,action,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,audit_logs,entity_type,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,audit_logs,entity_id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,audit_logs,old_values,Free text,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,audit_logs,new_values,Free text,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,audit_logs,metadata,Free text,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,audit_logs,ip_address,Free text,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,audit_logs,user_agent,Free text,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,audit_logs,result,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,audit_logs,created_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,bookings,id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,bookings,customer_user_id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,bookings,listing_id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,bookings,check_in,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,bookings,check_out,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,bookings,guests,Quantity,Quantity,Quantity
+AVR_Airbnb_02,Seattle Airbnb Open Data,bookings,nights,Quantity,Quantity,Quantity
+AVR_Airbnb_02,Seattle Airbnb Open Data,bookings,nightly_rate,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,bookings,cleaning_fee,Monetary amount,Monetary amount,Monetary amount
+AVR_Airbnb_02,Seattle Airbnb Open Data,bookings,extra_guest_charges,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,bookings,total_amount,Monetary amount,Monetary amount,Monetary amount
+AVR_Airbnb_02,Seattle Airbnb Open Data,bookings,status,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,bookings,created_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,bookings,updated_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,calendar,listing_id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,calendar,date,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,calendar,available,Status,Status,Status
+AVR_Airbnb_02,Seattle Airbnb Open Data,calendar,price,Monetary amount,Monetary amount,Monetary amount
+AVR_Airbnb_02,Seattle Airbnb Open Data,calendar,created_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,calendar,updated_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,customer_users,id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,customer_users,name,Category,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,customer_users,email,Free text,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,customer_users,password,Free text,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,customer_users,phone,Free text,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,customer_users,profile_image,other,other,other
+AVR_Airbnb_02,Seattle Airbnb Open Data,customer_users,is_active,Status,Status,Status
+AVR_Airbnb_02,Seattle Airbnb Open Data,customer_users,email_verified,Status,Status,Status
+AVR_Airbnb_02,Seattle Airbnb Open Data,customer_users,email_verified_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,customer_users,failed_login_count,Quantity,Quantity,Quantity
+AVR_Airbnb_02,Seattle Airbnb Open Data,customer_users,locked_until,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,customer_users,last_login_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,customer_users,remember_token,Free text,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,customer_users,created_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,customer_users,updated_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,email_verifications,id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,email_verifications,customer_user_id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,email_verifications,pin_hash,Free text,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,email_verifications,attempts,Quantity,Quantity,Quantity
+AVR_Airbnb_02,Seattle Airbnb Open Data,email_verifications,expires_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,email_verifications,used_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,email_verifications,created_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,email_verifications,updated_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,name,Category,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,summary,Free text,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,description,Free text,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,image,other,other,other
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,property_type,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,room_type,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,accommodates,Quantity,Quantity,Quantity
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,bedrooms,Quantity,Quantity,Quantity
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,beds,Quantity,Quantity,Quantity
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,bathrooms,Quantity,Quantity,Quantity
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,bed_type,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,host_id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,host_name,Category,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,street,Free text,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,neighborhood,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,city,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,state,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,zipcode,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,country,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,latitude,Geography,Geography,Geography
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,longitude,Geography,Geography,Geography
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,price,Monetary amount,Monetary amount,Monetary amount
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,weekly_price,Monetary amount,Monetary amount,Monetary amount
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,monthly_price,Monetary amount,Monetary amount,Monetary amount
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,security_deposit,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,cleaning_fee,Monetary amount,Monetary amount,Monetary amount
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,guests_included,Quantity,Quantity,Quantity
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,extra_people_fee,Monetary amount,Monetary amount,Monetary amount
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,minimum_nights,Quantity,Quantity,Quantity
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,maximum_nights,Quantity,Quantity,Quantity
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,review_score_rating,Rating,Rating,Rating
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,number_of_reviews,Quantity,Quantity,Quantity
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,status,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,created_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,listings,updated_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,migrations,id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,migrations,migration,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,migrations,batch,Quantity,Quantity,Quantity
+AVR_Airbnb_02,Seattle Airbnb Open Data,payments,id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,payments,booking_id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,payments,customer_user_id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,payments,amount,Monetary amount,Monetary amount,Monetary amount
+AVR_Airbnb_02,Seattle Airbnb Open Data,payments,method,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,payments,reference_number,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,payments,proof_path,other,other,other
+AVR_Airbnb_02,Seattle Airbnb Open Data,payments,transfer_date,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,payments,submitted_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,payments,verified_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,payments,verified_by_admin_id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,payments,status,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,payments,created_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,payments,updated_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,reviews,id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,reviews,listing_id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,reviews,date,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,reviews,reviewer_id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,reviews,reviewer_name,Category,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,reviews,comments,Free text,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,reviews,created_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,reviews,updated_at,Date/time,Date/time,Date/time
+AVR_Airbnb_02,Seattle Airbnb Open Data,sessions,id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,sessions,user_id,Identifier,Identifier,Identifier
+AVR_Airbnb_02,Seattle Airbnb Open Data,sessions,ip_address,Free text,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,sessions,user_agent,Free text,Free text,Free text
+AVR_Airbnb_02,Seattle Airbnb Open Data,sessions,payload,Category,Category,Category
+AVR_Airbnb_02,Seattle Airbnb Open Data,sessions,last_activity,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_customer_feedback,feedback_id,Identifier,Identifier,Identifier
+BLINKIT_25,Blinkit Transaction,blinkit_customer_feedback,order_id,Identifier,Identifier,Identifier
+BLINKIT_25,Blinkit Transaction,blinkit_customer_feedback,customer_id,Identifier,Identifier,Identifier
+BLINKIT_25,Blinkit Transaction,blinkit_customer_feedback,rating,Rating,Rating,Rating
+BLINKIT_25,Blinkit Transaction,blinkit_customer_feedback,feedback_text,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_customer_feedback,feedback_category,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_customer_feedback,sentiment,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_customer_feedback,feedback_date,Date/time,Date/time,Date/time
+BLINKIT_25,Blinkit Transaction,blinkit_customers,customer_id,Identifier,Identifier,Identifier
+BLINKIT_25,Blinkit Transaction,blinkit_customers,customer_name,Category,Free text,Free text
+BLINKIT_25,Blinkit Transaction,blinkit_customers,email,Free text,Free text,Free text
+BLINKIT_25,Blinkit Transaction,blinkit_customers,phone,Free text,Free text,Free text
+BLINKIT_25,Blinkit Transaction,blinkit_customers,address,Free text,Free text,Free text
+BLINKIT_25,Blinkit Transaction,blinkit_customers,area,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_customers,pincode,Identifier,Identifier,Identifier
+BLINKIT_25,Blinkit Transaction,blinkit_customers,registration_date,Date/time,Date/time,Date/time
+BLINKIT_25,Blinkit Transaction,blinkit_customers,customer_segment,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_customers,total_orders,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_customers,avg_order_value,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_delivery_performance,order_id,Identifier,Identifier,Identifier
+BLINKIT_25,Blinkit Transaction,blinkit_delivery_performance,delivery_partner_id,Identifier,Identifier,Identifier
+BLINKIT_25,Blinkit Transaction,blinkit_delivery_performance,promised_time,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_delivery_performance,actual_time,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_delivery_performance,delivery_time_minutes,Quantity,Quantity,Quantity
+BLINKIT_25,Blinkit Transaction,blinkit_delivery_performance,distance_km,Quantity,Quantity,Quantity
+BLINKIT_25,Blinkit Transaction,blinkit_delivery_performance,delivery_status,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_delivery_performance,reasons_if_delayed,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_inventory,product_id,Identifier,Identifier,Identifier
+BLINKIT_25,Blinkit Transaction,blinkit_inventory,date,Date/time,Date/time,Date/time
+BLINKIT_25,Blinkit Transaction,blinkit_inventory,stock_received,Quantity,Quantity,Quantity
+BLINKIT_25,Blinkit Transaction,blinkit_inventory,damaged_stock,Quantity,Quantity,Quantity
+BLINKIT_25,Blinkit Transaction,blinkit_inventorynew,product_id,Identifier,Identifier,Identifier
+BLINKIT_25,Blinkit Transaction,blinkit_inventorynew,date,Date/time,Date/time,Date/time
+BLINKIT_25,Blinkit Transaction,blinkit_inventorynew,stock_received,Quantity,Quantity,Quantity
+BLINKIT_25,Blinkit Transaction,blinkit_inventorynew,damaged_stock,Quantity,Quantity,Quantity
+BLINKIT_25,Blinkit Transaction,blinkit_marketing_performance,campaign_id,Identifier,Identifier,Identifier
+BLINKIT_25,Blinkit Transaction,blinkit_marketing_performance,campaign_name,Category,Free text,Free text
+BLINKIT_25,Blinkit Transaction,blinkit_marketing_performance,date,Date/time,Date/time,Date/time
+BLINKIT_25,Blinkit Transaction,blinkit_marketing_performance,target_audience,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_marketing_performance,channel,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_marketing_performance,impressions,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_marketing_performance,clicks,Quantity,Quantity,Quantity
+BLINKIT_25,Blinkit Transaction,blinkit_marketing_performance,conversions,Quantity,Quantity,Quantity
+BLINKIT_25,Blinkit Transaction,blinkit_marketing_performance,spend,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_marketing_performance,revenue_generated,Monetary amount,Monetary amount,Monetary amount
+BLINKIT_25,Blinkit Transaction,blinkit_marketing_performance,roas,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_order_items,order_id,Identifier,Identifier,Identifier
+BLINKIT_25,Blinkit Transaction,blinkit_order_items,product_id,Identifier,Identifier,Identifier
+BLINKIT_25,Blinkit Transaction,blinkit_order_items,quantity,Quantity,Quantity,Quantity
+BLINKIT_25,Blinkit Transaction,blinkit_order_items,unit_price,Monetary amount,Monetary amount,Monetary amount
+BLINKIT_25,Blinkit Transaction,blinkit_orders,order_id,Identifier,Identifier,Identifier
+BLINKIT_25,Blinkit Transaction,blinkit_orders,customer_id,Identifier,Identifier,Identifier
+BLINKIT_25,Blinkit Transaction,blinkit_orders,order_date,Date/time,Date/time,Date/time
+BLINKIT_25,Blinkit Transaction,blinkit_orders,promised_delivery_time,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_orders,actual_delivery_time,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_orders,delivery_status,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_orders,order_total,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_orders,payment_method,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_orders,delivery_partner_id,Identifier,Identifier,Identifier
+BLINKIT_25,Blinkit Transaction,blinkit_orders,store_id,Identifier,Identifier,Identifier
+BLINKIT_25,Blinkit Transaction,blinkit_products,product_id,Identifier,Identifier,Identifier
+BLINKIT_25,Blinkit Transaction,blinkit_products,product_name,Category,Free text,Free text
+BLINKIT_25,Blinkit Transaction,blinkit_products,category,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_products,brand,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_products,price,Monetary amount,Monetary amount,Monetary amount
+BLINKIT_25,Blinkit Transaction,blinkit_products,mrp,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_products,margin_percentage,Monetary amount,Monetary amount,Monetary amount
+BLINKIT_25,Blinkit Transaction,blinkit_products,shelf_life_days,Category,Category,Category
+BLINKIT_25,Blinkit Transaction,blinkit_products,min_stock_level,Quantity,Quantity,Quantity
+BLINKIT_25,Blinkit Transaction,blinkit_products,max_stock_level,Quantity,Quantity,Quantity
+OULAD-001,OULAD,assessment_defs,id_assessment,Category,Category,Category
+OULAD-001,OULAD,assessment_defs,assessment_type,Category,Category,Category
+OULAD-001,OULAD,assessment_defs,date,Date/time,Date/time,Date/time
+OULAD-001,OULAD,assessment_defs,weight,Quantity,Quantity,Quantity
+OULAD-001,OULAD,assessments,code_module,Category,Category,Category
+OULAD-001,OULAD,assessments,code_presentation,Category,Category,Category
+OULAD-001,OULAD,assessments,id_assessment,Category,Category,Category
+OULAD-001,OULAD,assessments,assessment_type,Category,Category,Category
+OULAD-001,OULAD,assessments,date,Date/time,Date/time,Date/time
+OULAD-001,OULAD,assessments,weight,Quantity,Quantity,Quantity
+OULAD-001,OULAD,courses,code_module,Category,Category,Category
+OULAD-001,OULAD,courses,code_presentation,Category,Category,Category
+OULAD-001,OULAD,courses,module_presentation_length,Quantity,Quantity,Quantity
+OULAD-001,OULAD,customers_dim,id_student,Category,Category,Category
+OULAD-001,OULAD,customers_dim,gender,Category,Category,Category
+OULAD-001,OULAD,customers_dim,region,Category,Category,Category
+OULAD-001,OULAD,customers_dim,highest_education,Category,Category,Category
+OULAD-001,OULAD,customers_dim,imd_band,Category,Category,Category
+OULAD-001,OULAD,customers_dim,disability,Category,Category,Category
+OULAD-001,OULAD,entitlements_dim,id_student,Category,Category,Category
+OULAD-001,OULAD,entitlements_dim,date_registration,Date/time,Date/time,Date/time
+OULAD-001,OULAD,entitlements_dim,date_unregistration,Date/time,Date/time,Date/time
+OULAD-001,OULAD,oulad_monetization,code_module,Category,Category,Category
+OULAD-001,OULAD,oulad_monetization,code_presentation,Category,Category,Category
+OULAD-001,OULAD,oulad_monetization,id_student,Category,Category,Category
+OULAD-001,OULAD,oulad_monetization,studied_credits,Category,Category,Category
+OULAD-001,OULAD,oulad_monetization,num_of_prev_attempts,Quantity,Quantity,Quantity
+OULAD-001,OULAD,oulad_monetization,final_result,Category,Category,Category
+OULAD-001,OULAD,oulad_monetization,date_registration,Date/time,Date/time,Date/time
+OULAD-001,OULAD,oulad_monetization,date_unregistration,Date/time,Date/time,Date/time
+OULAD-001,OULAD,oulad_monetization,classification,Category,Category,Category
+OULAD-001,OULAD,oulad_monetization,revenue_status,Monetary amount,Monetary amount,Monetary amount
+OULAD-001,OULAD,oulad_monetization,base_revenue,Monetary amount,Monetary amount,Monetary amount
+OULAD-001,OULAD,oulad_monetization,extra_revenue,Monetary amount,Monetary amount,Monetary amount
+OULAD-001,OULAD,oulad_monetization,total_revenue,Monetary amount,Monetary amount,Monetary amount
+OULAD-001,OULAD,studentassessment,id_assessment,Category,Category,Category
+OULAD-001,OULAD,studentassessment,id_student,Category,Category,Category
+OULAD-001,OULAD,studentassessment,date_submitted,Date/time,Date/time,Date/time
+OULAD-001,OULAD,studentassessment,is_banked,Status,Status,Status
+OULAD-001,OULAD,studentassessment,score,Rating,Quantity,Quantity
+OULAD-001,OULAD,studentinfo,code_module,Category,Category,Category
+OULAD-001,OULAD,studentinfo,code_presentation,Category,Category,Category
+OULAD-001,OULAD,studentinfo,id_student,Category,Category,Category
+OULAD-001,OULAD,studentinfo,gender,Category,Category,Category
+OULAD-001,OULAD,studentinfo,region,Category,Category,Category
+OULAD-001,OULAD,studentinfo,highest_education,Category,Category,Category
+OULAD-001,OULAD,studentinfo,imd_band,Category,Category,Category
+OULAD-001,OULAD,studentinfo,age_band,Quantity,Quantity,Quantity
+OULAD-001,OULAD,studentinfo,num_of_prev_attempts,Quantity,Quantity,Quantity
+OULAD-001,OULAD,studentinfo,studied_credits,Category,Category,Category
+OULAD-001,OULAD,studentinfo,disability,Category,Category,Category
+OULAD-001,OULAD,studentinfo,final_result,Category,Category,Category
+OULAD-001,OULAD,studentregistration,code_module,Category,Category,Category
+OULAD-001,OULAD,studentregistration,code_presentation,Category,Category,Category
+OULAD-001,OULAD,studentregistration,id_student,Category,Category,Category
+OULAD-001,OULAD,studentregistration,date_registration,Date/time,Date/time,Date/time
+OULAD-001,OULAD,studentregistration,date_unregistration,Date/time,Date/time,Date/time
+OULAD-001,OULAD,studentvle,version https://git-lfs.github.com/spec/v1,Category,Category,Category
+OULAD-001,OULAD,vle,id_site,Category,Category,Category
+OULAD-001,OULAD,vle,code_module,Category,Category,Category
+OULAD-001,OULAD,vle,code_presentation,Category,Category,Category
+OULAD-001,OULAD,vle,activity_type,Category,Category,Category
+OULAD-001,OULAD,vle,week_from,Category,Category,Category
+OULAD-001,OULAD,vle,week_to,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),circuits,circuitId,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),circuits,circuitRef,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),circuits,name,Category,Free text,Free text
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),circuits,location,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),circuits,country,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),circuits,lat,Geography,Geography,Geography
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),circuits,lng,Geography,Geography,Geography
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),circuits,alt,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),circuits,url,other,other,other
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),drivers,driverId,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),drivers,driverRef,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),drivers,number,Quantity,Quantity,Quantity
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),drivers,code,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),drivers,forename,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),drivers,surname,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),drivers,dob,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),drivers,nationality,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),drivers,url,other,other,other
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),lap_times,raceId,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),lap_times,driverId,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),lap_times,lap,Quantity,Quantity,Quantity
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),lap_times,position,Quantity,Quantity,Quantity
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),lap_times,time,Date/time,Date/time,Date/time
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),lap_times,milliseconds,Quantity,Quantity,Quantity
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),races,raceId,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),races,year,Quantity,Quantity,Quantity
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),races,round,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),races,circuitId,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),races,name,Category,Free text,Free text
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),races,date,Date/time,Date/time,Date/time
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),races,time,Date/time,Date/time,Date/time
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),races,url,other,other,other
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),races,fp1_date,Date/time,Date/time,Date/time
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),races,fp1_time,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),races,fp2_date,Date/time,Date/time,Date/time
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),races,fp2_time,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),races,fp3_date,Date/time,Date/time,Date/time
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),races,fp3_time,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),races,quali_date,Date/time,Date/time,Date/time
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),races,quali_time,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),races,sprint_date,Date/time,Date/time,Date/time
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),races,sprint_time,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),results,resultId,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),results,raceId,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),results,driverId,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),results,constructorId,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),results,number,Quantity,Quantity,Quantity
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),results,grid,Quantity,Quantity,Quantity
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),results,position,Quantity,Quantity,Quantity
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),results,positionText,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),results,positionOrder,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),results,points,Quantity,Quantity,Quantity
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),results,laps,Quantity,Quantity,Quantity
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),results,time,Date/time,Date/time,Date/time
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),results,milliseconds,Quantity,Quantity,Quantity
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),results,fastestLap,Quantity,Quantity,Quantity
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),results,rank,Quantity,Quantity,Quantity
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),results,fastestLapTime,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),results,fastestLapSpeed,Category,Category,Category
+PITTRACK_01,Formula 1 World Championship (1950 - 2024),results,statusId,Category,Category,Category
+Pizza_Flow_01,Maven Pizza Challenge Dataset,data_dictionary,Table,Category,Category,Category
+Pizza_Flow_01,Maven Pizza Challenge Dataset,data_dictionary,Field,Category,Category,Category
+Pizza_Flow_01,Maven Pizza Challenge Dataset,data_dictionary,Description,Free text,Free text,Free text
+Pizza_Flow_01,Maven Pizza Challenge Dataset,order_details,order_details_id,Identifier,Identifier,Identifier
+Pizza_Flow_01,Maven Pizza Challenge Dataset,order_details,order_id,Identifier,Identifier,Identifier
+Pizza_Flow_01,Maven Pizza Challenge Dataset,order_details,pizza_id,Identifier,Identifier,Identifier
+Pizza_Flow_01,Maven Pizza Challenge Dataset,order_details,quantity,Quantity,Quantity,Quantity
+Pizza_Flow_01,Maven Pizza Challenge Dataset,orders,order_id,Identifier,Identifier,Identifier
+Pizza_Flow_01,Maven Pizza Challenge Dataset,orders,date,Date/time,Date/time,Date/time
+Pizza_Flow_01,Maven Pizza Challenge Dataset,orders,time,Date/time,Date/time,Date/time
+Pizza_Flow_01,Maven Pizza Challenge Dataset,pizzas,pizza_id,Identifier,Identifier,Identifier
+Pizza_Flow_01,Maven Pizza Challenge Dataset,pizzas,pizza_type_id,Identifier,Identifier,Identifier
+Pizza_Flow_01,Maven Pizza Challenge Dataset,pizzas,size,Quantity,Quantity,Quantity
+Pizza_Flow_01,Maven Pizza Challenge Dataset,pizzas,price,Monetary amount,Monetary amount,Monetary amount
+Pizza_Flow_01,Maven Pizza Challenge Dataset,pizza_types,pizza_type_id,Identifier,Identifier,Identifier
+Pizza_Flow_01,Maven Pizza Challenge Dataset,pizza_types,name,Category,Free text,Free text
+Pizza_Flow_01,Maven Pizza Challenge Dataset,pizza_types,category,Category,Category,Category
+Pizza_Flow_01,Maven Pizza Challenge Dataset,pizza_types,ingredients,Category,Category,Category
+Pizza_Flow_02,Maven Pizza Challenge Dataset,audit_logs,id,Identifier,Identifier,Identifier
+Pizza_Flow_02,Maven Pizza Challenge Dataset,audit_logs,user_id,Identifier,Identifier,Identifier
+Pizza_Flow_02,Maven Pizza Challenge Dataset,audit_logs,user_name,Free text,Free text,Free text
+Pizza_Flow_02,Maven Pizza Challenge Dataset,audit_logs,action,Category,Category,Category
+Pizza_Flow_02,Maven Pizza Challenge Dataset,audit_logs,model_type,Category,Category,Category
+Pizza_Flow_02,Maven Pizza Challenge Dataset,audit_logs,model_id,Identifier,Identifier,Identifier
+Pizza_Flow_02,Maven Pizza Challenge Dataset,audit_logs,description,Free text,Free text,Free text
+Pizza_Flow_02,Maven Pizza Challenge Dataset,audit_logs,created_at,Date/time,Date/time,Date/time
+Pizza_Flow_02,Maven Pizza Challenge Dataset,customers,id,Identifier,Identifier,Identifier
+Pizza_Flow_02,Maven Pizza Challenge Dataset,customers,name,Category,Free text,Free text
+Pizza_Flow_02,Maven Pizza Challenge Dataset,customers,email,Free text,Free text,Free text
+Pizza_Flow_02,Maven Pizza Challenge Dataset,customers,phone,Free text,Free text,Free text
+Pizza_Flow_02,Maven Pizza Challenge Dataset,customers,password,Free text,Free text,Free text
+Pizza_Flow_02,Maven Pizza Challenge Dataset,customers,remember_token,Free text,Free text,Free text
+Pizza_Flow_02,Maven Pizza Challenge Dataset,customers,created_at,Date/time,Date/time,Date/time
+Pizza_Flow_02,Maven Pizza Challenge Dataset,customers,updated_at,Date/time,Date/time,Date/time
+Pizza_Flow_02,Maven Pizza Challenge Dataset,migrations,id,Identifier,Identifier,Identifier
+Pizza_Flow_02,Maven Pizza Challenge Dataset,migrations,migration,Category,Category,Category
+Pizza_Flow_02,Maven Pizza Challenge Dataset,migrations,batch,Quantity,Quantity,Quantity
+Pizza_Flow_02,Maven Pizza Challenge Dataset,order_details,order_details_id,Identifier,Identifier,Identifier
+Pizza_Flow_02,Maven Pizza Challenge Dataset,order_details,order_id,Identifier,Identifier,Identifier
+Pizza_Flow_02,Maven Pizza Challenge Dataset,order_details,pizza_id,Identifier,Identifier,Identifier
+Pizza_Flow_02,Maven Pizza Challenge Dataset,order_details,quantity,Quantity,Quantity,Quantity
+Pizza_Flow_02,Maven Pizza Challenge Dataset,order_details,created_at,Date/time,Date/time,Date/time
+Pizza_Flow_02,Maven Pizza Challenge Dataset,order_details,updated_at,Date/time,Date/time,Date/time
+Pizza_Flow_02,Maven Pizza Challenge Dataset,orders,order_id,Identifier,Identifier,Identifier
+Pizza_Flow_02,Maven Pizza Challenge Dataset,orders,user_id,Identifier,Identifier,Identifier
+Pizza_Flow_02,Maven Pizza Challenge Dataset,orders,customer_id,Identifier,Identifier,Identifier
+Pizza_Flow_02,Maven Pizza Challenge Dataset,orders,customer_name,Category,Free text,Free text
+Pizza_Flow_02,Maven Pizza Challenge Dataset,orders,customer_email,Category,Category,Category
+Pizza_Flow_02,Maven Pizza Challenge Dataset,orders,customer_phone,Category,Category,Category
+Pizza_Flow_02,Maven Pizza Challenge Dataset,orders,payment_status,Category,Category,Category
+Pizza_Flow_02,Maven Pizza Challenge Dataset,orders,payment_method,Category,Category,Category
+Pizza_Flow_02,Maven Pizza Challenge Dataset,orders,payment_receipt_path,Category,Category,Category
+Pizza_Flow_02,Maven Pizza Challenge Dataset,orders,source,Category,Category,Category
+Pizza_Flow_02,Maven Pizza Challenge Dataset,orders,delivery_method,Category,Category,Category
+Pizza_Flow_02,Maven Pizza Challenge Dataset,orders,delivery_address,Free text,Free text,Free text
+Pizza_Flow_02,Maven Pizza Challenge Dataset,orders,delivery_lat,Geography,Geography,Geography
+Pizza_Flow_02,Maven Pizza Challenge Dataset,orders,delivery_lng,Geography,Geography,Geography
+Pizza_Flow_02,Maven Pizza Challenge Dataset,orders,status,Category,Category,Category
+Pizza_Flow_02,Maven Pizza Challenge Dataset,orders,accepted_by_id,Identifier,Identifier,Identifier
+Pizza_Flow_02,Maven Pizza Challenge Dataset,orders,date,Date/time,Date/time,Date/time
+Pizza_Flow_02,Maven Pizza Challenge Dataset,orders,time,Date/time,Date/time,Date/time
+Pizza_Flow_02,Maven Pizza Challenge Dataset,orders,created_at,Date/time,Date/time,Date/time
+Pizza_Flow_02,Maven Pizza Challenge Dataset,orders,updated_at,Date/time,Date/time,Date/time
+Pizza_Flow_02,Maven Pizza Challenge Dataset,pizzas,pizza_id,Identifier,Identifier,Identifier
+Pizza_Flow_02,Maven Pizza Challenge Dataset,pizzas,pizza_type_id,Identifier,Identifier,Identifier
+Pizza_Flow_02,Maven Pizza Challenge Dataset,pizzas,size,Quantity,Quantity,Quantity
+Pizza_Flow_02,Maven Pizza Challenge Dataset,pizzas,price,Monetary amount,Monetary amount,Monetary amount
+Pizza_Flow_02,Maven Pizza Challenge Dataset,pizzas,created_at,Date/time,Date/time,Date/time
+Pizza_Flow_02,Maven Pizza Challenge Dataset,pizzas,updated_at,Date/time,Date/time,Date/time
+Pizza_Flow_02,Maven Pizza Challenge Dataset,pizza_types,pizza_type_id,Identifier,Identifier,Identifier
+Pizza_Flow_02,Maven Pizza Challenge Dataset,pizza_types,name,Category,Free text,Free text
+Pizza_Flow_02,Maven Pizza Challenge Dataset,pizza_types,category,Category,Category,Category
+Pizza_Flow_02,Maven Pizza Challenge Dataset,pizza_types,ingredients,Category,Category,Category
+Pizza_Flow_02,Maven Pizza Challenge Dataset,pizza_types,created_at,Date/time,Date/time,Date/time
+Pizza_Flow_02,Maven Pizza Challenge Dataset,pizza_types,updated_at,Date/time,Date/time,Date/time
+Pizza_Flow_02,Maven Pizza Challenge Dataset,users,id,Identifier,Identifier,Identifier
+Pizza_Flow_02,Maven Pizza Challenge Dataset,users,name,Category,Free text,Free text
+Pizza_Flow_02,Maven Pizza Challenge Dataset,users,email,Free text,Free text,Free text
+Pizza_Flow_02,Maven Pizza Challenge Dataset,users,email_verified_at,Date/time,Date/time,Date/time
+Pizza_Flow_02,Maven Pizza Challenge Dataset,users,password,Free text,Free text,Free text
+Pizza_Flow_02,Maven Pizza Challenge Dataset,users,role,Category,Category,Category
+Pizza_Flow_02,Maven Pizza Challenge Dataset,users,is_active,Status,Status,Status
+Pizza_Flow_02,Maven Pizza Challenge Dataset,users,failed_attempts,Quantity,Quantity,Quantity
+Pizza_Flow_02,Maven Pizza Challenge Dataset,users,locked_until,Date/time,Date/time,Date/time
+Pizza_Flow_02,Maven Pizza Challenge Dataset,users,remember_token,Free text,Free text,Free text
+Pizza_Flow_02,Maven Pizza Challenge Dataset,users,created_at,Date/time,Date/time,Date/time
+Pizza_Flow_02,Maven Pizza Challenge Dataset,users,updated_at,Date/time,Date/time,Date/time
+RetailMetrics-02,Toy Store E-Commerce Database,products,product_id,Identifier,Identifier,Identifier
+RetailMetrics-02,Toy Store E-Commerce Database,products,created_at,Date/time,Date/time,Date/time
+RetailMetrics-02,Toy Store E-Commerce Database,products,product_name,Category,Free text,Free text
+RetailMetrics-02,Toy Store E-Commerce Database,website_pageviews,website_pageview_id,Identifier,Identifier,Identifier
+RetailMetrics-02,Toy Store E-Commerce Database,website_pageviews,created_at,Date/time,Date/time,Date/time
+RetailMetrics-02,Toy Store E-Commerce Database,website_pageviews,website_session_id,Identifier,Identifier,Identifier
+RetailMetrics-02,Toy Store E-Commerce Database,website_pageviews,pageview_url,other,other,other
+RetailMetrics-02,Toy Store E-Commerce Database,website_sessions,website_session_id,Identifier,Identifier,Identifier
+RetailMetrics-02,Toy Store E-Commerce Database,website_sessions,created_at,Date/time,Date/time,Date/time
+RetailMetrics-02,Toy Store E-Commerce Database,website_sessions,user_id,Identifier,Identifier,Identifier
+RetailMetrics-02,Toy Store E-Commerce Database,website_sessions,is_repeat_session,Status,Status,Status
+RetailMetrics-02,Toy Store E-Commerce Database,website_sessions,utm_source,Category,Category,Category
+RetailMetrics-02,Toy Store E-Commerce Database,website_sessions,utm_campaign,Category,Category,Category
+RetailMetrics-02,Toy Store E-Commerce Database,website_sessions,utm_content,Category,Category,Category
+RetailMetrics-02,Toy Store E-Commerce Database,website_sessions,device_type,Category,Category,Category
+RetailMetrics-02,Toy Store E-Commerce Database,website_sessions,http_referer,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dimproducts,ProductID,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dimproducts,Product,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dimproducts,Subcategory,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dimproducts,Category,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dimproducts,Color,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dimsalesperson,SalesPersonID,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dimsalesperson,Title,Free text,Free text,Free text
+SME-AdventureWorks,Dim_Shipmethod,dimsalesperson,FullName,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dimsalesperson,JobTitle,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dimsalesperson,PhoneNumber,Free text,Free text,Free text
+SME-AdventureWorks,Dim_Shipmethod,dimsalesperson,PhoneNumberType,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dimsalesperson,EmailAddress,Free text,Free text,Free text
+SME-AdventureWorks,Dim_Shipmethod,dimsalesperson,AddressLine1,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dimsalesperson,City,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dimsalesperson,StateProvinceName,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dimsalesperson,PostalCode,Identifier,Identifier,Identifier
+SME-AdventureWorks,Dim_Shipmethod,dimsalesperson,CountryRegionName,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dimsalesperson,TerritoryName,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dim_shipmethod,ShipMethodID,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dim_shipmethod,ShipMethod,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dim_status,StatusID,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dim_status,Status,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dim_territory,TerritoryID,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dim_territory,Territory,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,dim_territory,CountryRegionCode,Identifier,Identifier,Identifier
+SME-AdventureWorks,Dim_Shipmethod,dim_territory,Group,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,OrderID,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,OrderDetailID,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,ProductID,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,OrderQty,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,UnitPrice,Monetary amount,Monetary amount,Monetary amount
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,LineTotal,Monetary amount,Monetary amount,Monetary amount
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,OrderDateKey,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,DueDateKey,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,ShipDateKey,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,StatusID,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,OnlineOrderFlag,Status,Status,Status
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,CustomerID,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,SalesPersonID,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,TerritoryID,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,ShipMethodID,Category,Category,Category
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,TaxAmt,Monetary amount,Monetary amount,Monetary amount
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,Freight,Monetary amount,Monetary amount,Monetary amount
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,TotalDue,Monetary amount,Monetary amount,Monetary amount
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,OrderDate,Date/time,Date/time,Date/time
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,DueDate,Date/time,Date/time,Date/time
+SME-AdventureWorks,Dim_Shipmethod,fact_orderdetails,ShipDate,Date/time,Date/time,Date/time
+SME-Caday-01,Retail,olist_customers_dataset,customer_id,Identifier,Identifier,Identifier
+SME-Caday-01,Retail,olist_customers_dataset,customer_unique_id,Identifier,Identifier,Identifier
+SME-Caday-01,Retail,olist_customers_dataset,customer_zip_code_prefix,Identifier,Identifier,Identifier
+SME-Caday-01,Retail,olist_customers_dataset,customer_city,Category,Category,Category
+SME-Caday-01,Retail,olist_customers_dataset,customer_state,Category,Category,Category
+SME-Caday-01,Retail,olist_geolocation_dataset,geolocation_zip_code_prefix,Identifier,Identifier,Identifier
+SME-Caday-01,Retail,olist_geolocation_dataset,geolocation_lat,Geography,Geography,Geography
+SME-Caday-01,Retail,olist_geolocation_dataset,geolocation_lng,Geography,Geography,Geography
+SME-Caday-01,Retail,olist_geolocation_dataset,geolocation_city,Category,Category,Category
+SME-Caday-01,Retail,olist_geolocation_dataset,geolocation_state,Category,Category,Category
+SME-Caday-01,Retail,olist_order_items_dataset,order_id,Identifier,Identifier,Identifier
+SME-Caday-01,Retail,olist_order_items_dataset,order_item_id,Identifier,Identifier,Identifier
+SME-Caday-01,Retail,olist_order_items_dataset,product_id,Identifier,Identifier,Identifier
+SME-Caday-01,Retail,olist_order_items_dataset,seller_id,Identifier,Identifier,Identifier
+SME-Caday-01,Retail,olist_order_items_dataset,shipping_limit_date,Date/time,Date/time,Date/time
+SME-Caday-01,Retail,olist_order_items_dataset,price,Monetary amount,Monetary amount,Monetary amount
+SME-Caday-01,Retail,olist_order_items_dataset,freight_value,Monetary amount,Monetary amount,Monetary amount
+SME-Caday-01,Retail,olist_order_payments_dataset,order_id,Identifier,Identifier,Identifier
+SME-Caday-01,Retail,olist_order_payments_dataset,payment_sequential,Quantity,Quantity,Quantity
+SME-Caday-01,Retail,olist_order_payments_dataset,payment_type,Category,Category,Category
+SME-Caday-01,Retail,olist_order_payments_dataset,payment_installments,Quantity,Quantity,Quantity
+SME-Caday-01,Retail,olist_order_payments_dataset,payment_value,Monetary amount,Monetary amount,Monetary amount
+SME-Caday-01,Retail,olist_order_reviews_dataset,review_id,Identifier,Identifier,Identifier
+SME-Caday-01,Retail,olist_order_reviews_dataset,order_id,Identifier,Identifier,Identifier
+SME-Caday-01,Retail,olist_order_reviews_dataset,review_score,Rating,Rating,Rating
+SME-Caday-01,Retail,olist_order_reviews_dataset,review_comment_title,Free text,Free text,Free text
+SME-Caday-01,Retail,olist_order_reviews_dataset,review_comment_message,Free text,Free text,Free text
+SME-Caday-01,Retail,olist_order_reviews_dataset,review_creation_date,Date/time,Date/time,Date/time
+SME-Caday-01,Retail,olist_order_reviews_dataset,review_answer_timestamp,Date/time,Date/time,Date/time
+SME-Caday-01,Retail,olist_orders_dataset,order_id,Identifier,Identifier,Identifier
+SME-Caday-01,Retail,olist_orders_dataset,customer_id,Identifier,Identifier,Identifier
+SME-Caday-01,Retail,olist_orders_dataset,order_status,Category,Category,Category
+SME-Caday-01,Retail,olist_orders_dataset,order_purchase_timestamp,Date/time,Date/time,Date/time
+SME-Caday-01,Retail,olist_orders_dataset,order_approved_at,Date/time,Date/time,Date/time
+SME-Caday-01,Retail,olist_orders_dataset,order_delivered_carrier_date,Date/time,Date/time,Date/time
+SME-Caday-01,Retail,olist_orders_dataset,order_delivered_customer_date,Date/time,Date/time,Date/time
+SME-Caday-01,Retail,olist_orders_dataset,order_estimated_delivery_date,Date/time,Date/time,Date/time
+SME-Caday-01,Retail,olist_products_dataset,product_id,Identifier,Identifier,Identifier
+SME-Caday-01,Retail,olist_products_dataset,product_category_name,Category,Category,Category
+SME-Caday-01,Retail,olist_products_dataset,product_name_lenght,Category,Category,Category
+SME-Caday-01,Retail,olist_products_dataset,product_description_lenght,Free text,Free text,Free text
+SME-Caday-01,Retail,olist_products_dataset,product_photos_qty,Quantity,Quantity,Quantity
+SME-Caday-01,Retail,olist_products_dataset,product_weight_g,Quantity,Quantity,Quantity
+SME-Caday-01,Retail,olist_products_dataset,product_length_cm,Quantity,Quantity,Quantity
+SME-Caday-01,Retail,olist_products_dataset,product_height_cm,Quantity,Quantity,Quantity
+SME-Caday-01,Retail,olist_products_dataset,product_width_cm,Quantity,Quantity,Quantity
+SME-Caday-01,Retail,olist_sellers_dataset,seller_id,Identifier,Identifier,Identifier
+SME-Caday-01,Retail,olist_sellers_dataset,seller_zip_code_prefix,Identifier,Identifier,Identifier
+SME-Caday-01,Retail,olist_sellers_dataset,seller_city,Category,Category,Category
+SME-Caday-01,Retail,olist_sellers_dataset,seller_state,Category,Category,Category
+SME-Caday-01,Retail,product_category_name_translation,product_category_name,Category,Category,Category
+SME-Caday-01,Retail,product_category_name_translation,product_category_name_english,Category,Category,Category
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,customers,Customer_ID,Identifier,Identifier,Identifier
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,customers,Customer_Name,Category,Free text,Free text
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,customers,Gender,Category,Category,Category
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,customers,Age,Quantity,Quantity,Quantity
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,customers,Age_Group,Quantity,Quantity,Quantity
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,customers,Date_of_Birth,Date/time,Date/time,Date/time
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,customers,Email,Free text,Free text,Free text
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,customers,Phone,Free text,Free text,Free text
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,customers,City,Category,Category,Category
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,customers,State,Category,Category,Category
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,customers,Pincode,Identifier,Identifier,Identifier
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,customers,Registration_Date,Date/time,Date/time,Date/time
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,customers,Customer_Tier,Category,Category,Category
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,customers,Total_Orders,Category,Category,Category
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,customers,Total_Spent,Monetary amount,Monetary amount,Monetary amount
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,products,Product_ID,Identifier,Identifier,Identifier
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,products,Product_Name,Category,Free text,Free text
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,products,Category,Category,Category,Category
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,products,Brand,Category,Category,Category
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,products,Original_Price,Monetary amount,Monetary amount,Monetary amount
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,products,Discount_Percent,Monetary amount,Monetary amount,Monetary amount
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,products,Discount_Amount,Monetary amount,Monetary amount,Monetary amount
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,products,Selling_Price,Monetary amount,Monetary amount,Monetary amount
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,products,Stock_Quantity,Quantity,Quantity,Quantity
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,products,Weight_kg,Quantity,Quantity,Quantity
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,products,Avg_Rating,Rating,Rating,Rating
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,products,Total_Reviews,Category,Category,Category
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,Order_ID,Identifier,Identifier,Identifier
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,Customer_ID,Identifier,Identifier,Identifier
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,Product_ID,Identifier,Identifier,Identifier
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,Order_Date,Date/time,Date/time,Date/time
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,Order_Time,Date/time,Date/time,Date/time
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,Delivery_Date,Date/time,Date/time,Date/time
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,Quantity,Quantity,Quantity,Quantity
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,Unit_Price,Monetary amount,Monetary amount,Monetary amount
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,Order_Value,Monetary amount,Monetary amount,Monetary amount
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,Shipping_Cost,Monetary amount,Monetary amount,Monetary amount
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,Coupon_Code,Category,Category,Category
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,Coupon_Discount,Monetary amount,Monetary amount,Monetary amount
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,Total_Amount,Monetary amount,Monetary amount,Monetary amount
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,Payment_Mode,Category,Category,Category
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,Order_Status,Category,Category,Category
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,Rating,Rating,Rating,Rating
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,Review_Text,Free text,Free text,Free text
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,City,Category,Category,Category
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,State,Category,Category,Category
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,Customer_Age,Quantity,Quantity,Quantity
+SME-ECOMINSIGHT,Indian E-Commerce Sales Analytics Dataset,sales,Customer_Age_Group,Quantity,Quantity,Quantity
+SME_Financial_Solution,Financial_Technology_Solutions,accounts,AccountID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,accounts,CustomerID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,accounts,AccountTypeID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,accounts,AccountStatusID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,accounts,Balance,Monetary amount,Monetary amount,Monetary amount
+SME_Financial_Solution,Financial_Technology_Solutions,accounts,OpeningDate,Date/time,Date/time,Date/time
+SME_Financial_Solution,Financial_Technology_Solutions,account_statuses,AccountStatusID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,account_statuses,StatusName,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,account_types,AccountTypeID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,account_types,TypeName,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,addresses,AddressID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,addresses,Street,Free text,Free text,Free text
+SME_Financial_Solution,Financial_Technology_Solutions,addresses,City,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,addresses,Country,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,branches,BranchID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,branches,BranchName,Category,Free text,Free text
+SME_Financial_Solution,Financial_Technology_Solutions,branches,AddressID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,customers,CustomerID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,customers,FirstName,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,customers,LastName,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,customers,DateOfBirth,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,customers,AddressID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,customers,CustomerTypeID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,customer_types,CustomerTypeID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,customer_types,TypeName,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,loans,LoanID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,loans,AccountID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,loans,LoanStatusID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,loans,PrincipalAmount,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,loans,InterestRate,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,loans,StartDate,Date/time,Date/time,Date/time
+SME_Financial_Solution,Financial_Technology_Solutions,loans,EstimatedEndDate,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,loan_statuses,LoanStatusID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,loan_statuses,StatusName,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,transactions,TransactionID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,transactions,AccountOriginID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,transactions,AccountDestinationID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,transactions,TransactionTypeID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,transactions,Amount,Monetary amount,Monetary amount,Monetary amount
+SME_Financial_Solution,Financial_Technology_Solutions,transactions,TransactionDate,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,transactions,BranchID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,transactions,Description,Free text,Free text,Free text
+SME_Financial_Solution,Financial_Technology_Solutions,transaction_types,TransactionTypeID,Category,Category,Category
+SME_Financial_Solution,Financial_Technology_Solutions,transaction_types,TypeName,Category,Category,Category
+SME_HMFashion_01,Retail E-commerce,articles,article_id,Identifier,Identifier,Identifier
+SME_HMFashion_01,Retail E-commerce,articles,product_code,Category,Category,Category
+SME_HMFashion_01,Retail E-commerce,articles,prod_name,Category,Free text,Free text
+SME_HMFashion_01,Retail E-commerce,articles,product_type_no,Category,Category,Category
+SME_HMFashion_01,Retail E-commerce,articles,product_type_name,Category,Category,Category
+SME_HMFashion_01,Retail E-commerce,articles,product_group_name,Category,Free text,Free text
+SME_HMFashion_01,Retail E-commerce,articles,graphical_appearance_no,Category,Category,Category
+SME_HMFashion_01,Retail E-commerce,articles,graphical_appearance_name,Category,Free text,Free text
+SME_HMFashion_01,Retail E-commerce,articles,colour_group_code,Category,Category,Category
+SME_HMFashion_01,Retail E-commerce,articles,colour_group_name,Category,Category,Category
+SME_HMFashion_01,Retail E-commerce,articles,perceived_colour_value_id,Identifier,Identifier,Identifier
+SME_HMFashion_01,Retail E-commerce,articles,perceived_colour_value_name,Category,Free text,Free text
+SME_HMFashion_01,Retail E-commerce,articles,perceived_colour_master_id,Identifier,Identifier,Identifier
+SME_HMFashion_01,Retail E-commerce,articles,perceived_colour_master_name,Category,Free text,Free text
+SME_HMFashion_01,Retail E-commerce,articles,department_no,Category,Category,Category
+SME_HMFashion_01,Retail E-commerce,articles,department_name,Category,Category,Category
+SME_HMFashion_01,Retail E-commerce,articles,index_code,Category,Category,Category
+SME_HMFashion_01,Retail E-commerce,articles,index_name,Category,Free text,Free text
+SME_HMFashion_01,Retail E-commerce,articles,index_group_no,Category,Category,Category
+SME_HMFashion_01,Retail E-commerce,articles,index_group_name,Category,Free text,Free text
+SME_HMFashion_01,Retail E-commerce,articles,section_no,Category,Category,Category
+SME_HMFashion_01,Retail E-commerce,articles,section_name,Category,Free text,Free text
+SME_HMFashion_01,Retail E-commerce,articles,garment_group_no,Category,Category,Category
+SME_HMFashion_01,Retail E-commerce,articles,garment_group_name,Category,Free text,Free text
+SME_HMFashion_01,Retail E-commerce,articles,detail_desc,Free text,Free text,Free text
+SME_HMFashion_01,Retail E-commerce,customers,customer_id,Identifier,Identifier,Identifier
+SME_HMFashion_01,Retail E-commerce,customers,FN,Category,Category,Category
+SME_HMFashion_01,Retail E-commerce,customers,Active,Status,Status,Status
+SME_HMFashion_01,Retail E-commerce,customers,club_member_status,Category,Category,Category
+SME_HMFashion_01,Retail E-commerce,customers,fashion_news_frequency,Category,Category,Category
+SME_HMFashion_01,Retail E-commerce,customers,age,Quantity,Quantity,Quantity
+SME_HMFashion_01,Retail E-commerce,customers,postal_code,Category,Category,Category
+SME_HMFashion_01,Retail E-commerce,transactions,t_dat,Category,Category,Category
+SME_HMFashion_01,Retail E-commerce,transactions,customer_id,Identifier,Identifier,Identifier
+SME_HMFashion_01,Retail E-commerce,transactions,article_id,Identifier,Identifier,Identifier
+SME_HMFashion_01,Retail E-commerce,transactions,price,Monetary amount,Monetary amount,Monetary amount
+SME_HMFashion_01,Retail E-commerce,transactions,sales_channel_id,Identifier,Identifier,Identifier
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",events,event_id,Identifier,Identifier,Identifier
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",events,user_id,Identifier,Identifier,Identifier
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",events,product_id,Identifier,Identifier,Identifier
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",events,event_type,Category,Category,Category
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",events,event_timestamp,Date/time,Date/time,Date/time
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",order_items,order_item_id,Identifier,Identifier,Identifier
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",order_items,order_id,Identifier,Identifier,Identifier
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",order_items,product_id,Identifier,Identifier,Identifier
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",order_items,user_id,Identifier,Identifier,Identifier
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",order_items,quantity,Quantity,Quantity,Quantity
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",order_items,item_price,Monetary amount,Monetary amount,Monetary amount
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",order_items,item_total,Category,Category,Category
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",orders,order_id,Identifier,Identifier,Identifier
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",orders,user_id,Identifier,Identifier,Identifier
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",orders,order_date,Date/time,Date/time,Date/time
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",orders,order_status,Category,Category,Category
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",orders,total_amount,Monetary amount,Monetary amount,Monetary amount
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",products,product_id,Identifier,Identifier,Identifier
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",products,product_name,Category,Free text,Free text
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",products,category,Category,Category,Category
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",products,brand,Category,Category,Category
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",products,price,Monetary amount,Monetary amount,Monetary amount
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",products,rating,Rating,Rating,Rating
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",reviews,review_id,Identifier,Identifier,Identifier
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",reviews,order_id,Identifier,Identifier,Identifier
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",reviews,product_id,Identifier,Identifier,Identifier
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",reviews,user_id,Identifier,Identifier,Identifier
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",reviews,rating,Rating,Rating,Rating
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",reviews,review_text,Free text,Free text,Free text
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",reviews,review_date,Date/time,Date/time,Date/time
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",users,user_id,Identifier,Identifier,Identifier
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",users,name,Category,Free text,Free text
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",users,email,Free text,Free text,Free text
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",users,gender,Category,Category,Category
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",users,city,Category,Category,Category
+SME_Mercasight,"Mercasight: An Integrated E-Commerce Analytics Framework for Sales Performance, Customer Behavior, and Revenue",users,signup_date,Date/time,Date/time,Date/time
+SME-olist-101,Olist,olist_customers_dataset,customer_id,Identifier,Identifier,Identifier
+SME-olist-101,Olist,olist_customers_dataset,customer_unique_id,Identifier,Identifier,Identifier
+SME-olist-101,Olist,olist_customers_dataset,customer_zip_code_prefix,Identifier,Identifier,Identifier
+SME-olist-101,Olist,olist_customers_dataset,customer_city,Category,Category,Category
+SME-olist-101,Olist,olist_customers_dataset,customer_state,Category,Category,Category
+SME-olist-101,Olist,olist_geolocation_dataset,geolocation_zip_code_prefix,Identifier,Identifier,Identifier
+SME-olist-101,Olist,olist_geolocation_dataset,geolocation_lat,Geography,Geography,Geography
+SME-olist-101,Olist,olist_geolocation_dataset,geolocation_lng,Geography,Geography,Geography
+SME-olist-101,Olist,olist_geolocation_dataset,geolocation_city,Category,Category,Category
+SME-olist-101,Olist,olist_geolocation_dataset,geolocation_state,Category,Category,Category
+SME-olist-101,Olist,olist_order_items_dataset,order_id,Identifier,Identifier,Identifier
+SME-olist-101,Olist,olist_order_items_dataset,order_item_id,Identifier,Identifier,Identifier
+SME-olist-101,Olist,olist_order_items_dataset,product_id,Identifier,Identifier,Identifier
+SME-olist-101,Olist,olist_order_items_dataset,seller_id,Identifier,Identifier,Identifier
+SME-olist-101,Olist,olist_order_items_dataset,shipping_limit_date,Date/time,Date/time,Date/time
+SME-olist-101,Olist,olist_order_items_dataset,price,Monetary amount,Monetary amount,Monetary amount
+SME-olist-101,Olist,olist_order_items_dataset,freight_value,Monetary amount,Monetary amount,Monetary amount
+SME-olist-101,Olist,olist_order_payments_dataset,order_id,Identifier,Identifier,Identifier
+SME-olist-101,Olist,olist_order_payments_dataset,payment_sequential,Quantity,Quantity,Quantity
+SME-olist-101,Olist,olist_order_payments_dataset,payment_type,Category,Category,Category
+SME-olist-101,Olist,olist_order_payments_dataset,payment_installments,Quantity,Quantity,Quantity
+SME-olist-101,Olist,olist_order_payments_dataset,payment_value,Monetary amount,Monetary amount,Monetary amount
+SME-olist-101,Olist,olist_order_reviews_dataset,review_id,Identifier,Identifier,Identifier
+SME-olist-101,Olist,olist_order_reviews_dataset,order_id,Identifier,Identifier,Identifier
+SME-olist-101,Olist,olist_order_reviews_dataset,review_score,Rating,Rating,Rating
+SME-olist-101,Olist,olist_order_reviews_dataset,review_comment_title,Free text,Free text,Free text
+SME-olist-101,Olist,olist_order_reviews_dataset,review_comment_message,Free text,Free text,Free text
+SME-olist-101,Olist,olist_order_reviews_dataset,review_creation_date,Date/time,Date/time,Date/time
+SME-olist-101,Olist,olist_order_reviews_dataset,review_answer_timestamp,Date/time,Date/time,Date/time
+SME-olist-101,Olist,olist_orders_dataset,order_id,Identifier,Identifier,Identifier
+SME-olist-101,Olist,olist_orders_dataset,customer_id,Identifier,Identifier,Identifier
+SME-olist-101,Olist,olist_orders_dataset,order_status,Category,Category,Category
+SME-olist-101,Olist,olist_orders_dataset,order_purchase_timestamp,Date/time,Date/time,Date/time
+SME-olist-101,Olist,olist_orders_dataset,order_approved_at,Date/time,Date/time,Date/time
+SME-olist-101,Olist,olist_orders_dataset,order_delivered_carrier_date,Date/time,Date/time,Date/time
+SME-olist-101,Olist,olist_orders_dataset,order_delivered_customer_date,Date/time,Date/time,Date/time
+SME-olist-101,Olist,olist_orders_dataset,order_estimated_delivery_date,Date/time,Date/time,Date/time
+SME-olist-101,Olist,olist_products_dataset,product_id,Identifier,Identifier,Identifier
+SME-olist-101,Olist,olist_products_dataset,product_category_name,Category,Category,Category
+SME-olist-101,Olist,olist_products_dataset,product_name_lenght,Category,Category,Category
+SME-olist-101,Olist,olist_products_dataset,product_description_lenght,Free text,Free text,Free text
+SME-olist-101,Olist,olist_products_dataset,product_photos_qty,Quantity,Quantity,Quantity
+SME-olist-101,Olist,olist_products_dataset,product_weight_g,Quantity,Quantity,Quantity
+SME-olist-101,Olist,olist_products_dataset,product_length_cm,Quantity,Quantity,Quantity
+SME-olist-101,Olist,olist_products_dataset,product_height_cm,Quantity,Quantity,Quantity
+SME-olist-101,Olist,olist_products_dataset,product_width_cm,Quantity,Quantity,Quantity
+SME-olist-101,Olist,olist_sellers_dataset,seller_id,Identifier,Identifier,Identifier
+SME-olist-101,Olist,olist_sellers_dataset,seller_zip_code_prefix,Identifier,Identifier,Identifier
+SME-olist-101,Olist,olist_sellers_dataset,seller_city,Category,Category,Category
+SME-olist-101,Olist,olist_sellers_dataset,seller_state,Category,Category,Category
+SME-olist-101,Olist,product_category_name_translation,product_category_name,Category,Category,Category
+SME-olist-101,Olist,product_category_name_translation,product_category_name_english,Category,Category,Category
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,categories,category_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,categories,category_name,Category,Category,Category
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,customers,customer_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,customers,city,Category,Category,Category
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,customers,signup_date,Date/time,Date/time,Date/time
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,employees,employee_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,employees,store_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,employees,salary,Monetary amount,Monetary amount,Monetary amount
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,order_items,order_item_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,order_items,order_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,order_items,product_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,order_items,qty,Quantity,Quantity,Quantity
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,order_items,price,Monetary amount,Monetary amount,Monetary amount
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,orders,order_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,orders,customer_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,orders,store_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,orders,order_date,Date/time,Date/time,Date/time
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,orders,promotion_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,payments,payment_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,payments,order_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,payments,amount,Monetary amount,Monetary amount,Monetary amount
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,products,product_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,products,category_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,products,supplier_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,products,price,Monetary amount,Monetary amount,Monetary amount
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,promotions,promotion_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,promotions,discount,Category,Category,Category
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,returns,return_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,returns,order_item_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,returns,refund,Monetary amount,Monetary amount,Monetary amount
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,shipments,shipment_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,shipments,order_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,shipments,status,Category,Category,Category
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,stores,store_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,stores,city,Category,Category,Category
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,suppliers,supplier_id,Identifier,Identifier,Identifier
+SME_Retail_Transaction_Data_08,SME Retail Transaction Data,suppliers,country,Category,Category,Category
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,audit_log,log_id,Identifier,Identifier,Identifier
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,audit_log,staff_id,Identifier,Identifier,Identifier
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,audit_log,action,Category,Category,Category
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,audit_log,table_name,Category,Free text,Free text
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,audit_log,record_id,Identifier,Identifier,Identifier
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,audit_log,detail,Free text,Free text,Free text
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,audit_log,at_time,Date/time,Date/time,Date/time
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,food,f_id,Identifier,Identifier,Identifier
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,food,item,Category,Category,Category
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,food,veg_or_non_veg,Category,Category,Category
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,menu,menu_id,Identifier,Identifier,Identifier
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,menu,r_id,Identifier,Identifier,Identifier
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,menu,f_id,Identifier,Identifier,Identifier
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,menu,cuisine,Category,Category,Category
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,menu,price,Monetary amount,Monetary amount,Monetary amount
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,orders,order_id,Identifier,Identifier,Identifier
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,orders,order_date,Date/time,Date/time,Date/time
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,orders,sales_qty,Quantity,Quantity,Quantity
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,orders,sales_amount,Monetary amount,Monetary amount,Monetary amount
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,orders,currency,Category,Category,Category
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,orders,user_id,Identifier,Identifier,Identifier
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,orders,r_id,Identifier,Identifier,Identifier
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,orders,payment_method,Category,Category,Category
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,orders,last_modified_by_staff_id,Identifier,Identifier,Identifier
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,orders,payment_method_id,Identifier,Identifier,Identifier
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,orders,status,Category,Category,Category
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,payment_methods,payment_method_id,Identifier,Identifier,Identifier
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,payment_methods,user_id,Identifier,Identifier,Identifier
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,payment_methods,method_type,Category,Category,Category
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,payment_methods,provider,Category,Category,Category
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,payment_methods,account_holder_name,Category,Free text,Free text
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,payment_methods,account_identifier,Identifier,Identifier,Identifier
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,payment_methods,is_default,Status,Status,Status
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,payment_methods,created_at,Date/time,Date/time,Date/time
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,restaurant,r_id,Identifier,Identifier,Identifier
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,restaurant,name,Category,Free text,Free text
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,restaurant,city,Category,Category,Category
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,restaurant,rating,Rating,Rating,Rating
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,restaurant,rating_count,Rating,Rating,Rating
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,restaurant,cost,Monetary amount,Monetary amount,Monetary amount
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,restaurant,cuisine,Category,Category,Category
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,restaurant,lic_no,Identifier,Identifier,Identifier
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,restaurant,link,other,other,other
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,restaurant,address,Free text,Free text,Free text
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,restaurant,menu,Category,Category,Category
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,staff_accounts,staff_id,Identifier,Identifier,Identifier
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,staff_accounts,username,Category,Category,Category
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,staff_accounts,full_name,Category,Free text,Free text
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,staff_accounts,password_hash,Free text,Free text,Free text
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,staff_accounts,password_salt,Free text,Free text,Free text
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,staff_accounts,role,Category,Category,Category
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,staff_accounts,managed_restaurant_id,Identifier,Identifier,Identifier
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,staff_accounts,is_active,Status,Status,Status
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,staff_accounts,created_at,Date/time,Date/time,Date/time
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,users,user_id,Identifier,Identifier,Identifier
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,users,name,Category,Free text,Free text
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,users,email,Free text,Free text,Free text
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,users,password,Free text,Free text,Free text
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,users,Age,Quantity,Quantity,Quantity
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,users,Gender,Category,Category,Category
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,users,Marital Status,Category,Category,Category
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,users,Occupation,Category,Category,Category
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,users,Monthly Income,Monetary amount,Monetary amount,Monetary amount
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,users,Educational Qualifications,Category,Category,Category
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,users,Family size,Quantity,Quantity,Quantity
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,users,password_hash,Free text,Free text,Free text
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,users,password_salt,Free text,Free text,Free text
+SME_Zomato_02,MonetIQ - Zomato Food Delivery 01,users,phone,Free text,Free text,Free text

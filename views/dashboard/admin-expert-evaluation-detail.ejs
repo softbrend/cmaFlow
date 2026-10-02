@@ -1,4 +1,4 @@
-<div class="page-title">🧪 <span class="page-title-text">Expert Evaluation — <%= account.owner_name %></span></div>
+<div class="page-title">🧪 <span class="page-title-text">Template Evaluation — <%= account.owner_name %></span></div>
 <p class="page-subtitle"><%= account.username %> · <%= account.business_name %></p>
 
 <p style="margin-bottom: 18px;"><a href="/admin/expert-evaluations">← Back to expert evaluations</a></p>
@@ -26,6 +26,7 @@
   <div class="ok-box" style="margin-top: 10px;">
     Status: <strong>
       <% if (session.status === 'completed') { %>Completed <%= session.completed_at ? new Date(session.completed_at).toLocaleString() : '' %>
+      <% } else if (session.status === 'questionnaire' && isDirectFlow) { %>Questionnaire in progress
       <% } else if (session.status === 'questionnaire') { %>Walkthrough done, questionnaire in progress
       <% } else { %>Walkthrough in progress (task <%= session.current_task %> of 6)
       <% } %>
@@ -44,6 +45,32 @@
   </div>
   <% } %>
 
+  <% if (isDirectFlow) { %>
+  <div class="form-card wide" style="margin-bottom: 22px;">
+    <div class="form-title" style="font-size: 18px;">Modules used</div>
+    <p class="form-hint" style="margin: 0 0 10px;">Direct-flow account — no walkthrough tasks; time is logged automatically from page visits.</p>
+    <table class="table-simple">
+      <thead><tr><th>Module</th><th>Opened</th><th>Time spent</th></tr></thead>
+      <tbody>
+        <% var moduleLabels = {
+             'descriptive-analytics': 'Descriptive analytics', 'diagnostic-insights': 'Diagnostic insights',
+             'predictive-analytics': 'Predictive analytics', 'prescriptive-recommendations': 'Prescriptive recommendations',
+           };
+           var moduleSlugs = ['descriptive-analytics', 'diagnostic-insights', 'predictive-analytics', 'prescriptive-recommendations'];
+           moduleSlugs.forEach(function(slug, i) {
+             var v = moduleVisits ? moduleVisits[i] : null;
+             var secs = v ? (v.total_seconds || 0) : 0;
+             var mins = Math.floor(secs / 60); %>
+          <tr>
+            <td><%= moduleLabels[slug] %></td>
+            <td><%= v ? v.open_count + (v.open_count === 1 ? ' time' : ' times') : 'Not opened yet' %></td>
+            <td><%= v ? mins + 'm ' + (secs % 60) + 's' : '—' %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <% } else { %>
   <div class="form-card wide" style="margin-bottom: 22px;">
     <div class="form-title" style="font-size: 18px;">Walkthrough</div>
     <table class="table-simple">
@@ -64,6 +91,7 @@
       </tbody>
     </table>
   </div>
+  <% } %>
 
   <% if (session.status === 'walkthrough') { %>
     <div class="placeholder-card">

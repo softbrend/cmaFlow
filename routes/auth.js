@@ -101,7 +101,7 @@ router.post('/signup', redirectIfAuthed, signupValidators, async (req, res, next
 });
 
 // ------------------------------------------------------------------
-// Expert Evaluator signup — added 30 September 2026 for the field-
+// Template Evaluator signup — added 30 September 2026 for the field-
 // generalization evaluation round. Deliberately NOT linked from /login,
 // /signup, or anywhere else in the app's nav: this is a purposively-
 // recruited population (domain experts, not the general public), so the
@@ -116,7 +116,7 @@ router.post('/signup', redirectIfAuthed, signupValidators, async (req, res, next
 // GET  /expert-signup            -> the access-code form
 // POST /expert-signup            -> verifies the code, flags the session
 // GET  /expert-signup/register   -> the actual signup form (code-gated)
-// POST /expert-signup/register   -> creates the role='Expert Evaluator' account
+// POST /expert-signup/register   -> creates the role='Template Evaluator' account
 //
 // req.session.expertCodeVerified is a one-time flag: it's set on a
 // correct code and cleared the moment an account is actually created (or
@@ -127,7 +127,7 @@ const EXPERT_SIGNUP_CODE = process.env.EXPERT_SIGNUP_CODE || 'cmaflow-expert-202
 
 router.get('/expert-signup', redirectIfAuthed, (req, res) => {
   res.render('auth/expert-signup-code', {
-    title: 'Expert Evaluator Access',
+    title: 'Template Evaluator Access',
     layout: 'layout-auth',
     error: null,
   });
@@ -137,7 +137,7 @@ router.post('/expert-signup', redirectIfAuthed, (req, res) => {
   const submitted = (req.body.access_code || '').trim();
   if (!submitted || submitted !== EXPERT_SIGNUP_CODE) {
     return res.status(400).render('auth/expert-signup-code', {
-      title: 'Expert Evaluator Access',
+      title: 'Template Evaluator Access',
       layout: 'layout-auth',
       error: 'That access code is not correct.',
     });
@@ -151,7 +151,7 @@ router.get('/expert-signup/register', redirectIfAuthed, (req, res) => {
     return res.redirect('/expert-signup');
   }
   res.render('auth/expert-signup', {
-    title: 'Create your Expert Evaluator account',
+    title: 'Create your Template Evaluator account',
     layout: 'layout-auth',
     errors: [],
     old: {},
@@ -161,7 +161,7 @@ router.get('/expert-signup/register', redirectIfAuthed, (req, res) => {
 
 // business_category replaces what was originally a free-text, optional
 // "area of expertise" field (added 30 September 2026, revised 1 October
-// 2026): an Expert Evaluator's actual job here is to pick one of the 20
+// 2026): a Template Evaluator's actual job here is to pick one of the 20
 // SME Business Categories, download that category's CSV template, fill
 // it with a realistic dataset, and evaluate CMA-Flow's analytics against
 // it — so capturing that choice as a required, validated selection from
@@ -199,7 +199,7 @@ router.post('/expert-signup/register', redirectIfAuthed, expertSignupValidators,
   const result = validationResult(req);
   if (!result.isEmpty()) {
     return res.status(400).render('auth/expert-signup', {
-      title: 'Create your Expert Evaluator account',
+      title: 'Create your Template Evaluator account',
       layout: 'layout-auth',
       errors: result.array(),
       old: req.body,
@@ -213,11 +213,17 @@ router.post('/expert-signup/register', redirectIfAuthed, expertSignupValidators,
 
   try {
     const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
+    // evaluation_flow = 'direct' is a literal here, never taken from
+    // req.body — every Template Evaluator account created from here on
+    // gets the new ungated flow (upload-or-pick-a-template, no six-task
+    // gate, automatic per-module time logging); the 15 accounts that
+    // predate this column keep 'walkthrough' via its own DEFAULT (see
+    // db/schema.sql). See claude/direct-flow-template-evaluator.md.
     const { rows } = await pool.query(
       `INSERT INTO sme_accounts
-         (username, owner_name, business_name, email, business_sector, password_hash, role)
-       VALUES ($1, $2, $3, $4, $5, $6, 'Expert Evaluator')
-       RETURNING id, username, owner_name, business_name, email, role, business_sector, assigned_dataset`,
+         (username, owner_name, business_name, email, business_sector, password_hash, role, evaluation_flow)
+       VALUES ($1, $2, $3, $4, $5, $6, 'Template Evaluator', 'direct')
+       RETURNING id, username, owner_name, business_name, email, role, business_sector, assigned_dataset, evaluation_flow`,
       [username, full_name, affiliation, email, business_category, password_hash]
     );
 
@@ -229,7 +235,7 @@ router.post('/expert-signup/register', redirectIfAuthed, expertSignupValidators,
   } catch (err) {
     if (err.code === '23505') {
       return res.status(400).render('auth/expert-signup', {
-        title: 'Create your Expert Evaluator account',
+        title: 'Create your Template Evaluator account',
         layout: 'layout-auth',
         errors: [{ msg: 'That username or email is already registered.' }],
         old: req.body,
@@ -267,14 +273,19 @@ router.post('/login', redirectIfAuthed, async (req, res, next) => {
   try {
     // business_sector and evaluation_template_file included here (not
     // just in the registration RETURNING clauses) so both are populated
-    // on every login, not only immediately after signup — an Expert
+    // on every login, not only immediately after signup — a Template
     // Evaluator's declared category (routes/templates.js's
     // assignedCategory) and their chosen default CSV for evaluation
     // (evaluationTemplateFile) both depend on these still being there
     // after they log back in on a later visit.
+    // evaluation_flow included here (not just in the registration
+    // RETURNING clause) so it's populated on every login too, same
+    // reasoning as business_sector/evaluation_template_file just below —
+    // middleware/evaluationGate.js and routes/dashboard.js both read
+    // req.session.user.evaluation_flow on every request.
     const { rows } = await pool.query(
       `SELECT id, username, owner_name, business_name, email, role, business_sector,
-              evaluation_template_file, assigned_dataset, password_hash
+              evaluation_template_file, assigned_dataset, evaluation_flow, password_hash
          FROM sme_accounts WHERE username = $1`,
       [username.trim()]
     );

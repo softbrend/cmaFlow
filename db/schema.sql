@@ -44,9 +44,10 @@ CREATE TABLE IF NOT EXISTS sme_accounts (
 -- idempotent-safe way to let db:init re-run this file on every deploy
 -- without erroring on a constraint that's already there.
 --
--- 'Expert Evaluator' added alongside the original two (30 September 2026)
--- for the field-generalization evaluation round: a purposively-recruited
--- domain expert who signs up through the separate, access-code-gated
+-- 'Template Evaluator' (named 'Expert Evaluator' until 2 October 2026 —
+-- see the rename note below) added alongside the original two for the
+-- field-generalization evaluation round: a purposively-recruited domain
+-- expert who signs up through the separate, access-code-gated
 -- /expert-signup flow (routes/auth.js), uploads their own dataset in an
 -- SME business category of their choosing (views/dashboard/sme-templates
 -- supplies the CSV template), runs it through the same four analytics
@@ -55,15 +56,107 @@ CREATE TABLE IF NOT EXISTS sme_accounts (
 -- expert_evaluation_sessions/_task_logs/_responses tables below, never
 -- evaluation_sessions/_task_logs/_responses, so the SME-owner respondent
 -- counts and TAM summary statistics already reported in the manuscript
--- can never silently pick up an expert evaluator's rows. The role CHECK
+-- can never silently pick up a template evaluator's rows. The role CHECK
 -- is dropped and recreated (not just ADD CONSTRAINT) because a constraint
 -- can't be altered in place — this runs every db:init, so it's a no-op
 -- once the live constraint already allows all three values.
+--
+-- Renamed from 'Expert Evaluator' (2 October 2026, see
+-- claude/template-evaluator-rename-and-cohort-tagging.md): this role
+-- validates the app's computations against synthetic template data with
+-- known-correct values — it was being read by name alone as satisfying a
+-- peer-review recommendation it does not satisfy, namely blind rating of
+-- REAL SME owners' decisions by human domain experts (a completely
+-- different thing).
+--
+-- The three statements below have to run in exactly this order on a
+-- database that still has the OLD constraint and existing 'Expert
+-- Evaluator' rows (every environment except a brand-new one), or they
+-- deadlock each other: widening the constraint first would reject the
+-- pre-existing 'Expert Evaluator' rows it hasn't fixed yet; updating the
+-- rows first would be rejected by the OLD constraint, which doesn't know
+-- 'Template Evaluator' yet. NOT VALID adds the new constraint without
+-- scanning existing rows (so the not-yet-updated 'Expert Evaluator' rows
+-- don't block it), the UPDATE then rewrites exactly those rows — and is
+-- itself checked against the new constraint, which is fine since it only
+-- ever writes the now-allowed 'Template Evaluator' — and VALIDATE
+-- CONSTRAINT confirms every row satisfies it. All three are safe to rerun
+-- on every db:init: the DROP/ADD is already idempotent by construction,
+-- the UPDATE matches zero rows once none are left holding the old value,
+-- and validating an already-valid constraint is a fast no-op.
 DO $$
 BEGIN
   ALTER TABLE sme_accounts DROP CONSTRAINT IF EXISTS sme_accounts_role_check;
   ALTER TABLE sme_accounts
-      ADD CONSTRAINT sme_accounts_role_check CHECK (role IN ('SME Owner', 'Admin', 'Expert Evaluator'));
+      ADD CONSTRAINT sme_accounts_role_check CHECK (role IN ('SME Owner', 'Admin', 'Template Evaluator')) NOT VALID;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+UPDATE sme_accounts SET role = 'Template Evaluator' WHERE role = 'Expert Evaluator';
+
+ALTER TABLE sme_accounts VALIDATE CONSTRAINT sme_accounts_role_check;
+
+-- Participant cohort (added 2 October 2026, same rename round) — purely
+-- descriptive, never enforced by any gate: which recruitment pool an SME
+-- Owner account's TAM responses belong to, so a future reliability
+-- recomputation (peer-review recommendation #4: rebuild the TAM survey
+-- with real SME participants, not students) can filter the existing
+-- MIT 267 course-cohort responses OUT of a real-SME-only analysis instead
+-- of silently mixing the two populations. NULL means "not yet tagged" —
+-- an Admin sets this from Manage SME Accounts (services/adminAccounts.js
+-- setCohort()); nothing in the app currently reads this column to gate or
+-- filter anything, only to display and allow future, manual
+-- recomputation. Not applicable to Template Evaluator accounts (their
+-- responses already live in a fully separate table set, see above) or
+-- Admin accounts (no TAM responses of their own).
+ALTER TABLE sme_accounts ADD COLUMN IF NOT EXISTS cohort VARCHAR(30);
+
+DO $$
+BEGIN
+  ALTER TABLE sme_accounts
+      ADD CONSTRAINT sme_accounts_cohort_check
+      CHECK (cohort IS NULL OR cohort IN ('mit267_2026', 'field_study', 'internal_test', 'other'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+-- The one-time backfill that tags existing MIT 267 respondents with this
+-- cohort lives further down this file, right after evaluation_sessions is
+-- created (it reads that table, which doesn't exist yet at this point on
+-- a fresh database) — search for "One-time backfill" below.
+
+-- Evaluation flow (added 2 October 2026, per Brenda's direction): which of
+-- two ways a Template Evaluator account takes the TAM evaluation.
+-- 'walkthrough' is the original design — upload-your-own-dataset only,
+-- sequentially gated through the six WALKTHROUGH_TASKS modules one at a
+-- time (middleware/evaluationGate.js) before reaching the questionnaire.
+-- 'direct' is the new design: the account can upload its own dataset OR
+-- pick one of the 20 static templates (routes/templates.js) at any time,
+-- every one of the four analytics modules is reachable immediately with
+-- no sequential gate, and time-on-module is logged automatically from
+-- page visits (expert_evaluation_module_visits below, services/
+-- tamEvaluation.js's recordModuleVisit()) instead of explicit "start
+-- task"/"mark task complete" steps.
+--
+-- DEFAULT 'walkthrough' is what grandfathers the 15 Template Evaluator
+-- accounts that already exist as of this migration (and every SME Owner
+-- account, for whom this column is simply unused) — adding a column with
+-- a DEFAULT fills every pre-existing row with that default, so nothing
+-- further needs to be backfilled here, unlike the cohort column above.
+-- Those 15 accounts keep the exact six-task gated flow they always had,
+-- however far they've gotten, even if they log in again before
+-- finishing it — per Brenda's explicit choice, the new flow only ever
+-- applies to a Template Evaluator account created from here on (routes/
+-- auth.js's POST /expert-signup/register sets evaluation_flow = 'direct'
+-- explicitly at signup; nothing else ever writes this column, so it is
+-- not Admin-editable the way cohort is).
+ALTER TABLE sme_accounts ADD COLUMN IF NOT EXISTS evaluation_flow VARCHAR(20) NOT NULL DEFAULT 'walkthrough';
+
+DO $$
+BEGIN
+  ALTER TABLE sme_accounts
+      ADD CONSTRAINT sme_accounts_evaluation_flow_check
+      CHECK (evaluation_flow IN ('walkthrough', 'direct'));
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
@@ -546,6 +639,23 @@ CREATE INDEX IF NOT EXISTS idx_evaluation_responses_session
 CREATE INDEX IF NOT EXISTS idx_evaluation_responses_account
     ON evaluation_responses(account_id);
 
+-- One-time backfill for sme_accounts.cohort (added 2 October 2026, see the
+-- column's own comment up near sme_accounts_role_check): every SME Owner
+-- account that already has an evaluation_sessions row — i.e. it actually
+-- started or completed the TAM walkthrough — predates this column and is,
+-- per claude/tam-instrument-end-user-evaluation.md, exclusively the
+-- MIT 267 course-cohort roster, the same population the IMRAD
+-- manuscript's Section 4.4 Limitations already names as a single-cohort
+-- caveat. Placed here, after evaluation_sessions exists, rather than next
+-- to the column/constraint above. Only fills rows still NULL, so it never
+-- overwrites a cohort an Admin has since set by hand, and a second run is
+-- a no-op.
+UPDATE sme_accounts
+   SET cohort = 'mit267_2026'
+ WHERE role = 'SME Owner'
+   AND cohort IS NULL
+   AND id IN (SELECT account_id FROM evaluation_sessions);
+
 -- ---------------------------------------------------------------------
 -- Analytics result cache — extends the SAME two-phase caching pattern
 -- uploaded_datasets.business_intelligence already uses for the 'dynamic'
@@ -659,17 +769,35 @@ $$;
 CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
 
 -- ---------------------------------------------------------------------
--- Expert Evaluator TAM evaluation — same six-task walkthrough + 17-item
--- questionnaire as evaluation_sessions/_task_logs/_responses above (same
+-- Template Evaluator TAM evaluation (table names keep their original
+-- "expert_evaluation_*" prefix — renaming a table name is a much larger,
+-- riskier blast radius than renaming the role string everywhere it reads
+-- as user-facing text; see claude/template-evaluator-rename-and-cohort-
+-- tagging.md) — same six-task walkthrough + 17-item questionnaire as
+-- evaluation_sessions/_task_logs/_responses above (same
 -- services/tamEvaluation.js task list and item list, same
--- consent/validation rules), but a COMPLETELY SEPARATE set of tables so
--- an Expert Evaluator's responses can never be queried, counted, or
+-- consent/validation rules), but a COMPLETELY SEPARATE set of tables so a
+-- Template Evaluator's responses can never be queried, counted, or
 -- summarized together with an SME owner's, even by accident. See the
--- 'Expert Evaluator' note on sme_accounts_role_check above for why this
+-- 'Template Evaluator' note on sme_accounts_role_check above for why this
 -- round exists. Column shapes are identical to their SME-owner
 -- counterparts on purpose — services/tamEvaluation.js picks which table
 -- set to read/write per-call based on the account's role, not by
 -- duplicating its logic.
+--
+-- These same tables now serve BOTH Template Evaluator populations —
+-- the 15 original 'walkthrough'-flow accounts and every 'direct'-flow
+-- account signed up from 2 October 2026 onward (sme_accounts
+-- .evaluation_flow, see its comment above) — status/current_task simply
+-- go unused by a direct-flow session (it never progresses through six
+-- tasks, so current_task stays at its default and status moves straight
+-- from 'walkthrough' to 'questionnaire' the first time services/
+-- tamEvaluation.js's getOrCreateSession()/markDirectFlowReady() sees it —
+-- see that file). What must never happen is computing a cross-respondent
+-- summary (getCompletedExpertResponseSummary()) or a reliability figure
+-- from BOTH flows at once — every such query joins back to sme_accounts
+-- and filters on evaluation_flow, the same discipline that already keeps
+-- Template Evaluators separate from SME owners here.
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS expert_evaluation_sessions (
     id                        SERIAL PRIMARY KEY,
@@ -735,20 +863,62 @@ CREATE INDEX IF NOT EXISTS idx_expert_evaluation_responses_account
     ON expert_evaluation_responses(account_id);
 
 -- ---------------------------------------------------------------------
--- Per-Expert-Evaluator "default CSV for evaluation" — which of the 20
+-- Automatic time-on-module logging for 'direct'-flow Template Evaluators
+-- (sme_accounts.evaluation_flow, see its own comment near
+-- sme_accounts_evaluation_flow_check) — the replacement for
+-- expert_evaluation_task_logs' explicit "start task"/"mark task complete"
+-- steps, which a direct-flow account never performs (it isn't walked
+-- through the six tasks at all). One row per (session, module), where
+-- module_slug is one of the four analytics modules' own slug
+-- (descriptive-analytics/diagnostic-insights/predictive-analytics/
+-- prescriptive-recommendations — the same slugs routes/dashboard.js's
+-- STUB_SECTIONS and WALKTHROUGH_TASKS already use). services/
+-- tamEvaluation.js's recordModuleVisit() is the only writer: every GET to
+-- one of those four pages credits the elapsed time since this account's
+-- own last page open to whichever module it had last opened (capped at
+-- 30 minutes so an idle browser tab left open overnight doesn't inflate
+-- the total), then stamps this module as the new "last opened" — so
+-- total_seconds is a genuinely passive, page-visit-driven approximation
+-- of time-on-task, never a stopwatch the evaluator starts or stops
+-- themselves. Only ever written for an account whose evaluation_flow is
+-- 'direct' and whose consent_status is 'given' — recordModuleVisit()
+-- checks consent itself before writing anything, the same "no data
+-- collection before affirmative consent" discipline as the rest of this
+-- instrument (RA 10173).
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS expert_evaluation_module_visits (
+    id              SERIAL      PRIMARY KEY,
+    session_id      INTEGER     NOT NULL REFERENCES expert_evaluation_sessions(id) ON DELETE CASCADE,
+    account_id      INTEGER     NOT NULL REFERENCES sme_accounts(id) ON DELETE CASCADE,
+    module_slug     VARCHAR(60) NOT NULL,
+    first_opened_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_opened_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    open_count      INTEGER     NOT NULL DEFAULT 1,
+    total_seconds   INTEGER     NOT NULL DEFAULT 0,
+    UNIQUE (session_id, module_slug)
+);
+
+CREATE INDEX IF NOT EXISTS idx_expert_evaluation_module_visits_session
+    ON expert_evaluation_module_visits(session_id);
+
+CREATE INDEX IF NOT EXISTS idx_expert_evaluation_module_visits_account
+    ON expert_evaluation_module_visits(account_id);
+
+-- ---------------------------------------------------------------------
+-- Per-Template-Evaluator "default CSV for evaluation" — which of the 20
 -- static SME template files (data/sme-templates/*_template.csv, each now
--- pre-populated with 50 synthetic, analytics-ready rows) an Expert
+-- pre-populated with 50 synthetic, analytics-ready rows) a Template
 -- Evaluator has chosen as their reference dataset. Once set, routes/
 -- templates.js's GET /sme-templates/evaluation-data lets them browse and
 -- filter those exact rows in a table, so they can cross-check the four
 -- analytics reports' numbers against known source values during the TAM
 -- walkthrough.
 --
--- Expert-Evaluator-only concept — an SME owner has nothing analogous,
+-- Template-Evaluator-only concept — an SME owner has nothing analogous,
 -- since their reports are built from their own uploaded data, not a
 -- shared static template — so this is stored the same way
 -- business_sector already is for that role: a plain column on
--- sme_accounts, read/written only for Expert Evaluator rows. It holds a
+-- sme_accounts, read/written only for Template Evaluator rows. It holds a
 -- filename validated against the manifest (resolveTemplateFile() in
 -- routes/templates.js), not a foreign key, because the templates are
 -- static files checked into the repo rather than rows in any table.

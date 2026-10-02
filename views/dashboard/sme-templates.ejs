@@ -1,8 +1,8 @@
 <div class="page-title">📄 <span class="page-title-text">Download SME Templates</span></div>
 <% if (assignedCategory) { %>
-  <p class="page-subtitle">You selected <strong><%= assignedCategory %></strong> at signup — its row is highlighted below. Download its CSV template, fill it with a realistic dataset, then upload it as your Task 1.<% if (isExpertEvaluator) { %> Every template already ships with 50 synthetic rows built to drive real output across all four analytics modules — pick one below as your "default CSV for evaluation" to browse and cross-check its exact values against the reports CMA-Flow generates.<% } %></p>
+  <p class="page-subtitle">You selected <strong><%= assignedCategory %></strong> at signup — its row is highlighted below. Download its CSV template, fill it with a realistic dataset, then upload it<%= isDirectFlow ? '' : ' as your Task 1' %>.<% if (isExpertEvaluator) { %> Every template already ships with 50 synthetic rows built to drive real output across all four analytics modules — pick one below as your "default CSV for evaluation" to browse and cross-check its exact values against the reports CMA-Flow generates.<% } %></p>
 <% } else { %>
-  <p class="page-subtitle">Pick the business category closest to the dataset you're preparing, and download its CSV template — the exact column set CMA-Flow expects for that category. Fill it with a realistic dataset of your own choosing, then upload it as your Task 1.</p>
+  <p class="page-subtitle">Pick the business category closest to the dataset you're preparing, and download its CSV template — the exact column set CMA-Flow expects for that category. Fill it with a realistic dataset of your own choosing, then upload it<%= isDirectFlow ? '' : ' as your Task 1' %>.</p>
 <% } %>
 
 <div class="form-card wide" style="margin-bottom: 22px;">

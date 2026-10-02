@@ -52,6 +52,7 @@ const {
 } = require('../services/fullDescriptiveAnalytics');
 const { buildErdDefinition } = require('../services/erdDiagram');
 const { ensureDefaultDataset, setDefaultDataset } = require('../services/accountDatasets');
+const { recordModuleVisit } = require('../services/tamEvaluation');
 const { getOrCompute: getOrComputeAnalyticsCache, getOrComputeInProcess: getOrComputeAnalyticsCacheInProcess } = require('../services/analyticsCache');
 const { ROLE_ONTOLOGY } = require('../services/semanticFieldOntology'); // Round 22 — role dropdown options for GET/POST /dataset/:id/review-fields
 // Only ACTUAL_DATE_NAME_RE is needed here (to pick the "delivered/actual"
@@ -311,6 +312,31 @@ async function attachAdminViewingBanner(req, res, next) {
   next();
 }
 
+// Middleware factory wired into each of the four analytics GET routes
+// below, right alongside attachAdminViewingBanner — automatic time-on-
+// module logging for a 'direct'-flow Template Evaluator (see
+// claude/direct-flow-template-evaluator.md and services/tamEvaluation
+// .js's recordModuleVisit()). A no-op for every other account (SME
+// Owner, Admin, or a 'walkthrough'-flow Template Evaluator, who logs time
+// the old way via POST /evaluation/task/:n/complete instead). Never
+// blocks or slows the page over a logging hiccup — recordModuleVisit()'s
+// own DB errors are caught here and merely logged, since a respondent's
+// analytics page must never fail to load just because a background time
+// log couldn't be written.
+function trackDirectFlowModuleVisit(moduleSlug) {
+  return async (req, res, next) => {
+    const user = req.session && req.session.user;
+    if (user && user.role === 'Template Evaluator' && user.evaluation_flow === 'direct') {
+      try {
+        await recordModuleVisit(req.session.userId, moduleSlug);
+      } catch (e) {
+        console.error('[trackDirectFlowModuleVisit] failed:', e.message);
+      }
+    }
+    next();
+  };
+}
+
 // ------------------------------------------------------------------
 // GET /  — SME Owner Portal landing page (browser-tab title matches the
 // page's own "SME Owner Portal" heading — see views/dashboard/index.ejs).
@@ -344,12 +370,26 @@ router.get('/', async (req, res, next) => {
       [accountId]
     );
 
+    // Direct-flow Template Evaluator (claude/direct-flow-template-
+    // evaluator.md): this same home page is also where it lands — the
+    // round's own "landing page shows already the four analytic options"
+    // requirement — so it gets two extra things an SME Owner's home page
+    // doesn't need: an explicit upload-or-pick-a-template choice when it
+    // has no dataset yet, and a plain set of links straight into the
+    // four analytics modules (reusing STUB_SECTIONS, already in
+    // res.locals.navSections) rather than relying on the sidebar alone.
+    const user = req.session.user;
+    const isExpertEvaluator = !!(user && user.role === 'Template Evaluator');
+    const isDirectFlowEvaluator = isExpertEvaluator && user.evaluation_flow === 'direct';
+
     res.render('dashboard/index', {
-      title: 'SME Owner Portal',
+      title: isExpertEvaluator ? 'Template Evaluator Portal' : 'SME Owner Portal',
       active: 'monetization-intelligence',
       datasets,
       defaultDataset,
       configs,
+      isExpertEvaluator,
+      isDirectFlowEvaluator,
     });
   } catch (err) {
     next(err);
@@ -1203,7 +1243,7 @@ function buildBusinessMetricsCards(bi, currency, datasetRowId = null) {
   };
 }
 
-router.get('/descriptive-analytics', attachAdminViewingBanner, async (req, res, next) => {
+router.get('/descriptive-analytics', trackDirectFlowModuleVisit('descriptive-analytics'), attachAdminViewingBanner, async (req, res, next) => {
   const accountId = resolveAccountId(req);
   try {
     const { rows: datasets } = await pool.query(
@@ -2027,7 +2067,7 @@ const DIAGNOSTIC_VIEWS = [
   { slug: 'dynamic-diagnostics', label: 'Dynamic diagnostics', icon: '🧭' },
 ];
 
-router.get('/diagnostic-insights', attachAdminViewingBanner, async (req, res, next) => {
+router.get('/diagnostic-insights', trackDirectFlowModuleVisit('diagnostic-insights'), attachAdminViewingBanner, async (req, res, next) => {
   const accountId = resolveAccountId(req);
   try {
     const { rows: datasets } = await pool.query(
@@ -2251,7 +2291,7 @@ const PREDICTIVE_VIEWS = [
   { slug: 'what-if', label: 'What-if scenario', icon: '🎛️' },
 ];
 
-router.get('/predictive-analytics', attachAdminViewingBanner, async (req, res, next) => {
+router.get('/predictive-analytics', trackDirectFlowModuleVisit('predictive-analytics'), attachAdminViewingBanner, async (req, res, next) => {
   const accountId = resolveAccountId(req);
   try {
     const { rows: datasets } = await pool.query(
@@ -2798,7 +2838,7 @@ const PRESCRIPTIVE_VIEWS = [
   { slug: 'recommendation', label: 'Recommendation', icon: '🧭' },
 ];
 
-router.get('/prescriptive-recommendations', attachAdminViewingBanner, async (req, res, next) => {
+router.get('/prescriptive-recommendations', trackDirectFlowModuleVisit('prescriptive-recommendations'), attachAdminViewingBanner, async (req, res, next) => {
   const accountId = resolveAccountId(req);
   try {
     const { rows: datasets } = await pool.query(

@@ -1,5 +1,5 @@
-<div class="page-title">🧪 <span class="page-title-text">Manage Expert Evaluators</span></div>
-<p class="page-subtitle">Every Expert Evaluator account registered through the access-code signup. Use Change password to reset one's password on their behalf — no need to know the old one. Kept separate from SME owner accounts on purpose — see <a href="/admin/accounts">Manage SME Accounts</a> for those.</p>
+<div class="page-title">🧪 <span class="page-title-text">Manage Template Evaluators</span></div>
+<p class="page-subtitle">Every Template Evaluator account registered through the access-code signup. Use Change password to reset one's password on their behalf — no need to know the old one. Kept separate from SME owner accounts on purpose — see <a href="/admin/accounts">Manage SME Accounts</a> for those.</p>
 
 <% if (passwordReset) { %>
   <div class="alert-success">Password updated for <strong><%= passwordReset %></strong>.</div>
@@ -24,13 +24,14 @@
           <th>Affiliation</th>
           <th>Business category evaluated</th>
           <th>Email</th>
+          <th>Flow</th>
           <th>Joined</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         <% if (accounts.length === 0) { %>
-          <tr><td colspan="7" style="color: var(--text-muted);">No Expert Evaluator accounts match "<%= q %>".</td></tr>
+          <tr><td colspan="8" style="color: var(--text-muted);">No Template Evaluator accounts match "<%= q %>".</td></tr>
         <% } %>
         <% accounts.forEach(function(a) { %>
           <tr>
@@ -39,6 +40,7 @@
             <td><%= a.business_name %></td>
             <td><%= a.business_sector || '—' %></td>
             <td><%= a.email %></td>
+            <td><span class="badge <%= a.evaluation_flow === 'direct' ? 'badge-active' : 'badge-inactive' %>"><%= a.evaluation_flow === 'direct' ? 'Direct' : 'Walkthrough' %></span></td>
             <td><%= new Date(a.created_at).toLocaleDateString() %></td>
             <td style="text-align: right; white-space: nowrap;">
               <a class="btn btn-ghost btn-sm" href="/admin/accounts/<%= a.id %>/password">Change password</a>

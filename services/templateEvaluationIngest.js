@@ -1,4 +1,4 @@
-// Ingests an Expert Evaluator's chosen SME template CSV (data/sme-
+// Ingests a Template Evaluator's chosen SME template CSV (data/sme-
 // templates/*_template.csv, each pre-populated with 50 synthetic rows —
 // see claude/expert-evaluator-template-synthetic-data-and-browser.md) as
 // that account's own working dataset, so picking a template doesn't just
@@ -21,7 +21,7 @@
 // of its COPY-streaming sibling, and writes/commits synchronously within
 // one request.
 //
-// Every Expert Evaluator gets exactly ONE such dataset, always under the
+// Every Template Evaluator gets exactly ONE such dataset, always under the
 // fixed dataset_id below — picking a different template replaces it
 // (delete-then-recreate under the same slug) rather than accumulating a
 // new uploaded_datasets row per switch. ON DELETE CASCADE from

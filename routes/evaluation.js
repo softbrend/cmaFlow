@@ -1,10 +1,10 @@
 // TAM End-User Evaluation — routes for the six-task walkthrough and the
 // 17-item questionnaire it unlocks. Shared by sme_owner accounts AND
-// Expert Evaluator accounts (added 30 September 2026) — every call into
+// Template Evaluator accounts (added 30 September 2026) — every call into
 // services/tamEvaluation.js below passes the signed-in account's own
 // role, which is what picks evaluation_sessions/_task_logs/_responses
-// (SME owner) vs expert_evaluation_sessions/_task_logs/_responses (Expert
-// Evaluator); see that service's header comment and db/schema.sql's note
+// (SME owner) vs expert_evaluation_sessions/_task_logs/_responses
+// (Template Evaluator); see that service's header comment and db/schema.sql's note
 // on the expert_* tables for why. Everything else here — routing,
 // request handling, the views rendered — is identical for both
 // populations, which is the point: the instrument itself does not
@@ -14,7 +14,7 @@ const { requireAuth } = require('../middleware/auth');
 const {
   WALKTHROUGH_TASKS, TAM_ITEMS, groupItemsByDomain, EXPERT_ROLE,
   getEvaluationState, recordConsent, startTaskIfNeeded, completeTask,
-  saveResponses, validateQuestionnaire, markCompleted,
+  saveResponses, validateQuestionnaire, markCompleted, getModuleVisits,
 } = require('../services/tamEvaluation');
 
 const router = express.Router();
@@ -36,7 +36,12 @@ router.get('/evaluation', async (req, res, next) => {
     const accountId = req.session.userId;
     const role = req.session.user && req.session.user.role;
     const isExpert = role === EXPERT_ROLE;
-    const { session, taskLogs, responses } = await getEvaluationState(accountId, role);
+    // Only ever true for a Template Evaluator — an SME Owner's
+    // evaluation_flow column exists but is always 'walkthrough' (nothing
+    // ever sets it otherwise), so this check is effectively isExpert-only
+    // in practice, written out in full for clarity.
+    const isDirectFlow = isExpert && req.session.user.evaluation_flow === 'direct';
+    const { session, taskLogs, responses } = await getEvaluationState(accountId, role, req.session.user && req.session.user.evaluation_flow);
 
     // Republic Act No. 10173 (Data Privacy Act of 2012): no walkthrough or
     // questionnaire screen is ever served until the respondent has
@@ -49,6 +54,7 @@ router.get('/evaluation', async (req, res, next) => {
         active: 'evaluation',
         session,
         isExpert,
+        isDirectFlow,
       });
     }
 
@@ -58,10 +64,14 @@ router.get('/evaluation', async (req, res, next) => {
         active: 'evaluation',
         session,
         isExpert,
+        isDirectFlow,
       });
     }
 
     if (session.status === 'walkthrough') {
+      // Never reached for a direct-flow session — getOrCreateSession()
+      // seeds it straight at 'questionnaire' — but left intact for the
+      // 'walkthrough'-flow population this route still fully serves.
       await startTaskIfNeeded(session.id, accountId, session.current_task, role);
       const refreshed = await getEvaluationState(accountId, role);
       const currentTask = WALKTHROUGH_TASKS.find((t) => t.number === refreshed.session.current_task);
@@ -73,6 +83,7 @@ router.get('/evaluation', async (req, res, next) => {
         taskLogs: refreshed.taskLogs,
         currentTask,
         isExpert,
+        isDirectFlow,
       });
     }
 
@@ -85,19 +96,23 @@ router.get('/evaluation', async (req, res, next) => {
         responses,
         errors: null,
         isExpert,
+        isDirectFlow,
       });
     }
 
     // completed
+    const moduleVisits = isDirectFlow ? await getModuleVisits(session.id) : null;
     return res.render('dashboard/evaluation-complete', {
       title: 'End-User Evaluation — Complete',
       active: 'evaluation',
       session,
       tasks: WALKTHROUGH_TASKS,
       taskLogs,
+      moduleVisits,
       domains: groupItemsByDomain(),
       responses,
       isExpert,
+      isDirectFlow,
     });
   } catch (err) {
     next(err);
@@ -171,7 +186,8 @@ router.post('/evaluation/questionnaire', async (req, res, next) => {
     const accountId = req.session.userId;
     const role = req.session.user && req.session.user.role;
     const isExpert = role === EXPERT_ROLE;
-    const { session } = await getEvaluationState(accountId, role);
+    const isDirectFlow = isExpert && req.session.user.evaluation_flow === 'direct';
+    const { session } = await getEvaluationState(accountId, role, req.session.user && req.session.user.evaluation_flow);
     if (session.consent_status !== 'given' || session.status !== 'questionnaire') {
       return res.redirect('/evaluation');
     }
@@ -195,6 +211,7 @@ router.post('/evaluation/questionnaire', async (req, res, next) => {
           responses,
           errors: validation,
           isExpert,
+          isDirectFlow,
         });
       }
       await markCompleted(session.id, role);

@@ -1,11 +1,45 @@
-<div class="page-title">🏪 <span class="page-title-text">SME Owner Portal</span></div>
-<p class="page-subtitle">AD-CMA decision support for the SME account in the assigned dataset: descriptive, diagnostic, predictive, and prescriptive monetization intelligence in one place.</p>
+<div class="page-title">🏪 <span class="page-title-text"><%= isExpertEvaluator ? 'Template Evaluator Portal' : 'SME Owner Portal' %></span></div>
+<p class="page-subtitle">
+  <% if (isDirectFlowEvaluator) { %>
+    Descriptive, diagnostic, predictive, and prescriptive monetization intelligence for whichever dataset you upload or select below — no set order, no walkthrough steps.
+  <% } else { %>
+    AD-CMA decision support for the SME account in the assigned dataset: descriptive, diagnostic, predictive, and prescriptive monetization intelligence in one place.
+  <% } %>
+</p>
+
+<% if (isDirectFlowEvaluator && (!datasets || datasets.length === 0)) { %>
+  <div class="form-card wide" style="margin-bottom: 18px;">
+    <div class="form-title" style="font-size: 16px;">Choose a dataset to evaluate</div>
+    <p class="form-hint" style="margin: 0 0 12px;">Upload your own dataset, or pick one of the 20 ready-made SME templates — either one drives all four analytics modules below.</p>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <a class="btn btn-accent" href="/upload-dataset">Upload my own dataset →</a>
+      <a class="btn btn-outline" href="/sme-templates">Select a template dataset →</a>
+    </div>
+  </div>
+<% } %>
+
+<% if (isDirectFlowEvaluator) { %>
+  <div class="form-card wide" style="margin-bottom: 18px;">
+    <div class="form-title" style="font-size: 16px;">The four analytics modules</div>
+    <p class="form-hint" style="margin: 0 0 12px;">Open these in any order you like.</p>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <% (navSections || []).forEach(function(s) { %>
+        <a class="btn btn-outline" href="/<%= s.slug %>"><%= s.icon %>&nbsp; <%= s.label %></a>
+      <% }); %>
+    </div>
+  </div>
+  <p class="form-hint" style="margin: 0 0 18px;">
+    When you're ready, the <a href="/evaluation" style="color: var(--accent); text-decoration:underline;">Template Evaluator Evaluation</a> link in the sidebar has the 17-item questionnaire.
+  </p>
+<% } %>
 
 <% if (!datasets || datasets.length === 0) { %>
+  <% if (!isDirectFlowEvaluator) { %>
   <div class="warn-box">
     No dataset is currently assigned to this account.
     &nbsp;<a href="/upload-dataset" style="color: var(--accent); text-decoration:underline;">Upload a dataset →</a>
   </div>
+  <% } %>
 <% } else { %>
   <div class="info-box">
     <% if (defaultDataset) { %>

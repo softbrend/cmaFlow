@@ -18,12 +18,12 @@ const pool = require('../db/pool');
 const { requireAdmin } = require('../middleware/auth');
 const {
   listAccounts, listExpertAccounts, getAccountById, resetPassword, countAdmins,
-  createAdminAccount, promoteToAdmin, demoteToOwner,
+  createAdminAccount, promoteToAdmin, demoteToOwner, setCohort, COHORT_LABELS,
 } = require('../services/adminAccounts');
 const {
   WALKTHROUGH_TASKS, groupItemsByDomain, EXPERT_ROLE,
   getEvaluationStateReadOnly, listAllEvaluationStatuses, getCompletedResponseSummary,
-  listAllExpertEvaluationStatuses, getCompletedExpertResponseSummary,
+  listAllExpertEvaluationStatuses, getCompletedExpertResponseSummary, getModuleVisits,
 } = require('../services/tamEvaluation');
 const { listAllDatasets, getDatasetForAdmin, deleteDataset } = require('../services/adminDatasets');
 const {
@@ -45,15 +45,15 @@ router.get('/admin', async (req, res, next) => {
   try {
     const [{ rows: countRows }, statuses, expertStatuses, allDatasets] = await Promise.all([
       // Explicit role = equality for each count, not "!= 'Admin'" — now
-      // that a third role (Expert Evaluator) exists, "!= 'Admin'" would
-      // silently fold Expert Evaluator accounts into sme_count. Each
+      // that a third role (Template Evaluator) exists, "!= 'Admin'" would
+      // silently fold Template Evaluator accounts into sme_count. Each
       // count below matches exactly one role, so adding a future role
       // again can only ever under-count here (an account matching none of
       // the three), never mix two populations into one tile.
       pool.query(
         `SELECT COUNT(*) FILTER (WHERE role = 'SME Owner')::int AS sme_count,
                 COUNT(*) FILTER (WHERE role = 'Admin')::int AS admin_count,
-                COUNT(*) FILTER (WHERE role = 'Expert Evaluator')::int AS expert_count
+                COUNT(*) FILTER (WHERE role = 'Template Evaluator')::int AS expert_count
            FROM sme_accounts`
       ),
       listAllEvaluationStatuses(),
@@ -100,11 +100,13 @@ router.get('/admin/accounts', async (req, res, next) => {
       active: 'admin',
       adminSection: 'accounts',
       accounts,
+      cohortLabels: COHORT_LABELS,
       q: req.query.q || '',
       passwordReset: req.query.passwordReset || null,
       created: req.query.created || null,
       promoted: req.query.promoted || null,
       demoted: req.query.demoted || null,
+      cohortSet: req.query.cohortSet || null,
       currentAdminId: req.session.userId,
     });
   } catch (err) {
@@ -114,18 +116,18 @@ router.get('/admin/accounts', async (req, res, next) => {
 
 // ------------------------------------------------------------------
 // GET /admin/expert-accounts — same search-list-and-"Change password"
-// page as /admin/accounts above, but for role = 'Expert Evaluator'
+// page as /admin/accounts above, but for role = 'Template Evaluator'
 // accounts only (added 30 September 2026). A separate page rather than a
 // filter on the SME-owner one, per the "store/browse separately"
 // requirement for this round — nothing here ever appears mixed with an
-// SME owner's row. No make-admin/remove-admin actions: an Expert
+// SME owner's row. No make-admin/remove-admin actions: a Template
 // Evaluator account is never promoted to Admin from here.
 // ------------------------------------------------------------------
 router.get('/admin/expert-accounts', async (req, res, next) => {
   try {
     const accounts = await listExpertAccounts(req.query.q);
     res.render('dashboard/admin-expert-accounts', {
-      title: 'Manage Expert Evaluators',
+      title: 'Manage Template Evaluators',
       active: 'admin',
       adminSection: 'expert-accounts',
       accounts,
@@ -352,6 +354,35 @@ router.post('/admin/accounts/:id/password', resetPasswordValidators, async (req,
 });
 
 // ------------------------------------------------------------------
+// POST /admin/accounts/:id/cohort — tags (or clears) which recruitment
+// pool an SME Owner account's TAM responses belong to. See
+// sme_accounts.cohort in db/schema.sql for the full reasoning: this
+// answers peer-review recommendation #4's contamination concern by
+// letting an Admin distinguish the existing MIT 267 course-cohort
+// respondents from any future real-SME field-study respondent, so a
+// later reliability recomputation can filter one population out rather
+// than silently mixing both. Deliberately NOT exposed on the public
+// /signup form — a real SME owner filling out a business account signup
+// has no reason to understand research-cohort terminology; an Admin who
+// actually knows how each account was recruited sets this instead, same
+// authorization model as resetPassword()/promoteToAdmin() above. Allowed
+// on any account's id (not just SME Owner), consistent with every other
+// action on this page — setCohort() itself is the single source of truth
+// for which values are valid, so a bad value here is rejected with a
+// normal flash-style error rather than a raw Postgres constraint error.
+// ------------------------------------------------------------------
+router.post('/admin/accounts/:id/cohort', async (req, res, next) => {
+  try {
+    const account = await getAccountById(req.params.id);
+    if (!account) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
+    await setCohort(account.id, req.body.cohort);
+    return res.redirect(`/admin/accounts?cohortSet=${encodeURIComponent(account.username)}`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
 // GET /admin/evaluations — every SME owner account's evaluation
 // progress, plus the cross-respondent 17-item descriptive summary
 // (completed evaluations only — see getCompletedResponseSummary()).
@@ -404,7 +435,7 @@ router.get('/admin/evaluations/:accountId', async (req, res, next) => {
 
 // ------------------------------------------------------------------
 // GET /admin/expert-evaluations — same shape as /admin/evaluations above,
-// for Expert Evaluator accounts against the separate
+// for Template Evaluator accounts against the separate
 // expert_evaluation_* tables (added 30 September 2026). Deliberately a
 // distinct page, not a filter/tab on the SME-owner one: the "store and
 // report separately" requirement for this round means the two
@@ -418,7 +449,7 @@ router.get('/admin/expert-evaluations', async (req, res, next) => {
       getCompletedExpertResponseSummary(),
     ]);
     res.render('dashboard/admin-expert-evaluations', {
-      title: 'View Expert Evaluation Report',
+      title: 'View Template Evaluation Report',
       active: 'admin',
       adminSection: 'expert-evaluations',
       statuses,
@@ -430,7 +461,7 @@ router.get('/admin/expert-evaluations', async (req, res, next) => {
 });
 
 // ------------------------------------------------------------------
-// GET /admin/expert-evaluations/:accountId — one Expert Evaluator
+// GET /admin/expert-evaluations/:accountId — one Template Evaluator
 // account's full evaluation detail, read from expert_evaluation_* via
 // getEvaluationStateReadOnly(id, EXPERT_ROLE).
 // ------------------------------------------------------------------
@@ -440,14 +471,18 @@ router.get('/admin/expert-evaluations/:accountId', async (req, res, next) => {
     if (!account) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
 
     const { session, taskLogs, responses } = await getEvaluationStateReadOnly(account.id, EXPERT_ROLE);
+    const isDirectFlow = account.evaluation_flow === 'direct';
+    const moduleVisits = (isDirectFlow && session) ? await getModuleVisits(session.id) : null;
     res.render('dashboard/admin-expert-evaluation-detail', {
-      title: `Expert Evaluation — ${account.username}`,
+      title: `Template Evaluation — ${account.username}`,
       active: 'admin',
       adminSection: 'expert-evaluations',
       account,
       session,
       tasks: WALKTHROUGH_TASKS,
       taskLogs,
+      moduleVisits,
+      isDirectFlow,
       domains: groupItemsByDomain(),
       responses,
     });
@@ -467,7 +502,7 @@ router.get('/admin/expert-evaluations/:accountId', async (req, res, next) => {
 router.get('/admin/datasets', async (req, res, next) => {
   try {
     const q = req.query.q || '';
-    const datasets = await listAllDatasets(q); // roleMode defaults to 'sme' — excludes Expert Evaluator uploads
+    const datasets = await listAllDatasets(q); // roleMode defaults to 'sme' — excludes Template Evaluator uploads
     res.render('dashboard/admin-datasets', {
       title: 'Manage datasets',
       active: 'admin',
@@ -483,9 +518,9 @@ router.get('/admin/datasets', async (req, res, next) => {
 
 // ------------------------------------------------------------------
 // GET /admin/expert-datasets — same page as /admin/datasets above, for
-// Expert Evaluator uploads only (listAllDatasets(q, 'expert')). The
+// Template Evaluator uploads only (listAllDatasets(q, 'expert')). The
 // underlying uploaded_datasets table is shared (see db/schema.sql's note
-// on the Expert Evaluator role), but this keeps the two populations'
+// on the Template Evaluator role), but this keeps the two populations'
 // uploads from ever being browsed in the same list. The existing
 // /admin/datasets/:id/view, /erd, and /delete routes below work unchanged
 // for a dataset reached from here — they operate on the dataset's own
@@ -496,14 +531,14 @@ router.get('/admin/expert-datasets', async (req, res, next) => {
     const q = req.query.q || '';
     const datasets = await listAllDatasets(q, 'expert');
     res.render('dashboard/admin-datasets', {
-      title: 'Expert Evaluator Datasets',
+      title: 'Template Evaluator Datasets',
       active: 'admin',
       adminSection: 'expert-datasets',
       datasets,
       q,
       deleted: req.query.deleted || null,
       basePath: '/admin/expert-datasets',
-      ownerLabel: 'Expert Evaluator',
+      ownerLabel: 'Template Evaluator',
     });
   } catch (err) {
     next(err);
@@ -581,7 +616,7 @@ router.get('/admin/datasets/:id/erd', async (req, res, next) => {
       erd,
       humanizeFileType,
       backHref: isExpert ? '/admin/expert-datasets' : '/admin/datasets',
-      backLabel: isExpert ? '← Expert Evaluator Datasets' : '← Manage Datasets',
+      backLabel: isExpert ? '← Template Evaluator Datasets' : '← Manage Datasets',
     });
   } catch (err) {
     next(err);
@@ -639,7 +674,7 @@ router.post('/admin/datasets/:id/delete', async (req, res, next) => {
 router.get('/admin/gating-comparison', async (req, res, next) => {
   try {
     // 'all' — unlike every other admin dataset list, this internal
-    // diagnostic deliberately mixes SME owner and Expert Evaluator
+    // diagnostic deliberately mixes SME owner and Template Evaluator
     // datasets (see services/adminDatasets.js's own comment on this mode).
     const datasets = await listAllDatasets('', 'all');
     res.render('dashboard/admin-gating-comparison-start', {

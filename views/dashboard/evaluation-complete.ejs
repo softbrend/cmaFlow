@@ -1,10 +1,36 @@
-<div class="page-title">📋 <span class="page-title-text"><%= isExpert ? 'Expert Evaluator Evaluation' : 'End-User Evaluation' %> — Complete</span></div>
+<div class="page-title">📋 <span class="page-title-text"><%= isExpert ? 'Template Evaluator Evaluation' : 'End-User Evaluation' %> — Complete</span></div>
 <p class="page-subtitle">Thanks — your walkthrough and questionnaire responses are saved. This page is a read-only record of what you submitted.</p>
 
 <div class="ok-box">
   Completed <%= session.completed_at ? new Date(session.completed_at).toLocaleString() : '' %>.
 </div>
 
+<% if (isDirectFlow) { %>
+<div class="form-card wide" style="margin-bottom: 22px;">
+  <div class="form-title" style="font-size: 18px;">Modules used</div>
+  <p class="form-hint" style="margin: 0 0 10px;">Time is logged automatically from your page visits — there were no walkthrough tasks to complete.</p>
+  <table class="table-simple">
+    <thead><tr><th>Module</th><th>Opened</th><th>Time spent</th></tr></thead>
+    <tbody>
+      <% var moduleLabels = {
+           'descriptive-analytics': 'Descriptive analytics', 'diagnostic-insights': 'Diagnostic insights',
+           'predictive-analytics': 'Predictive analytics', 'prescriptive-recommendations': 'Prescriptive recommendations',
+         };
+         var moduleSlugs = ['descriptive-analytics', 'diagnostic-insights', 'predictive-analytics', 'prescriptive-recommendations'];
+         moduleSlugs.forEach(function(slug, i) {
+           var v = moduleVisits ? moduleVisits[i] : null;
+           var secs = v ? (v.total_seconds || 0) : 0;
+           var mins = Math.floor(secs / 60); %>
+        <tr>
+          <td><%= moduleLabels[slug] %></td>
+          <td><%= v ? v.open_count + (v.open_count === 1 ? ' time' : ' times') : 'Not opened' %></td>
+          <td><%= v ? mins + 'm ' + (secs % 60) + 's' : '—' %></td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</div>
+<% } else { %>
 <div class="form-card wide" style="margin-bottom: 22px;">
   <div class="form-title" style="font-size: 18px;">Walkthrough</div>
   <table class="table-simple">
@@ -25,6 +51,7 @@
     </tbody>
   </table>
 </div>
+<% } %>
 
 <% domains.forEach(function(d) { %>
   <div class="form-card wide" style="margin-bottom: 22px;">

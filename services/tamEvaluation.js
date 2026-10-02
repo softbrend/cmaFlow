@@ -4,7 +4,7 @@
 // six modules, for BOTH of the two populations that take it:
 //   - an sme_owner account (persisted in
 //     evaluation_sessions / evaluation_task_logs / evaluation_responses)
-//   - an Expert Evaluator account, added 30 September 2026 for the
+//   - a Template Evaluator account, added 30 September 2026 for the
 //     field-generalization round (persisted in the parallel
 //     expert_evaluation_sessions / _task_logs / _responses tables)
 // Every function below takes the account's role as its last argument and
@@ -19,12 +19,12 @@ const pool = require('../db/pool');
 const { quantile, mean } = require('./statsUtils');
 
 const SME_ROLE = 'SME Owner';
-const EXPERT_ROLE = 'Expert Evaluator';
+const EXPERT_ROLE = 'Template Evaluator';
 
 // The only two table sets this ever resolves to — role is always either
-// an account's own sme_accounts.role (SME Owner/Admin/Expert Evaluator)
+// an account's own sme_accounts.role (SME Owner/Admin/Template Evaluator)
 // or explicitly passed by a caller that already knows which population
-// it's asking about; anything other than the literal 'Expert Evaluator'
+// it's asking about; anything other than the literal 'Template Evaluator'
 // string (including undefined, for every pre-existing call site written
 // before this round) resolves to the original SME-owner tables, so this
 // is purely additive.
@@ -50,7 +50,7 @@ function tablesFor(role) {
 // administration order. `slug`/`href` point at that module's real route
 // so "open the module" and "log completion" are two different actions:
 // the respondent actually does the task in the live app, then comes back
-// here to say so. Shared by both populations — an Expert Evaluator works
+// here to say so. Shared by both populations — a Template Evaluator works
 // through the exact same six modules, on whatever dataset they uploaded
 // (see views/dashboard/sme-templates for how they pick/download a
 // category template first), as an SME owner does.
@@ -103,7 +103,7 @@ const WALKTHROUGH_TASKS = [
 // ------------------------------------------------------------------
 // The 17-item TAM questionnaire (Tables 2-4): Perceived Usefulness (7),
 // Perceived Ease of Use (7), Behavioral Intention to Use (3). Shared
-// wording for both populations — an Expert Evaluator answers the same
+// wording for both populations — a Template Evaluator answers the same
 // instrument an SME owner does, so the two are directly comparable.
 // ------------------------------------------------------------------
 const DOMAIN_LABELS = {
@@ -146,16 +146,32 @@ function groupItemsByDomain() {
 // Session lifecycle
 // ------------------------------------------------------------------
 
-// Finds this account's evaluation session, creating one (at task 1) the
-// first time it's ever needed. UNIQUE(account_id) plus ON CONFLICT DO
-// NOTHING makes this safe to call on every GET /evaluation without a
-// separate existence check or a race on double-submission.
-async function getOrCreateSession(accountId, role) {
+// Finds this account's evaluation session, creating one the first time
+// it's ever needed. UNIQUE(account_id) plus ON CONFLICT DO NOTHING makes
+// this safe to call on every GET /evaluation without a separate
+// existence check or a race on double-submission.
+//
+// evaluationFlow (sme_accounts.evaluation_flow — only ever meaningful for
+// role === EXPERT_ROLE; every other caller either omits it or passes
+// 'walkthrough') decides what a BRAND NEW session starts at: a
+// 'walkthrough'-flow account (every SME Owner, and the 15 Template
+// Evaluator accounts grandfathered into this flow) starts at task 1 same
+// as always; a 'direct'-flow account skips the six-task walkthrough
+// entirely — there's nothing to gate it on — and starts straight at
+// status='questionnaire', current_task sitting unused at its column
+// default. Only the INSERT's own default values are affected; a session
+// that already exists is never rewritten by a later call with a
+// different evaluationFlow, so this is safe to call from anywhere that
+// doesn't happen to know the account's flow (callers that do know it
+// should still pass it, so the FIRST visit — whichever route that
+// happens to be — starts the session correctly).
+async function getOrCreateSession(accountId, role, evaluationFlow) {
   const t = tablesFor(role);
+  const startsDirect = role === EXPERT_ROLE && evaluationFlow === 'direct';
   await pool.query(
-    `INSERT INTO ${t.sessions} (account_id) VALUES ($1)
+    `INSERT INTO ${t.sessions} (account_id, status) VALUES ($1, $2)
      ON CONFLICT (account_id) DO NOTHING`,
-    [accountId]
+    [accountId, startsDirect ? 'questionnaire' : 'walkthrough']
   );
   const { rows } = await pool.query(
     `SELECT * FROM ${t.sessions} WHERE account_id = $1`,
@@ -186,8 +202,8 @@ async function getResponses(sessionId, role) {
 // Full state for rendering GET /evaluation: the session, every task log
 // so far (for the completed-so-far checklist), and every saved response
 // (for pre-filling the questionnaire on resume).
-async function getEvaluationState(accountId, role) {
-  const session = await getOrCreateSession(accountId, role);
+async function getEvaluationState(accountId, role, evaluationFlow) {
+  const session = await getOrCreateSession(accountId, role, evaluationFlow);
   const [taskLogs, responses] = await Promise.all([
     getTaskLogs(session.id, role),
     getResponses(session.id, role),
@@ -360,7 +376,7 @@ async function getEvaluationStateReadOnly(accountId, role) {
 // session if it has one, for the admin "View Evaluation Report" list: who's
 // done, who's mid-walkthrough/questionnaire, who hasn't started at all.
 // Filters to role = 'SME Owner' explicitly (not just "!= 'Admin'") so that
-// adding the Expert Evaluator role never silently pulls those accounts
+// adding the Template Evaluator role never silently pulls those accounts
 // into this list — they have their own listAllExpertEvaluationStatuses()
 // below, reading an entirely different pair of tables.
 async function listAllEvaluationStatuses() {
@@ -381,7 +397,7 @@ async function listAllEvaluationStatuses() {
   return rows;
 }
 
-// Same shape as listAllEvaluationStatuses(), for Expert Evaluator accounts
+// Same shape as listAllEvaluationStatuses(), for Template Evaluator accounts
 // against the separate expert_evaluation_* tables. Deliberately a
 // near-duplicate of the query above rather than a shared parameterized
 // helper: these two lists back two different admin pages
@@ -390,17 +406,19 @@ async function listAllEvaluationStatuses() {
 // obvious at a glance that neither one can leak into the other.
 async function listAllExpertEvaluationStatuses() {
   const { rows } = await pool.query(
-    `SELECT a.id AS account_id, a.username, a.owner_name, a.business_name,
+    `SELECT a.id AS account_id, a.username, a.owner_name, a.business_name, a.evaluation_flow,
             s.status, s.current_task, s.started_at,
             s.consent_status, s.consent_decided_at,
             s.walkthrough_completed_at, s.completed_at,
             (SELECT COUNT(*)::int FROM expert_evaluation_task_logs tl
               WHERE tl.session_id = s.id AND tl.completed_at IS NOT NULL) AS tasks_done,
+            (SELECT COUNT(*)::int FROM expert_evaluation_module_visits mv
+              WHERE mv.session_id = s.id) AS modules_opened,
             (SELECT COUNT(*)::int FROM expert_evaluation_responses r
               WHERE r.session_id = s.id AND r.rating IS NOT NULL) AS items_answered
        FROM sme_accounts a
        LEFT JOIN expert_evaluation_sessions s ON s.account_id = a.id
-      WHERE a.role = 'Expert Evaluator'
+      WHERE a.role = 'Template Evaluator'
       ORDER BY a.created_at DESC`
   );
   return rows;
@@ -416,15 +434,33 @@ async function listAllExpertEvaluationStatuses() {
 // instrument's own scoring plan assumes. %agree = the share of ratings
 // that are 4 or 5 (Agree/Strongly Agree on the 5-point scale), the
 // standard TAM reporting convention.
-async function summarizeCompletedResponses(responsesTable, sessionsTable) {
+// evaluationFlowFilter ('walkthrough' | 'direct' | undefined) — when set,
+// joins back to sme_accounts and restricts to accounts on that flow.
+// getCompletedExpertResponseSummary() below always sets it (never
+// undefined) for exactly this reason: a Template Evaluator's
+// evaluation_flow decides which population a completed response belongs
+// to, and the two must never be averaged together (see the
+// expert_evaluation_sessions header comment in db/schema.sql). sme_owner
+// callers never pass it — every SME Owner account is 'walkthrough', so
+// filtering would be a no-op there, not an omission.
+async function summarizeCompletedResponses(responsesTable, sessionsTable, evaluationFlowFilter) {
+  const params = [];
+  let flowJoin = '';
+  if (evaluationFlowFilter) {
+    flowJoin = 'JOIN sme_accounts acc ON acc.id = s.account_id AND acc.evaluation_flow = $1';
+    params.push(evaluationFlowFilter);
+  }
   const { rows } = await pool.query(
     `SELECT r.item_code, r.domain, r.rating
        FROM ${responsesTable} r
        JOIN ${sessionsTable} s ON s.id = r.session_id
-      WHERE s.status = 'completed' AND r.rating IS NOT NULL`
+       ${flowJoin}
+      WHERE s.status = 'completed' AND r.rating IS NOT NULL`,
+    params
   );
   const { rows: completedCountRows } = await pool.query(
-    `SELECT COUNT(*)::int AS n FROM ${sessionsTable} WHERE status = 'completed'`
+    `SELECT COUNT(*)::int AS n FROM ${sessionsTable} s ${flowJoin} WHERE s.status = 'completed'`,
+    params
   );
 
   function summarize(values) {
@@ -461,8 +497,96 @@ async function getCompletedResponseSummary() {
   return summarizeCompletedResponses('evaluation_responses', 'evaluation_sessions');
 }
 
+// Returns { walkthrough, direct } — two separate summaries, never one
+// combined figure, because sme_accounts.evaluation_flow splits Template
+// Evaluator accounts into the original six-task-gated population (the
+// 15 grandfathered accounts) and the direct-flow population added
+// 2 October 2026. GET /admin/expert-evaluations renders both sections
+// side by side rather than merging them into a single cross-respondent
+// table.
 async function getCompletedExpertResponseSummary() {
-  return summarizeCompletedResponses('expert_evaluation_responses', 'expert_evaluation_sessions');
+  const [walkthrough, direct] = await Promise.all([
+    summarizeCompletedResponses('expert_evaluation_responses', 'expert_evaluation_sessions', 'walkthrough'),
+    summarizeCompletedResponses('expert_evaluation_responses', 'expert_evaluation_sessions', 'direct'),
+  ]);
+  return { walkthrough, direct };
+}
+
+// ------------------------------------------------------------------
+// Direct-flow time-on-module logging (expert_evaluation_module_visits —
+// see its header comment in db/schema.sql). Only ever meaningful for a
+// 'direct'-flow Template Evaluator account; callers (routes/dashboard.js's
+// trackDirectFlowModuleVisit()) only ever invoke this after already
+// checking the account's role and evaluation_flow themselves.
+// ------------------------------------------------------------------
+const MODULE_VISIT_MAX_GAP_SECONDS = 30 * 60; // an idle tab left open overnight shouldn't inflate time-on-module
+
+async function recordModuleVisit(accountId, moduleSlug) {
+  // getOrCreateSession(..., 'direct') is safe to call even if this
+  // account's session already exists at 'questionnaire' from an earlier
+  // /evaluation visit, or doesn't exist yet because this is literally the
+  // first page this account ever opened after signing up — either way
+  // ON CONFLICT DO NOTHING means the existing row (whatever its actual
+  // status) is simply returned untouched.
+  const session = await getOrCreateSession(accountId, EXPERT_ROLE, 'direct');
+
+  // RA 10173 — no data collection before the respondent has affirmatively
+  // agreed to take part. Browsing the analytics pages themselves is never
+  // gated on consent (middleware/evaluationGate.js bypasses the lock
+  // entirely for a direct-flow account), but logging how long they spend
+  // on each one is itself evaluation data, so it waits for 'given' the
+  // same way the walkthrough/questionnaire screens do.
+  if (session.consent_status !== 'given') return;
+
+  // Credit the elapsed time since this account's own last page-open to
+  // whichever module it was LAST seen on (not the one it's entering now)
+  // — that's the module it was actually reading in between. A gap beyond
+  // the cap is treated as "came back after being away" and credits
+  // nothing, rather than crediting a huge, meaningless idle duration.
+  const { rows: lastRows } = await pool.query(
+    `SELECT module_slug, last_opened_at FROM expert_evaluation_module_visits
+      WHERE session_id = $1 ORDER BY last_opened_at DESC LIMIT 1`,
+    [session.id]
+  );
+  const last = lastRows[0];
+  if (last) {
+    const gapSeconds = Math.max(0, (Date.now() - new Date(last.last_opened_at).getTime()) / 1000);
+    if (gapSeconds > 0 && gapSeconds <= MODULE_VISIT_MAX_GAP_SECONDS) {
+      await pool.query(
+        `UPDATE expert_evaluation_module_visits
+            SET total_seconds = total_seconds + $3
+          WHERE session_id = $1 AND module_slug = $2`,
+        [session.id, last.module_slug, Math.round(gapSeconds)]
+      );
+    }
+  }
+
+  await pool.query(
+    `INSERT INTO expert_evaluation_module_visits (session_id, account_id, module_slug)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (session_id, module_slug) DO UPDATE
+        SET last_opened_at = now(),
+            open_count = expert_evaluation_module_visits.open_count + 1`,
+    [session.id, accountId, moduleSlug]
+  );
+}
+
+// Fixed display order matching STUB_SECTIONS in routes/dashboard.js
+// (Descriptive -> Diagnostic -> Predictive -> Prescriptive), not whatever
+// order the account happened to visit them in — used by the completed-
+// evaluation summary and the admin detail page, both of which want a
+// stable, readable row order regardless of visit history.
+const MODULE_VISIT_SLUG_ORDER = [
+  'descriptive-analytics', 'diagnostic-insights', 'predictive-analytics', 'prescriptive-recommendations',
+];
+
+async function getModuleVisits(sessionId) {
+  const { rows } = await pool.query(
+    `SELECT * FROM expert_evaluation_module_visits WHERE session_id = $1`,
+    [sessionId]
+  );
+  const bySlug = new Map(rows.map((r) => [r.module_slug, r]));
+  return MODULE_VISIT_SLUG_ORDER.map((slug) => bySlug.get(slug) || null);
 }
 
 module.exports = {
@@ -485,4 +609,7 @@ module.exports = {
   listAllExpertEvaluationStatuses,
   getCompletedResponseSummary,
   getCompletedExpertResponseSummary,
+  recordModuleVisit,
+  getModuleVisits,
+  MODULE_VISIT_SLUG_ORDER,
 };

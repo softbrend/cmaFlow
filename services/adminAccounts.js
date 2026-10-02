@@ -15,19 +15,19 @@ const SALT_ROUNDS = 12;
 // (case-insensitive substring) — enough to find one account among a
 // modest evaluator/pilot-respondent list without a full filter UI.
 //
-// Excludes role = 'Expert Evaluator' (added 30 September 2026): this is
+// Excludes role = 'Template Evaluator' (added 30 September 2026): this is
 // "Manage SME Accounts" — SME owners and Admins, same as before that role
-// existed. An Expert Evaluator account is managed from the separate
-// listExpertAccounts()/"Manage Expert Evaluators" page below, so the two
+// existed. A Template Evaluator account is managed from the separate
+// listExpertAccounts()/"Manage Template Evaluators" page below, so the two
 // populations are never listed, searched, or counted together.
 async function listAccounts(search) {
   const trimmed = (search || '').trim();
   if (trimmed) {
     const like = `%${trimmed}%`;
     const { rows } = await pool.query(
-      `SELECT id, username, owner_name, business_name, email, role, created_at
+      `SELECT id, username, owner_name, business_name, email, role, cohort, created_at
          FROM sme_accounts
-        WHERE role != 'Expert Evaluator'
+        WHERE role != 'Template Evaluator'
           AND (username ILIKE $1 OR owner_name ILIKE $1 OR business_name ILIKE $1 OR email ILIKE $1)
         ORDER BY created_at DESC`,
       [like]
@@ -35,25 +35,25 @@ async function listAccounts(search) {
     return rows;
   }
   const { rows } = await pool.query(
-    `SELECT id, username, owner_name, business_name, email, role, created_at
+    `SELECT id, username, owner_name, business_name, email, role, cohort, created_at
        FROM sme_accounts
-      WHERE role != 'Expert Evaluator'
+      WHERE role != 'Template Evaluator'
       ORDER BY created_at DESC`
   );
   return rows;
 }
 
 // Same shape and search behavior as listAccounts(), filtered to
-// role = 'Expert Evaluator' only — backs the separate "Manage Expert
+// role = 'Template Evaluator' only — backs the separate "Manage Template
 // Evaluators" admin page.
 async function listExpertAccounts(search) {
   const trimmed = (search || '').trim();
   if (trimmed) {
     const like = `%${trimmed}%`;
     const { rows } = await pool.query(
-      `SELECT id, username, owner_name, business_name, email, business_sector, role, created_at
+      `SELECT id, username, owner_name, business_name, email, business_sector, role, evaluation_flow, created_at
          FROM sme_accounts
-        WHERE role = 'Expert Evaluator'
+        WHERE role = 'Template Evaluator'
           AND (username ILIKE $1 OR owner_name ILIKE $1 OR business_name ILIKE $1 OR email ILIKE $1)
         ORDER BY created_at DESC`,
       [like]
@@ -61,9 +61,9 @@ async function listExpertAccounts(search) {
     return rows;
   }
   const { rows } = await pool.query(
-    `SELECT id, username, owner_name, business_name, email, business_sector, role, created_at
+    `SELECT id, username, owner_name, business_name, email, business_sector, role, evaluation_flow, created_at
        FROM sme_accounts
-      WHERE role = 'Expert Evaluator'
+      WHERE role = 'Template Evaluator'
       ORDER BY created_at DESC`
   );
   return rows;
@@ -71,7 +71,7 @@ async function listExpertAccounts(search) {
 
 async function getAccountById(id) {
   const { rows } = await pool.query(
-    `SELECT id, username, owner_name, business_name, email, role, created_at
+    `SELECT id, username, owner_name, business_name, email, role, cohort, evaluation_flow, created_at
        FROM sme_accounts WHERE id = $1`,
     [id]
   );
@@ -81,6 +81,41 @@ async function getAccountById(id) {
 async function resetPassword(accountId, newPassword) {
   const password_hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
   await pool.query('UPDATE sme_accounts SET password_hash = $1 WHERE id = $2', [password_hash, accountId]);
+}
+
+// Labels shown in the admin UI for each stored cohort value (db/schema.sql's
+// sme_accounts_cohort_check CHECK constraint is the actual source of truth
+// for which values are valid — this is display-only). '' (empty string from
+// the <select>) is treated as "clear the tag" and stored as NULL, never as
+// the literal string 'other' silently standing in for "unset".
+const COHORT_LABELS = {
+  mit267_2026: 'MIT 267 course cohort (2026)',
+  field_study: 'Field study — real SME owner',
+  internal_test: 'Internal test account',
+  other: 'Other',
+};
+
+// Sets (or clears, with cohort=null/'') which recruitment pool an SME
+// Owner account's TAM responses belong to — see the sme_accounts.cohort
+// column comment in db/schema.sql for why this exists (peer-review
+// recommendation #4: keep the existing MIT 267 course-cohort TAM
+// responses distinguishable from any future real-SME field-study
+// respondent, so a later reliability recomputation can filter one
+// population out rather than silently mixing both). Validated here against
+// the same allowed-value set as the DB CHECK constraint, so a bad value is
+// rejected with a clear error rather than falling through to a Postgres
+// constraint-violation error page.
+async function setCohort(accountId, cohort) {
+  const value = (cohort || '').trim();
+  if (value && !Object.prototype.hasOwnProperty.call(COHORT_LABELS, value)) {
+    throw new Error(`Unknown cohort value: ${value}`);
+  }
+  const { rows } = await pool.query(
+    `UPDATE sme_accounts SET cohort = $1 WHERE id = $2
+     RETURNING id, username, owner_name, business_name, email, role, cohort`,
+    [value || null, accountId]
+  );
+  return rows[0] || null;
 }
 
 // How many accounts currently hold role='Admin' — used to block demoting
@@ -134,5 +169,5 @@ async function demoteToOwner(accountId) {
 
 module.exports = {
   listAccounts, listExpertAccounts, getAccountById, resetPassword, countAdmins,
-  createAdminAccount, promoteToAdmin, demoteToOwner,
+  createAdminAccount, promoteToAdmin, demoteToOwner, setCohort, COHORT_LABELS,
 };

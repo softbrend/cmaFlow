@@ -1,5 +1,5 @@
 // SME business-category CSV templates — added 30 September 2026 for the
-// Expert Evaluator field-generalization round. An Expert Evaluator picks
+// Template Evaluator field-generalization round. A Template Evaluator picks
 // an SME business category here, downloads its CSV template (the exact
 // column set CMA-Flow expects for that category — see
 // data/sme-templates/00_CMAFlow_SME_Template_Manifest.csv), fills it with
@@ -11,10 +11,10 @@
 // Reachable by any signed-in account (requireAuth only) — the SME
 // business categories and field names here carry no participant data of
 // any kind, so there is no reason to restrict them by role. It's only
-// ever linked from the Expert Evaluator's own sidebar branch (see
+// ever linked from the Template Evaluator's own sidebar branch (see
 // views/partials/sidebar.ejs), and middleware/evaluationGate.js always
 // allows /sme-templates regardless of lock state, the same as /evaluation
-// itself, since an Expert Evaluator needs a template before Task 1.
+// itself, since a Template Evaluator needs a template before Task 1.
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -26,10 +26,10 @@ const { ingestTemplateForEvaluation } = require('../services/templateEvaluationI
 const router = express.Router();
 const TEMPLATES_ROOT = path.join(__dirname, '..', 'data', 'sme-templates');
 const MANIFEST_PATH = path.join(TEMPLATES_ROOT, '00_CMAFlow_SME_Template_Manifest.csv');
-const EXPERT_ROLE = 'Expert Evaluator';
+const EXPERT_ROLE = 'Template Evaluator';
 
 // Same shape as requireAdmin in middleware/auth.js — a signed-in account
-// that isn't an Expert Evaluator gets a plain 403, not a bounce to
+// that isn't a Template Evaluator gets a plain 403, not a bounce to
 // /login, since they ARE authenticated, just not the role this section
 // (choosing/browsing the "default CSV for evaluation") is for. Kept
 // local to this router since nothing outside routes/templates.js needs
@@ -65,23 +65,24 @@ router.get('/sme-templates', requireAuth, (req, res, next) => {
   try {
     const manifest = loadManifest();
     const user = req.session.user;
-    // An Expert Evaluator declares their business category at signup
+    // A Template Evaluator declares their business category at signup
     // (routes/auth.js's business_category field, stored in
     // sme_accounts.business_sector) — surfaced here so the row matching
     // that choice is easy to find rather than making them re-scan all 20.
     // null for an SME owner (whose business_sector is their own actual
     // sector, not one of these 20 categories necessarily) and for anyone
     // without a declared category yet.
-    const assignedCategory = (user && user.role === 'Expert Evaluator' && user.business_sector) || null;
+    const assignedCategory = (user && user.role === 'Template Evaluator' && user.business_sector) || null;
     // Each of the 20 templates now ships with 50 synthetic rows (see
     // data/sme-templates/*_template.csv) built so they drive real output
-    // across all four analytics modules. An Expert Evaluator can mark one
+    // across all four analytics modules. A Template Evaluator can mark one
     // as their "default CSV for evaluation" below and then browse/filter
     // its exact rows (GET /sme-templates/evaluation-data) to cross-check
     // report numbers against known source values — an SME owner has no
     // equivalent concept, since their reports are built from their own
     // uploaded data.
     const isExpertEvaluator = !!(user && user.role === EXPERT_ROLE);
+    const isDirectFlow = isExpertEvaluator && user.evaluation_flow === 'direct';
     const evaluationTemplateFile = (isExpertEvaluator && user.evaluation_template_file) || null;
     res.render('dashboard/sme-templates', {
       title: 'Download SME Templates',
@@ -89,6 +90,7 @@ router.get('/sme-templates', requireAuth, (req, res, next) => {
       manifest,
       assignedCategory,
       isExpertEvaluator,
+      isDirectFlow,
       evaluationTemplateFile,
     });
   } catch (err) {
@@ -104,7 +106,7 @@ router.get('/sme-templates/download/:file', requireAuth, (req, res) => {
   res.download(resolved.fullPath, resolved.row.template_file);
 });
 
-// POST /sme-templates/set-evaluation-default — an Expert Evaluator's own
+// POST /sme-templates/set-evaluation-default — a Template Evaluator's own
 // explicit choice of which template they want to use for the evaluation.
 // This does two things, not just one: it records the choice (sme_accounts
 // .evaluation_template_file, for the "browse these exact rows" page
@@ -143,7 +145,7 @@ router.post('/sme-templates/set-evaluation-default', requireExpertEvaluator, asy
 });
 
 // GET /sme-templates/evaluation-data — browse/filter the exact rows of
-// whichever template the Expert Evaluator picked above. Reads the CSV
+// whichever template the Template Evaluator picked above. Reads the CSV
 // straight off disk (it's the same static file /sme-templates/download
 // serves) and hands every row + column name to the view; filtering itself
 // happens client-side in the browser (see views/dashboard/

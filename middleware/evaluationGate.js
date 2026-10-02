@@ -1,4 +1,4 @@
-// Forces an SME owner OR an Expert Evaluator through the TAM six-task
+// Forces an SME owner OR a Template Evaluator through the TAM six-task
 // walkthrough (see services/tamEvaluation.js,
 // claude/tam-instrument-end-user-evaluation.md) before unlocking the rest
 // of the app's navigation. Per Brenda's own choice, this applies to every
@@ -6,14 +6,28 @@
 // accounts created from here on — so an existing account that hasn't
 // gone through it yet is gated too the next time it loads a page.
 //
-// Expert Evaluator accounts (added 30 September 2026) go through this
-// exact same gate — upload, then the four analytics modules, then the
-// TAM questionnaire, same as an SME owner — just reading/writing the
+// Template Evaluator accounts whose sme_accounts.evaluation_flow is
+// 'walkthrough' (the 15 accounts that predate 2 October 2026 — see
+// claude/direct-flow-template-evaluator.md) go through this exact same
+// gate — upload, then the four analytics modules, then the TAM
+// questionnaire, same as an SME owner — just reading/writing the
 // separate expert_evaluation_* tables (tablesFor() in tamEvaluation.js
-// picks the right set from the account's own role). Admin accounts are
-// the only ones never gated: they view analytics read-only via "View
-// analytics" on Manage Datasets, they never take this evaluation on their
-// own account (see the Admin branch of views/partials/sidebar.ejs).
+// picks the right set from the account's own role).
+//
+// A Template Evaluator whose evaluation_flow is 'direct' (every account
+// signed up from 2 October 2026 onward) is never gated here at all,
+// alongside Admin — see the role/evaluationFlow check right at the top
+// of evaluationGate() below. It can upload its own dataset or pick one of
+// the 20 templates at any time, reach all four analytics modules
+// immediately with no sequential unlock, and still reach GET /evaluation
+// (informed consent, then straight to the 17-item questionnaire — no
+// walkthrough screen in between, see services/tamEvaluation.js's
+// getOrCreateSession()) whenever it wants.
+//
+// Admin accounts are the other ones never gated: they view analytics
+// read-only via "View analytics" on Manage Datasets, they never take this
+// evaluation on their own account (see the Admin branch of
+// views/partials/sidebar.ejs).
 //
 // Two things happen here:
 //   1. res.locals.evaluationLocked is set on every request, so
@@ -30,7 +44,7 @@
 // separate navigation choices, and gating them individually would risk
 // breaking the walkthrough's own in-task links rather than adding
 // anything the request asked for. /sme-templates (the SME-business-
-// category CSV template downloads an Expert Evaluator uses to prepare
+// category CSV template downloads a Template Evaluator uses to prepare
 // Task 1's upload) is always allowed for the same reason /evaluation
 // itself is — it has to be reachable before Task 1 is done.
 const pool = require('../db/pool');
@@ -69,6 +83,19 @@ function matchesAny(path, prefixes) {
 async function evaluationGate(req, res, next) {
   const user = req.session && req.session.user;
   if (!user || user.role === 'Admin') {
+    res.locals.evaluationLocked = false;
+    return next();
+  }
+
+  // Direct-flow Template Evaluator — checked BEFORE ever looking at a
+  // session row, deliberately: a brand-new account that hasn't visited
+  // /evaluation yet has no expert_evaluation_sessions row at all, and the
+  // no-row fallback a few lines down ("equivalent to status 'walkthrough'
+  // at task 1") exists specifically for 'walkthrough'-flow accounts — it
+  // would otherwise lock a direct-flow account out of everything from
+  // the very first page it ever loads, before it even had a chance to
+  // pick a dataset.
+  if (user.role === EXPERT_ROLE && user.evaluation_flow === 'direct') {
     res.locals.evaluationLocked = false;
     return next();
   }

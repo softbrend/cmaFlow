@@ -1,0 +1,11 @@
+Role,Columns (n),Precision,Recall,F1
+Identifier,184,0.89,0.92,0.91
+Date/time,120,0.91,0.42,0.57
+Monetary amount,61,0.59,0.80,0.68
+Quantity,97,0.44,0.59,0.50
+Category,331,0.67,0.21,0.31
+Rating,17,0.53,1.00,0.69
+Geography,12,0.00,0.00,0.00
+Status,17,0.17,0.82,0.29
+Free text,104,0.79,0.51,0.62
+Macro average,943,0.56,0.58,0.51
