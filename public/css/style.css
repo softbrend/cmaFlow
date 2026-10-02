@@ -737,25 +737,25 @@ body.stage-evaluation-questionnaire .likert-option {
   flex-direction: column;
   align-items: flex-start;
   position: relative;
-  padding: 12px 16px 12px 40px;
+  padding: 14px 18px 14px 42px;
   border: 1.5px solid var(--border);
   border-radius: 12px;
   background: var(--bg-card);
   cursor: pointer;
-  min-width: 128px;
+  min-width: 152px;
   transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 body.stage-evaluation-questionnaire .likert-option input {
   position: absolute;
-  left: 14px;
-  top: 16px;
-  width: 17px;
-  height: 17px;
+  left: 15px;
+  top: 18px;
+  width: 18px;
+  height: 18px;
   accent-color: var(--q-accent, var(--accent));
   margin: 0;
 }
-body.stage-evaluation-questionnaire .likert-option-value { font-weight: 800; font-size: 15px; color: var(--text-muted); }
-body.stage-evaluation-questionnaire .likert-option-label { font-size: 13.5px; color: var(--text-muted); font-weight: 600; }
+body.stage-evaluation-questionnaire .likert-option-value { font-weight: 800; font-size: 18px; color: var(--text-muted); }
+body.stage-evaluation-questionnaire .likert-option-label { font-size: 18px; color: var(--text-muted); font-weight: 600; }
 body.stage-evaluation-questionnaire .likert-option:hover { border-color: var(--q-accent, var(--accent)); }
 body.stage-evaluation-questionnaire .likert-option:has(input:checked),
 body.stage-evaluation-questionnaire .likert-option.is-checked {
