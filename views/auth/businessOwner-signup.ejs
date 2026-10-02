@@ -1,6 +1,6 @@
 <div class="form-card wide">
   <div class="form-title"><img src="/img/cma-flow-icon.png" alt="CMA-Flow" style="width:28px; height:28px; border-radius:7px; background:#fff; padding:2px; vertical-align:-6px; margin-right:8px;" />Create your Business Owner Evaluator account</div>
-  <p class="form-hint">Information captured: username, owner name, business name, email, phone, business sector, region, and password. You'll upload your own business dataset, run it through CMA-Flow's four analytics modules, and complete a short evaluation afterwards using the ISO/IEC 25010 Quality-in-Use questionnaire.</p>
+  <p class="form-hint">Information captured: username, full name, business / affiliation, email, the business category you'll evaluate, and password. You'll download that category's CSV template (or use the one automatically assigned to you), run it through CMA-Flow's four analytics modules, and complete a short evaluation afterwards using the ISO/IEC 25010 Quality-in-Use questionnaire.</p>
 
   <% if (errors && errors.length) { %>
     <div class="alert-error">
@@ -17,35 +17,29 @@
     </div>
 
     <div class="field">
-      <label for="owner_name">Business owner full name</label>
-      <input type="text" id="owner_name" name="owner_name" value="<%= old.owner_name || '' %>" required />
+      <label for="full_name">Full name</label>
+      <input type="text" id="full_name" name="full_name" value="<%= old.full_name || '' %>" required />
     </div>
 
     <div class="field">
-      <label for="business_name">Business / SME name</label>
-      <input type="text" id="business_name" name="business_name" value="<%= old.business_name || '' %>" required />
+      <label for="affiliation">Business / affiliation name</label>
+      <input type="text" id="affiliation" name="affiliation" value="<%= old.affiliation || '' %>" required />
     </div>
 
-    <div class="field-row">
-      <div class="field">
-        <label for="email">Business email</label>
-        <input type="email" id="email" name="email" value="<%= old.email || '' %>" required />
-      </div>
-      <div class="field">
-        <label for="phone">Phone number</label>
-        <input type="text" id="phone" name="phone" value="<%= old.phone || '' %>" />
-      </div>
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" value="<%= old.email || '' %>" required />
     </div>
 
-    <div class="field-row">
-      <div class="field">
-        <label for="business_sector">Business sector</label>
-        <input type="text" id="business_sector" name="business_sector" value="<%= old.business_sector || '' %>" required />
-      </div>
-      <div class="field">
-        <label for="business_region">Business region</label>
-        <input type="text" id="business_region" name="business_region" value="<%= old.business_region || '' %>" required />
-      </div>
+    <div class="field">
+      <label for="business_category">Business category you will evaluate</label>
+      <select id="business_category" name="business_category" required>
+        <option value="" disabled <%= !old.business_category ? 'selected' : '' %>>Select a business category…</option>
+        <% categories.forEach(function(c) { %>
+          <option value="<%= c.name %>" <%= old.business_category === c.name ? 'selected' : '' %>><%= c.name %> — <%= c.examples %></option>
+        <% }); %>
+      </select>
+      <p class="form-hint" style="margin: 7px 0 0;">Pick the category closest to the business you're evaluating — its CSV template becomes your default dataset automatically, and you can switch to any other category's template later from Download SME Templates.</p>
     </div>
 
     <div class="field">

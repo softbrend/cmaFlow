@@ -2,16 +2,18 @@
   <div class="nav-heading">Navigation</div>
 
   <ul class="nav-list">
-    <% var isExpertEvaluator = currentUser && currentUser.role === 'Template Evaluator'; %>
     <%
-      // Nav-link text only (added 2 October 2026 for Business Owner
-      // Evaluator) — kept separate from isExpertEvaluator above, which
-      // stays Template-Evaluator-only on purpose: it still decides the
-      // "Download SME Templates" vs "Monetization discovery" structural
-      // branch below, and Business Owner Evaluator deliberately falls
-      // into the SAME else-branch as SME Owner there (plain
-      // Upload Dataset flow, no template system) — only the evaluation
-      // link's own label needs a third option.
+      // isExpertEvaluator: kept this name (rather than renaming every
+      // reference below) even though, as of 2 October 2026, it now also
+      // covers Business Owner Evaluator — both roles pick an SME business
+      // category at signup and use the exact same /sme-templates "default
+      // CSV for evaluation" system (routes/templates.js's
+      // usesTemplateSystem()), so both get "Download SME Templates" in
+      // place of "Monetization discovery"/the plain Upload-only nav below.
+      var isExpertEvaluator = currentUser && (currentUser.role === 'Template Evaluator' || currentUser.role === 'Business Owner Evaluator');
+      // Nav-link text for the evaluation link itself still needs its own
+      // three-way label, since the two template-system roles don't share
+      // a page title.
       var evalRoleLabel = currentUser && currentUser.role === 'Template Evaluator' ? 'Template Evaluator Evaluation'
         : currentUser && currentUser.role === 'Business Owner Evaluator' ? 'Business Owner Evaluator Evaluation'
         : 'End-User Evaluation';
@@ -45,13 +47,14 @@
       <li><a href="/admin/business-owner-datasets" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'business-owner-datasets') ? 'active' : '' %>"><span class="nav-dot"></span>Business Owner Evaluator Datasets</a></li>
       <li><a href="/admin/gating-comparison" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'gating-comparison') ? 'active' : '' %>"><span class="nav-dot"></span>Gating Comparison</a></li>
     <% } else if (typeof evaluationLocked !== 'undefined' && evaluationLocked) { %>
-      <%# New (or not-yet-completed) SME owner OR Template Evaluator: every
-          other module is hidden until the six-task walkthrough and
-          17-item questionnaire are finished (middleware/evaluationGate.js
-          enforces this server-side too, so this isn't just cosmetic — see
-          its header comment for exactly what stays reachable and why).
-          A Template Evaluator also gets the template-download page here,
-          since they need a category template before Task 1's upload. %>
+      <%# New (or not-yet-completed) SME owner, Template Evaluator, OR
+          Business Owner Evaluator: every other module is hidden until the
+          six-task walkthrough and questionnaire are finished
+          (middleware/evaluationGate.js enforces this server-side too, so
+          this isn't just cosmetic — see its header comment for exactly
+          what stays reachable and why). A Template Evaluator or Business
+          Owner Evaluator also gets the template-download page here, since
+          either needs a category template before Task 1's upload. %>
       <%# active is 'evaluation-data-browser' (not 'sme-templates') specifically
           on the Browse Evaluation CSV screen — its own wider, Excel-style
           layout, see public/css/style.css's body.stage-evaluation-data-browser
@@ -69,9 +72,10 @@
           of the plain gold nav-dot — the same DESCRIPTIVE → DIAGNOSTIC →
           PREDICTIVE → PRESCRIPTIVE identity as the .stage-pipeline trademark
           on their own pages (see views/partials/stage-pipeline.ejs). Shown
-          to both SME owners and Template Evaluators alike; Monetization
-          discovery and the template downloads are the only items that
-          differ between the two. %>
+          to every role alike; Monetization discovery vs. the template
+          downloads is the only item that differs — SME Owner gets the
+          former, Template Evaluator and Business Owner Evaluator (both
+          "isExpertEvaluator" above) get the latter. %>
       <% (navSections || []).forEach(function(s) { %>
         <li><a href="/<%= s.slug %>" class="<%= active === s.slug ? 'active' : '' %>"><span class="nav-icon stage-<%= s.slug %>"><%= s.icon %></span><%= s.label %></a></li>
       <% }); %>

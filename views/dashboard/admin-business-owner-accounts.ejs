@@ -20,10 +20,9 @@
       <thead>
         <tr>
           <th>Username</th>
-          <th>Owner name</th>
-          <th>Business name</th>
-          <th>Sector</th>
-          <th>Region</th>
+          <th>Name</th>
+          <th>Business / affiliation</th>
+          <th>Business category evaluated</th>
           <th>Email</th>
           <th>Joined</th>
           <th></th>
@@ -31,7 +30,7 @@
       </thead>
       <tbody>
         <% if (accounts.length === 0) { %>
-          <tr><td colspan="8" style="color: var(--text-muted);">No Business Owner Evaluator accounts match "<%= q %>".</td></tr>
+          <tr><td colspan="7" style="color: var(--text-muted);">No Business Owner Evaluator accounts match "<%= q %>".</td></tr>
         <% } %>
         <% accounts.forEach(function(a) { %>
           <tr>
@@ -39,7 +38,6 @@
             <td><%= a.owner_name %></td>
             <td><%= a.business_name %></td>
             <td><%= a.business_sector || '—' %></td>
-            <td><%= a.business_region || '—' %></td>
             <td><%= a.email %></td>
             <td><%= new Date(a.created_at).toLocaleDateString() %></td>
             <td style="text-align: right; white-space: nowrap;">

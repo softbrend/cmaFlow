@@ -282,12 +282,25 @@ router.post('/expert-signup/register', redirectIfAuthed, expertSignupValidators,
 // different population answering a different instrument, and the two
 // access codes must never be interchangeable.
 //
-// Unlike Template Evaluator, this role has no business-category/template
-// system: an evaluator here uploads their own real dataset as Task 1,
-// same as the original (non-template) SME Owner flow — so the signup form
-// uses the same owner_name/business_name/email/phone/business_sector/
-// business_region fields the public /signup form does, just behind the
-// access-code gate and assigned the new role.
+// Revised 2 October 2026 (same day, per Brenda's explicit follow-up): this
+// role now carries the SAME business-category selection as Template
+// Evaluator, not the free-text owner_name/business_name/phone/sector/
+// region fields the public /signup form uses. The signup form fields,
+// validators, and the account-creation INSERT below are now a near-exact
+// copy of expertSignupValidators/the /expert-signup/register handler
+// above — username/full_name/affiliation/email/business_category/
+// password — including the same auto-default template ingest on success
+// (ingestDefaultTemplateForCategory, services/templateEvaluationIngest.js)
+// so a fresh Business Owner Evaluator account sees real output on all
+// four analytics modules immediately, exactly like a fresh Template
+// Evaluator account does. The only things that still differ from Template
+// Evaluator: the role string itself ('Business Owner Evaluator'), no
+// evaluation_flow override (this role has no 'direct'-flow variant — it
+// stays on the column's own 'walkthrough' default, always six-task-gated,
+// see middleware/evaluationGate.js), and of course the questionnaire
+// instrument it answers (handled entirely in services/tamEvaluation.js,
+// never here). See routes/templates.js's usesTemplateSystem() for where
+// the shared /sme-templates system itself now recognizes both roles.
 //
 // GET  /businessOwner-signup            -> the access-code form
 // POST /businessOwner-signup            -> verifies the code, flags the session
@@ -326,20 +339,27 @@ router.get('/businessOwner-signup/register', redirectIfAuthed, (req, res) => {
     layout: 'layout-auth',
     errors: [],
     old: {},
+    categories: loadCategories(),
   });
 });
 
+// Same business_category field/validation as expertSignupValidators above
+// (see services/smeCategories.js) — stored in sme_accounts.business_sector,
+// same column Template Evaluator uses it for, no schema change needed.
 const businessOwnerSignupValidators = [
   body('username')
     .trim()
     .matches(/^[A-Za-z0-9_-]{3,50}$/)
     .withMessage('Username must be 3-50 characters (letters, numbers, - or _ only).'),
-  body('owner_name').trim().notEmpty().withMessage('Full name is required.'),
-  body('business_name').trim().notEmpty().withMessage('Business / SME name is required.'),
-  body('email').trim().isEmail().withMessage('A valid business email is required.').normalizeEmail(),
-  body('phone').trim().optional({ checkFalsy: true }),
-  body('business_sector').trim().notEmpty().withMessage('Business sector is required.'),
-  body('business_region').trim().notEmpty().withMessage('Business region is required.'),
+  body('full_name').trim().notEmpty().withMessage('Your full name is required.'),
+  body('affiliation').trim().notEmpty().withMessage('Your business / affiliation name is required.'),
+  body('email').trim().isEmail().withMessage('A valid email is required.').normalizeEmail(),
+  body('business_category')
+    .trim()
+    .notEmpty().withMessage('Select the business category you will evaluate.')
+    .bail()
+    .custom((value) => isValidCategory(value))
+    .withMessage('Select a valid business category from the list.'),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters.'),
   body('confirm_password').custom((value, { req }) => value === req.body.password)
     .withMessage('Passwords do not match.'),
@@ -357,26 +377,44 @@ router.post('/businessOwner-signup/register', redirectIfAuthed, businessOwnerSig
       layout: 'layout-auth',
       errors: result.array(),
       old: req.body,
+      categories: loadCategories(),
     });
   }
 
   const {
-    username, owner_name, business_name, email, phone,
-    business_sector, business_region, password,
+    username, full_name, affiliation, email, business_category, password,
   } = req.body;
 
   try {
     const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
     const { rows } = await pool.query(
       `INSERT INTO sme_accounts
-         (username, owner_name, business_name, email, phone, business_sector, business_region, password_hash, role)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Business Owner Evaluator')
-       RETURNING id, username, owner_name, business_name, email, role, assigned_dataset`,
-      [username, owner_name, business_name, email, phone || null, business_sector, business_region, password_hash]
+         (username, owner_name, business_name, email, business_sector, password_hash, role)
+       VALUES ($1, $2, $3, $4, $5, $6, 'Business Owner Evaluator')
+       RETURNING id, username, owner_name, business_name, email, role, business_sector, assigned_dataset`,
+      [username, full_name, affiliation, email, business_category, password_hash]
     );
 
     const account = rows[0];
     delete req.session.businessOwnerCodeVerified; // one-time: re-entering the code is required for the next account
+
+    // Auto-default, same as /expert-signup/register above: the business
+    // category just declared becomes this account's default CSV for
+    // evaluation immediately, through the exact same ingest a manual "Use
+    // for evaluation" click on /sme-templates runs. Non-fatal — on any
+    // error here the account still exists and is usable, just starting
+    // with no dataset assigned, exactly as if this block didn't run.
+    try {
+      const ingested = await ingestDefaultTemplateForCategory(account.id, business_category);
+      if (ingested) {
+        await pool.query('UPDATE sme_accounts SET evaluation_template_file = $1 WHERE id = $2', [ingested.templateFile, account.id]);
+        account.evaluation_template_file = ingested.templateFile;
+        account.default_dataset_id = ingested.datasetRowId;
+      }
+    } catch (ingestErr) {
+      console.error('[businessOwner-signup] auto-default template ingest failed:', ingestErr.message);
+    }
+
     req.session.userId = account.id;
     req.session.user = account;
     return res.redirect('/');
@@ -385,8 +423,9 @@ router.post('/businessOwner-signup/register', redirectIfAuthed, businessOwnerSig
       return res.status(400).render('auth/businessOwner-signup', {
         title: 'Create your Business Owner Evaluator account',
         layout: 'layout-auth',
-        errors: [{ msg: 'That username or business email is already registered.' }],
+        errors: [{ msg: 'That username or email is already registered.' }],
         old: req.body,
+        categories: loadCategories(),
       });
     }
     next(err);

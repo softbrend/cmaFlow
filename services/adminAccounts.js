@@ -74,16 +74,21 @@ async function listExpertAccounts(search) {
 
 // Same shape and search behavior again, filtered to
 // role = 'Business Owner Evaluator' only (added 2 October 2026) — backs
-// the separate "Manage Business Owner Evaluators" admin page. No
-// evaluation_flow column selected here: unlike Template Evaluator, this
-// role has only ever had one flow (always walkthrough-gated), so there's
-// nothing to show for it.
+// the separate "Manage Business Owner Evaluators" admin page.
+// business_sector here holds the business_category this account declared
+// at signup (routes/auth.js's /businessOwner-signup/register — same
+// reuse of that column Template Evaluator already relies on, see
+// services/smeCategories.js). No business_region or evaluation_flow
+// column: this signup form no longer collects a region (revised 2
+// October 2026 to match Template Evaluator's signup shape instead of the
+// plain SME one), and this role has only ever had one flow (always
+// walkthrough-gated), so there's nothing to show for either.
 async function listBusinessOwnerAccounts(search) {
   const trimmed = (search || '').trim();
   if (trimmed) {
     const like = `%${trimmed}%`;
     const { rows } = await pool.query(
-      `SELECT id, username, owner_name, business_name, email, business_sector, business_region, role, created_at
+      `SELECT id, username, owner_name, business_name, email, business_sector, role, created_at
          FROM sme_accounts
         WHERE role = 'Business Owner Evaluator'
           AND (username ILIKE $1 OR owner_name ILIKE $1 OR business_name ILIKE $1 OR email ILIKE $1)
@@ -93,7 +98,7 @@ async function listBusinessOwnerAccounts(search) {
     return rows;
   }
   const { rows } = await pool.query(
-    `SELECT id, username, owner_name, business_name, email, business_sector, business_region, role, created_at
+    `SELECT id, username, owner_name, business_name, email, business_sector, role, created_at
        FROM sme_accounts
       WHERE role = 'Business Owner Evaluator'
       ORDER BY created_at DESC`
