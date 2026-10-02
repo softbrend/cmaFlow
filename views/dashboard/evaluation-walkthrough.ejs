@@ -14,6 +14,16 @@
   <div class="form-title">Task <%= currentTask.number %> of 6 — <%= currentTask.moduleLabel %></div>
   <p class="form-hint" style="margin-bottom: 16px;"><%= currentTask.instructions %></p>
 
+  <% if (currentTask.number === 1 && typeof evaluationTemplateFile !== 'undefined' && evaluationTemplateFile) { %>
+    <div class="form-hint" style="margin-bottom: 20px; padding: 12px 14px; border-radius: 10px; background: var(--bg-input); display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
+      <span>Dataset assigned at sign-up: <strong><%= evaluationDatasetLabel %></strong></span>
+      <form method="POST" action="/sme-templates/set-evaluation-default" style="margin: 0;">
+        <input type="hidden" name="template_file" value="<%= evaluationTemplateFile %>" />
+        <button type="submit" class="btn btn-ghost btn-sm">Use</button>
+      </form>
+    </div>
+  <% } %>
+
   <a href="<%= currentTask.href %>" target="_blank" rel="noopener" class="btn btn-accent" style="margin-bottom: 24px;">
     Open <%= currentTask.moduleLabel %> →
   </a>

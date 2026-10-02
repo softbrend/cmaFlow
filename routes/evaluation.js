@@ -16,6 +16,13 @@ const {
   getEvaluationState, recordConsent, startTaskIfNeeded, completeTask,
   saveResponses, validateQuestionnaire, markCompleted, getModuleVisits,
 } = require('../services/tamEvaluation');
+// Only for the Task 1 card's "dataset assigned at sign-up" readout below —
+// labelForTemplateFile() turns the evaluation_template_file a Template
+// Evaluator or Business Owner Evaluator picked (or was auto-assigned at
+// signup, see routes/auth.js's ingestDefaultTemplateForCategory()) back
+// into its human-readable category name, the same one routes/templates.js
+// and views/dashboard/sme-templates.ejs already show.
+const { labelForTemplateFile } = require('../services/smeCategories');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -55,6 +62,20 @@ router.get('/evaluation', async (req, res, next) => {
     // in practice, written out in full for clarity.
     const isDirectFlow = isExpert && req.session.user.evaluation_flow === 'direct';
     const evalRoleLabel = evalRoleLabelFor(role);
+    // Either template-system role (Template Evaluator or Business Owner
+    // Evaluator) gets a default dataset ingested automatically at signup
+    // from the business category they declared — surfaced on Task 1's
+    // walkthrough card below (the "Upload New Dataset" step) as a
+    // "Use <category> (Evaluation Template)" shortcut, so the account
+    // doesn't have to already know this happened or go find /sme-templates
+    // to see what was picked for them. null for an SME Owner (no template
+    // system) and for anyone who hasn't been assigned one yet.
+    const evaluationTemplateFile = (isExpert || role === BUSINESS_ROLE) && req.session.user.evaluation_template_file
+      ? req.session.user.evaluation_template_file
+      : null;
+    const evaluationDatasetLabel = evaluationTemplateFile
+      ? `${labelForTemplateFile(evaluationTemplateFile) || evaluationTemplateFile} (Evaluation Template)`
+      : null;
     const { session, taskLogs, responses } = await getEvaluationState(accountId, role, req.session.user && req.session.user.evaluation_flow);
 
     // Republic Act No. 10173 (Data Privacy Act of 2012): no walkthrough or
@@ -102,6 +123,8 @@ router.get('/evaluation', async (req, res, next) => {
         isExpert,
         isDirectFlow,
         evalRoleLabel,
+        evaluationTemplateFile,
+        evaluationDatasetLabel,
       });
     }
 

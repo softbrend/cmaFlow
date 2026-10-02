@@ -26,4 +26,24 @@ function isValidCategory(name) {
   return loadCategories().some((c) => c.name === name);
 }
 
-module.exports = { loadCategories, isValidCategory };
+// Reverse lookup of loadCategories()/routes/templates.js's own manifest
+// read — given a stored sme_accounts.evaluation_template_file (a CSV
+// filename, e.g. "07_retail_ecommerce_template.csv"), returns the
+// matching sme_business_category string ("Retail & E-Commerce"), or null
+// if the file isn't in the manifest (should never happen for a value this
+// app itself wrote, but a route rendering a walkthrough card is not the
+// place to throw over a stale/edited manifest). Added 2 October 2026 so
+// views/dashboard/evaluation-walkthrough.ejs's Task 1 card can show the
+// category name for the dataset auto-assigned at signup (routes/auth.js's
+// ingestDefaultTemplateForCategory()) without re-implementing the CSV
+// read routes/templates.js and services/templateEvaluationIngest.js
+// already each do their own version of.
+function labelForTemplateFile(templateFile) {
+  if (!templateFile) return null;
+  const raw = fs.readFileSync(MANIFEST_PATH, 'utf-8');
+  const rows = parse(raw, { columns: true, skip_empty_lines: true });
+  const row = rows.find((r) => r.template_file === templateFile);
+  return row ? row.sme_business_category : null;
+}
+
+module.exports = { loadCategories, isValidCategory, labelForTemplateFile };
