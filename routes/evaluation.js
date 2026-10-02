@@ -88,9 +88,15 @@ router.get('/evaluation', async (req, res, next) => {
     }
 
     if (session.status === 'questionnaire') {
+      // active is 'evaluation-questionnaire' here, not the 'evaluation'
+      // every other screen in this file uses (added 2 October 2026, per
+      // Brenda's request to give this specific page its own, wider layout
+      // — see public/css/style.css's body.stage-evaluation-questionnaire
+      // rules). views/partials/sidebar.ejs treats the two as equivalent
+      // for nav highlighting, so the "Evaluation" link still lights up.
       return res.render('dashboard/evaluation-questionnaire', {
         title: 'End-User Evaluation — Questionnaire',
-        active: 'evaluation',
+        active: 'evaluation-questionnaire',
         session,
         domains: groupItemsByDomain(),
         responses,
@@ -205,7 +211,7 @@ router.post('/evaluation/questionnaire', async (req, res, next) => {
         const { responses } = await getEvaluationState(accountId, role);
         return res.status(400).render('dashboard/evaluation-questionnaire', {
           title: 'End-User Evaluation — Questionnaire',
-          active: 'evaluation',
+          active: 'evaluation-questionnaire',
           session,
           domains: groupItemsByDomain(),
           responses,

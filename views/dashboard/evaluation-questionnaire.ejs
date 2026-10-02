@@ -1,5 +1,35 @@
+<%
+  // Pure server-side progress bookkeeping (no client JS needed) — added
+  // 2 October 2026 alongside the wider, more polished layout below, per
+  // Brenda's request. answeredTotal/itemsTotal drive the overview bar;
+  // each domain card gets its own "x / y answered" count the same way.
+  var itemsTotal = 0;
+  var answeredTotal = 0;
+  domains.forEach(function(d) {
+    d.items.forEach(function(item) {
+      itemsTotal += 1;
+      var r = responses.get(item.code);
+      if (r && r.rating) { answeredTotal += 1; }
+    });
+  });
+  var percentDone = itemsTotal ? Math.round((answeredTotal / itemsTotal) * 100) : 0;
+
+  // One accent color per TAM domain — distinct from the four analytics-
+  // pipeline stage colors (this instrument measures something else
+  // entirely) and from gold, which stays reserved for CTAs. Falls back to
+  // the shared accent for any domain code not listed here.
+  var domainAccent = { PU: 'var(--cyan)', PEOU: 'var(--secondary)', BI: 'var(--stage-predictive)' };
+%>
 <div class="page-title">📋 <span class="page-title-text"><%= isExpert ? 'Template Evaluator Evaluation' : 'End-User Evaluation' %> — Questionnaire</span></div>
 <p class="page-subtitle"><%= isDirectFlow ? 'Rate each statement' : 'Six-task walkthrough complete. Rate each statement' %> 5 (Strongly Agree) to 1 (Strongly Disagree) based on the modules you just used. Any rating of 3 or below needs a short remark explaining why. Save your progress anytime and come back to finish later.</p>
+
+<div class="q-progress-card">
+  <div class="q-progress-head">
+    <span class="q-progress-label">Your progress</span>
+    <span class="q-progress-count"><%= answeredTotal %> / <%= itemsTotal %> answered</span>
+  </div>
+  <div class="q-progress-track"><div class="q-progress-fill" style="width: <%= percentDone %>%;"></div></div>
+</div>
 
 <% if (errors) { %>
   <div class="alert-error">
@@ -13,9 +43,14 @@
 <% } %>
 
 <form method="POST" action="/evaluation/questionnaire">
-  <% domains.forEach(function(d) { %>
-    <div class="form-card wide" style="margin-bottom: 22px;">
-      <div class="form-title" style="font-size: 20px;"><%= d.label %> (<%= d.domain %>)</div>
+  <% domains.forEach(function(d) {
+       var domainAnswered = d.items.filter(function(item) { var r = responses.get(item.code); return r && r.rating; }).length;
+       var accent = domainAccent[d.domain] || 'var(--accent)'; %>
+    <div class="form-card wide q-card" style="--q-accent: <%= accent %>;">
+      <div class="q-card-head">
+        <div class="form-title q-card-title"><%= d.label %> <span class="q-domain-tag"><%= d.domain %></span></div>
+        <span class="q-domain-progress"><%= domainAnswered %> / <%= d.items.length %></span>
+      </div>
       <% d.items.forEach(function(item) {
            var r = responses.get(item.code); %>
         <div class="likert-item">
@@ -24,9 +59,10 @@
             <% [5, 4, 3, 2, 1].forEach(function(v) {
                  var labels = { 5: 'Strongly Agree', 4: 'Agree', 3: 'Neutral', 2: 'Disagree', 1: 'Strongly Disagree' };
                  var checked = r && r.rating === v; %>
-              <label class="likert-option">
+              <label class="likert-option <%= checked ? 'is-checked' : '' %>">
                 <input type="radio" name="rating_<%= item.code %>" value="<%= v %>" <%= checked ? 'checked' : '' %> />
-                <%= v %> <%= labels[v] %>
+                <span class="likert-option-value"><%= v %></span>
+                <span class="likert-option-label"><%= labels[v] %></span>
               </label>
             <% }); %>
           </div>
@@ -39,13 +75,13 @@
     </div>
   <% }); %>
 
-  <div style="display:flex; gap: 10px;">
+  <div class="q-actions">
     <button type="submit" name="action" value="save" class="btn btn-outline">Save Progress</button>
     <button type="submit" name="action" value="submit" class="btn btn-accent">Submit Evaluation</button>
   </div>
 </form>
 
-<div class="form-card wide" style="margin-top: 22px; text-align: center;">
+<div class="form-card wide q-card" style="margin-top: 22px; text-align: center;">
   <p class="form-hint" style="margin-bottom: 10px;">
     Your participation is voluntary. You may withdraw at any time — anything not yet submitted will be excluded from reporting.
   </p>

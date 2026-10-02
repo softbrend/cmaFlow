@@ -36,7 +36,11 @@
       <% if (isExpertEvaluator) { %>
         <li><a href="/sme-templates" class="<%= active === 'sme-templates' ? 'active' : '' %>"><span class="nav-dot"></span>Download SME Templates</a></li>
       <% } %>
-      <li><a href="/evaluation" class="<%= active === 'evaluation' ? 'active' : '' %>"><span class="nav-dot"></span><%= isExpertEvaluator ? 'Template Evaluator Evaluation' : 'End-User Evaluation' %></a></li>
+      <%# active is 'evaluation-questionnaire' (not 'evaluation') specifically
+          on the questionnaire screen — its own wider layout, see
+          public/css/style.css's body.stage-evaluation-questionnaire rules —
+          so this link still has to light up for both values. %>
+      <li><a href="/evaluation" class="<%= (active === 'evaluation' || active === 'evaluation-questionnaire') ? 'active' : '' %>"><span class="nav-dot"></span><%= isExpertEvaluator ? 'Template Evaluator Evaluation' : 'End-User Evaluation' %></a></li>
     <% } else { %>
       <%# The four analytics stages carry a stage-colored icon chip instead
           of the plain gold nav-dot — the same DESCRIPTIVE → DIAGNOSTIC →
@@ -55,7 +59,7 @@
       <% } else { %>
         <li><a href="/monetization-discovery" class="<%= active === 'monetization-discovery' ? 'active' : '' %>"><span class="nav-dot"></span>Monetization discovery</a></li>
       <% } %>
-      <li><a href="/evaluation" class="<%= active === 'evaluation' ? 'active' : '' %>"><span class="nav-dot"></span><%= isExpertEvaluator ? 'Template Evaluator Evaluation' : 'End-User Evaluation' %></a></li>
+      <li><a href="/evaluation" class="<%= (active === 'evaluation' || active === 'evaluation-questionnaire') ? 'active' : '' %>"><span class="nav-dot"></span><%= isExpertEvaluator ? 'Template Evaluator Evaluation' : 'End-User Evaluation' %></a></li>
     <% } %>
   </ul>
 

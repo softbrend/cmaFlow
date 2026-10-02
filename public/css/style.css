@@ -679,6 +679,122 @@ a { color: inherit; }
 .likert-item.needs-remark .field-remark { display: block; }
 .field-remark { margin-top: 4px; }
 
+/* ---------------- TAM Questionnaire — wide, 18px, "professional" layout ----------------
+   Added 2 October 2026 per Brenda's request: the questionnaire previously
+   sat inside the same 760px .form-card.wide every other form in the app
+   uses, leaving a large empty gap on wide screens, at the same 14.5px
+   item text as a short signup form. Scoped to body.stage-evaluation-
+   questionnaire (set only by routes/evaluation.js's two questionnaire
+   render calls — see its own comment there) so nothing else in the app
+   is affected; the .likert-* classes below are in turn only ever used by
+   this one view already, kept body-scoped anyway for safety. */
+body.stage-evaluation-questionnaire .main-inner { max-width: 1600px; }
+
+/* .q-card replaces .form-card.wide's 760px cap for this page's cards only
+   — a dedicated class rather than widening .form-card.wide itself, which
+   many other pages (signup, templates, admin) still rely on staying
+   narrow. --q-accent is set inline per domain (PU/PEOU/BI) from the view. */
+/* .form-card.wide (two classes) otherwise outranks a single-class .q-card
+   on specificity alone regardless of source order, pinning this right
+   back to 760px — so this selector repeats .form-card.wide itself to win. */
+.form-card.wide.q-card { max-width: none; width: 100%; border-left: 4px solid var(--q-accent, var(--accent)); }
+.q-card-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 6px; flex-wrap: wrap; }
+.q-card-title { margin: 0; display: flex; align-items: center; gap: 10px; }
+.q-domain-tag {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--q-accent, var(--accent));
+  background: color-mix(in srgb, var(--q-accent, var(--accent)) 14%, transparent);
+  border-radius: 999px;
+  padding: 3px 11px;
+}
+.q-domain-progress {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 13px;
+  flex-shrink: 0;
+}
+
+body.stage-evaluation-questionnaire .likert-item { padding: 24px 0; }
+body.stage-evaluation-questionnaire .likert-item-text { font-size: 18px; line-height: 1.55; margin-bottom: 14px; font-weight: 600; color: var(--heading, var(--text)); }
+body.stage-evaluation-questionnaire .likert-item-code { font-size: 13px; margin-right: 9px; }
+
+/* Each rating option becomes its own small card (not a bare radio+label
+   row) with a visible checked state — live as the respondent clicks via
+   :has(), and also reflected on page load from already-saved answers via
+   the server-rendered .is-checked class (routes/evaluation.js doesn't
+   round-trip through JS, so a page load needs its own non-:has() path). */
+body.stage-evaluation-questionnaire .likert-row { gap: 10px; }
+body.stage-evaluation-questionnaire .likert-option {
+  gap: 0;
+  font-size: 18px;
+  flex-direction: column;
+  align-items: flex-start;
+  position: relative;
+  padding: 12px 16px 12px 40px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-card);
+  cursor: pointer;
+  min-width: 128px;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+body.stage-evaluation-questionnaire .likert-option input {
+  position: absolute;
+  left: 14px;
+  top: 16px;
+  width: 17px;
+  height: 17px;
+  accent-color: var(--q-accent, var(--accent));
+  margin: 0;
+}
+body.stage-evaluation-questionnaire .likert-option-value { font-weight: 800; font-size: 15px; color: var(--text-muted); }
+body.stage-evaluation-questionnaire .likert-option-label { font-size: 13.5px; color: var(--text-muted); font-weight: 600; }
+body.stage-evaluation-questionnaire .likert-option:hover { border-color: var(--q-accent, var(--accent)); }
+body.stage-evaluation-questionnaire .likert-option:has(input:checked),
+body.stage-evaluation-questionnaire .likert-option.is-checked {
+  border-color: var(--q-accent, var(--accent));
+  background: color-mix(in srgb, var(--q-accent, var(--accent)) 10%, var(--bg-card));
+  box-shadow: 0 0 0 1px var(--q-accent, var(--accent));
+}
+body.stage-evaluation-questionnaire .likert-option:has(input:checked) .likert-option-value,
+body.stage-evaluation-questionnaire .likert-option:has(input:checked) .likert-option-label,
+body.stage-evaluation-questionnaire .likert-option.is-checked .likert-option-value,
+body.stage-evaluation-questionnaire .likert-option.is-checked .likert-option-label { color: var(--q-accent, var(--accent)); }
+
+body.stage-evaluation-questionnaire .field-remark label { font-size: 15px; }
+body.stage-evaluation-questionnaire .field-remark textarea { font-size: 15.5px; min-height: 76px; }
+
+/* Overview bar above the form — pure server-side count from the view, no
+   client JS required, so it's correct even on first load / after a save. */
+.q-progress-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-bottom: 22px;
+  box-shadow: var(--card-shadow);
+}
+.q-progress-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+.q-progress-label { font-weight: 700; font-size: 14.5px; }
+.q-progress-count { font-size: 14.5px; color: var(--text-muted); font-weight: 600; }
+.q-progress-track { height: 9px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.q-progress-fill { height: 100%; background: linear-gradient(90deg, var(--secondary), var(--cyan)); border-radius: 999px; transition: width 0.25s ease; }
+
+body.stage-evaluation-questionnaire .q-actions { display: flex; gap: 12px; margin-top: 4px; }
+body.stage-evaluation-questionnaire .q-actions .btn { font-size: 15.5px; padding: 13px 26px; }
+
+@media (max-width: 800px) {
+  .likert-row { flex-direction: column; }
+  .likert-option { width: 100%; flex-direction: row; align-items: center; gap: 10px; padding: 12px 16px 12px 40px; }
+}
+
 .alert-error {
   background: var(--alert-error-bg);
   border: 1px solid var(--danger);
