@@ -1,5 +1,5 @@
 <div class="page-title">📋 <span class="page-title-text">View Evaluation Report</span></div>
-<p class="page-subtitle">Every SME owner account's TAM end-user evaluation progress, and a cross-respondent summary of the 17-item questionnaire.</p>
+<p class="page-subtitle">Every SME owner account's end-user evaluation progress, and a cross-respondent summary of the <%= totalItems %>-item questionnaire.</p>
 
 <div class="form-card wide" style="max-width: none; margin-bottom: 26px;">
   <div class="form-title" style="font-size: 18px;">Respondents</div>
@@ -37,7 +37,7 @@
             <td><span class="badge <%= consentClass %>"><%= consentLabel %></span></td>
             <td><span class="badge <%= statusClass %>"><%= statusLabel %></span></td>
             <td><%= s.tasks_done || 0 %> / 6</td>
-            <td><%= s.items_answered || 0 %> / 17</td>
+            <td><%= s.items_answered || 0 %> / <%= totalItems %></td>
             <td><%= s.completed_at ? new Date(s.completed_at).toLocaleDateString() : '—' %></td>
             <td style="text-align: right;">
               <% if (s.status) { %>
@@ -54,7 +54,7 @@
 </div>
 
 <div class="form-card wide" style="max-width: none;">
-  <div class="form-title" style="font-size: 18px;">17-item questionnaire — summary</div>
+  <div class="form-title" style="font-size: 18px;"><%= totalItems %>-item questionnaire — summary</div>
   <p class="form-hint">
     Based on <strong><%= summary.completedCount %></strong> fully completed evaluation<%= summary.completedCount === 1 ? '' : 's' %>.
     In-progress evaluations are excluded so partial ratings don't skew the figures.
@@ -77,7 +77,7 @@
       <% }); %>
     </div>
 
-    <% ['PU', 'PEOU', 'BI'].forEach(function(domain) { %>
+    <% summary.byDomain.map(function(d){ return d.domain; }).forEach(function(domain) { %>
       <div style="margin-top: 22px;">
         <div class="form-title" style="font-size: 15px; margin-bottom: 6px;"><%= (summary.byDomain.find(function(d){ return d.domain === domain; }) || {}).label %> (<%= domain %>)</div>
         <div class="table-scroll">

@@ -1,11 +1,15 @@
 // Admin section — a role='Admin' account (see db/schema.sql's
 // sme_accounts.role column, and scripts/promoteToAdmin.js for how an
 // account gets that role) can manage SME owner accounts (reset a
-// forgotten/locked-out password) and browse the TAM end-user evaluation
-// data every SME owner account logs at /evaluation (routes/evaluation.js,
+// forgotten/locked-out password) and browse the end-user evaluation data
+// every SME owner account logs at /evaluation (routes/evaluation.js,
 // services/tamEvaluation.js): each account's six-task walkthrough log,
-// its 17-item questionnaire answers, and a cross-respondent descriptive
-// summary matching the instrument's own Section 6 scoring plan.
+// its questionnaire answers (the 15-item ISO/IEC 25010 Quality-in-Use
+// instrument as of 2 October 2026 — see tamEvaluation.js's itemsFor()),
+// and a cross-respondent descriptive summary matching the instrument's
+// own Section 6 scoring plan. Template Evaluator accounts still take the
+// original 17-item TAM instrument, browsed separately below at
+// /admin/expert-evaluations against its own, never-merged tables.
 //
 // Entirely separate router from routes/dashboard.js's SME Owner Portal —
 // an Admin account has no datasets/analytics of its own, so none of that
@@ -21,7 +25,7 @@ const {
   createAdminAccount, promoteToAdmin, demoteToOwner, setCohort, COHORT_LABELS,
 } = require('../services/adminAccounts');
 const {
-  WALKTHROUGH_TASKS, groupItemsByDomain, EXPERT_ROLE,
+  WALKTHROUGH_TASKS, groupItemsByDomain, EXPERT_ROLE, SME_ROLE, itemsFor,
   getEvaluationStateReadOnly, listAllEvaluationStatuses, getCompletedResponseSummary,
   listAllExpertEvaluationStatuses, getCompletedExpertResponseSummary, getModuleVisits,
 } = require('../services/tamEvaluation');
@@ -384,8 +388,9 @@ router.post('/admin/accounts/:id/cohort', async (req, res, next) => {
 
 // ------------------------------------------------------------------
 // GET /admin/evaluations — every SME owner account's evaluation
-// progress, plus the cross-respondent 17-item descriptive summary
-// (completed evaluations only — see getCompletedResponseSummary()).
+// progress, plus the cross-respondent descriptive summary for the
+// ISO/IEC 25010 Quality-in-Use questionnaire (completed evaluations
+// only — see getCompletedResponseSummary()).
 // ------------------------------------------------------------------
 router.get('/admin/evaluations', async (req, res, next) => {
   try {
@@ -399,6 +404,7 @@ router.get('/admin/evaluations', async (req, res, next) => {
       adminSection: 'evaluations',
       statuses,
       summary,
+      totalItems: itemsFor(SME_ROLE).length,
     });
   } catch (err) {
     next(err);
@@ -425,7 +431,7 @@ router.get('/admin/evaluations/:accountId', async (req, res, next) => {
       session,
       tasks: WALKTHROUGH_TASKS,
       taskLogs,
-      domains: groupItemsByDomain(),
+      domains: groupItemsByDomain(SME_ROLE),
       responses,
     });
   } catch (err) {
@@ -483,7 +489,7 @@ router.get('/admin/expert-evaluations/:accountId', async (req, res, next) => {
       taskLogs,
       moduleVisits,
       isDirectFlow,
-      domains: groupItemsByDomain(),
+      domains: groupItemsByDomain(EXPERT_ROLE),
       responses,
     });
   } catch (err) {
@@ -774,14 +780,19 @@ router.get('/admin/debug-schema', async (req, res, next) => {
 
 // ------------------------------------------------------------------
 // TEMPORARY — GET /admin/debug-tam-reliability — Cronbach's alpha for
-// each TAM domain (PU/PEOU/BI), computed from the raw per-respondent,
-// per-item ratings already stored in evaluation_responses. Added 26
-// September 2026 to fill in the manuscript's "Cronbach's alpha was [ ]
-// for PU, [ ] for PEOU, and [ ] for BI" placeholder (Section 5.2/5.8)
-// without needing external database access (pgAdmin, etc.) — same
-// reasoning as /admin/debug-schema above. Plain text, admin-gated.
+// each SME Owner questionnaire domain, computed from the raw
+// per-respondent, per-item ratings already stored in evaluation_responses.
+// Added 26 September 2026 (originally for the TAM domains PU/PEOU/BI; as
+// of 2 October 2026 evaluation_responses holds the ISO/IEC 25010
+// Quality-in-Use domains EFF/RISK/SAT/EFFIC instead — groupItemsByDomain
+// (SME_ROLE) below always reflects whichever instrument this account
+// population is currently on) to fill in the manuscript's reliability
+// placeholder without needing external database access (pgAdmin, etc.) —
+// same reasoning as /admin/debug-schema above. Plain text, admin-gated.
 // Safe to delete once you have the numbers — it's a diagnostic, not a
-// feature.
+// feature. Template Evaluator / TAM reliability is unaffected — it is
+// scored separately and still reads TAM_ITEMS via EXPERT_ROLE elsewhere
+// in this file, never through this route.
 //
 // Only status='completed' sessions are included, matching
 // getCompletedResponseSummary()'s own "final data only" discipline
@@ -816,7 +827,7 @@ router.get('/admin/debug-tam-reliability', async (req, res, next) => {
     }
 
     const lines = [];
-    groupItemsByDomain().forEach((domain) => {
+    groupItemsByDomain(SME_ROLE).forEach((domain) => {
       const codes = domain.items.map((it) => it.code);
       const k = codes.length;
 

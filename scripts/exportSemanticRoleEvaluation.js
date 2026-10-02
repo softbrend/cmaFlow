@@ -30,6 +30,43 @@ const { getOrBuildFullProfile } = require('../services/fullDescriptiveAnalytics'
 const { buildSemanticModelHybrid } = require('../services/semanticFieldEngine');
 
 // ---------------------------------------------------------------------
+// Retry helper — added 2 October 2026 after this script started hitting
+// ECONNRESET when run from a laptop against Render's EXTERNAL database
+// URL (the production app itself never sees this, because it connects
+// over Render's internal network instead). A reset on a brand-new
+// connection to a cloud Postgres instance is often transient — a proxy
+// or load balancer dropping a connection attempt under momentary load —
+// so this retries with backoff instead of failing the whole run on the
+// first blip. If every attempt fails with the same error, that's a
+// real signal (not noise): most likely something between your network
+// and Render's database host is actively blocking/resetting the
+// connection (a campus/office firewall, antivirus with network
+// inspection, or a VPN), which no amount of retrying will fix — at that
+// point the fix is a different network, not a different script.
+// ---------------------------------------------------------------------
+async function withRetry(label, fn, { attempts = 4, delaysMs = [2000, 5000, 10000] } = {}) {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const isLastAttempt = attempt === attempts;
+      // Print BOTH the short code and Postgres's own human-readable message
+      // (err.message) — the code alone ("28000") doesn't say what Postgres
+      // actually objected to; the message does (wrong SSL mode, rejected
+      // host, bad role/database, etc). err.detail/err.hint, when Postgres
+      // sends them, are usually the most specific part of all.
+      const detail = [err.code, err.message, err.detail, err.hint].filter(Boolean).join(' | ');
+      console.warn(
+        `  [${label}] attempt ${attempt}/${attempts} failed: ${detail}` +
+        (isLastAttempt ? '' : ` — retrying in ${delaysMs[attempt - 1] / 1000}s...`)
+      );
+      if (isLastAttempt) throw err;
+      await new Promise((resolve) => setTimeout(resolve, delaysMs[attempt - 1]));
+    }
+  }
+}
+
+// ---------------------------------------------------------------------
 // IMPORTANT — fill this in before running for real.
 //
 // cmaDB accumulates every account ever created, including development/
@@ -42,10 +79,34 @@ const { buildSemanticModelHybrid } = require('../services/semanticFieldEngine');
 // a loud warning, which is useful for a first look but should not be
 // what you actually run the evaluation against.
 // ---------------------------------------------------------------------
+// Filled in 2 October 2026 from the admin "Manage Datasets" list — the
+// seventeen real MIT 267 student accounts, one dataset_id each. Three
+// students (AVR Airbnb / Fritz Tuazon, Pizza Cap / Earl Jake Mahilum,
+// Retail Metrics / Rehanie Utto) each uploaded twice under two different
+// dataset_id values; the later/fuller-looking upload was kept for each
+// and the earlier one left out on purpose, so this list stays at
+// seventeen rather than twenty and no single student's data is double-
+// counted in the macro-F1. See
+// claude/field-study-and-semantic-retest-plan.md for the full checklist
+// this is step 1 of.
 const INCLUDE_DATASET_IDS = [
-  // 'SME_Retail_07',
-  // 'SME_Cafe_03',
-  // ... exactly the seventeen dataset_id values the paper evaluates
+  'SME-AdventureWorks',
+  'AVR_Airbnb_02',
+  'SME-Caday-01',
+  'cristel01',
+  'SME-ECOMINSIGHT',
+  'SME_Mercasight',
+  'SME_Financial_Solution',
+  'SME_HMFashion_01',
+  'OULAD-001',
+  'Pizza_Flow_02',
+  'RetailMetrics-02',
+  'SME_Retail_Transaction_Data_08',
+  'BLINKIT_25',
+  'PITTRACK_01',
+  'SME_Zomato_02',
+  'SME-olist-101',
+  'SME-YTA',
 ];
 
 // ---------------------------------------------------------------------
@@ -98,8 +159,8 @@ function writeCsv(path, header, rows) {
 }
 
 async function main() {
-  const { rows: datasets } = await pool.query(
-    `SELECT id, account_id, dataset_id, dataset_name FROM uploaded_datasets ORDER BY id`
+  const { rows: datasets } = await withRetry('dataset list', () =>
+    pool.query(`SELECT id, account_id, dataset_id, dataset_name FROM uploaded_datasets ORDER BY id`)
   );
 
   const scoped = INCLUDE_DATASET_IDS.length
@@ -127,8 +188,19 @@ async function main() {
     return model.files.reduce((n, f) => n + Object.keys(f.columnRoles || {}).length, 0);
   }
 
+  const failedDatasets = [];
+
   for (const ds of scoped) {
-    const { files, relationships } = await getOrBuildFullProfile(ds.account_id, ds.id);
+    let files, relationships;
+    try {
+      ({ files, relationships } = await withRetry(ds.dataset_id, () =>
+        getOrBuildFullProfile(ds.account_id, ds.id)
+      ));
+    } catch (err) {
+      console.error(`  (giving up on ${ds.dataset_id} after repeated connection failures — ${err.code || err.message})`);
+      failedDatasets.push(ds.dataset_id);
+      continue;
+    }
     if (!files.length) {
       console.warn(`  (skipping ${ds.dataset_id} — no files/profile found)`);
       continue;
@@ -169,11 +241,17 @@ async function main() {
   );
 
   console.log('');
-  console.log(`Wrote caaga_role_predictions.csv — ${predRows.length} columns across ${scoped.length} dataset(s).`);
+  console.log(`Wrote caaga_role_predictions.csv — ${predRows.length} columns across ${scoped.length - failedDatasets.length} dataset(s).`);
   console.log(`Wrote rater_labeling_template.csv — fill in rater1_label / rater2_label independently, then`);
   console.log(`resolved_label after the two raters discuss any disagreement. Valid labels (Table 3's nine`);
   console.log(`roles, plus 'other' for anything that fits none of them):`);
   console.log(`  Identifier, Date/time, Monetary amount, Quantity, Category, Rating, Geography, Status, Free text, other`);
+  if (failedDatasets.length) {
+    console.log('');
+    console.log(`NOTE: ${failedDatasets.length} dataset(s) could not be reached even after retries and are`);
+    console.log(`MISSING from both CSVs — re-run the script to pick them up once the connection is stable:`);
+    console.log(`  ${failedDatasets.join(', ')}`);
+  }
 
   await pool.end();
 }

@@ -133,12 +133,97 @@ const TAM_ITEMS = [
 ];
 
 const TAM_ITEMS_BY_CODE = new Map(TAM_ITEMS.map((item) => [item.code, item]));
+const TAM_DOMAIN_CODES = ['PU', 'PEOU', 'BI'];
 
-function groupItemsByDomain() {
-  return ['PU', 'PEOU', 'BI'].map((domain) => ({
+// ------------------------------------------------------------------
+// ISO/IEC 25010 Quality-in-Use instrument — replaces TAM for SME Owner
+// accounts only, added 2 October 2026 in response to the editorial
+// decision letter's core complaint: TAM measures acceptance (would a
+// respondent adopt the tool), not decision-support effectiveness
+// (did using it produce a good decision). Template Evaluator accounts
+// are explicitly UNCHANGED — they keep taking TAM_ITEMS above, in the
+// expert_evaluation_* tables, so the already-analyzed 15/17-respondent
+// TAM dataset is never touched by this. See
+// claude/field-study-and-semantic-retest-plan.md for the companion
+// external decision-report form + blind-rating rubric this pairs with;
+// this questionnaire alone is still self-report and does not by itself
+// constitute the "validation" the letter asks for.
+//
+// Four Quality-in-Use characteristics, operationalized around the
+// actual monetization decision reached rather than generic software
+// quality (see each item's wording):
+//   EFF   Effectiveness — "accuracy and completeness with which users
+//         achieve specified goals" (ISO/IEC 25010), here: did the SME
+//         owner reach an accurate, complete monetization decision.
+//   RISK  Freedom from Economic Risk — "the degree to which a product
+//         mitigates potential risk to economic status" (ISO/IEC
+//         25010), here: did CMA-Flow reduce the risk of a costly
+//         monetization mistake.
+//   SAT   Satisfaction — trust in and satisfaction with the
+//         RECOMMENDATION specifically, not the interface (that's what
+//         distinguishes this from a usability satisfaction item).
+//   EFFIC Efficiency — effort/time to reach the decision, the one
+//         domain that still gives a rough point of comparison against
+//         TAM's old ground (PEOU covered ease of use; this covers
+//         decision effort instead).
+// ------------------------------------------------------------------
+const ISO_DOMAIN_LABELS = {
+  EFF: 'Effectiveness',
+  RISK: 'Freedom from Economic Risk',
+  SAT: 'Satisfaction',
+  EFFIC: 'Efficiency',
+};
+const ISO_DOMAIN_CODES = ['EFF', 'RISK', 'SAT', 'EFFIC'];
+
+const ISO25010_ITEMS = [
+  { code: 'EFF-01', domain: 'EFF', text: 'The reports CMA-Flow generated gave me enough information to reach an accurate monetization decision for my business.' },
+  { code: 'EFF-02', domain: 'EFF', text: 'I was able to fully complete the monetization decision I set out to make, using CMA-Flow’s reports.' },
+  { code: 'EFF-03', domain: 'EFF', text: 'The monetization recommendation CMA-Flow gave me matched what I know to be true about my own business.' },
+  { code: 'EFF-04', domain: 'EFF', text: 'Using CMA-Flow helped me consider factors in my monetization decision that I would otherwise have overlooked.' },
+  { code: 'EFF-05', domain: 'EFF', text: 'Overall, the monetization decision I reached using CMA-Flow was more complete and accurate than one I would have reached on my own.' },
+  { code: 'RISK-01', domain: 'RISK', text: 'Using CMA-Flow reduced my risk of choosing a monetization approach that would hurt my business financially.' },
+  { code: 'RISK-02', domain: 'RISK', text: 'When CMA-Flow did not have enough evidence to support a recommendation, it told me so rather than giving me a risky answer anyway.' },
+  { code: 'RISK-03', domain: 'RISK', text: 'I feel more confident that my monetization decision will not lead to a costly mistake, because I used CMA-Flow.' },
+  { code: 'RISK-04', domain: 'RISK', text: 'Without CMA-Flow, I would have been more likely to change my monetization approach based on guesswork rather than evidence.' },
+  { code: 'SAT-01', domain: 'SAT', text: 'I trust the monetization recommendation CMA-Flow gave me.' },
+  { code: 'SAT-02', domain: 'SAT', text: 'I am satisfied with the monetization decision I reached using CMA-Flow.' },
+  { code: 'SAT-03', domain: 'SAT', text: 'I would rely on CMA-Flow’s recommendation again the next time I need to make a monetization decision.' },
+  { code: 'EFFIC-01', domain: 'EFFIC', text: 'I reached my monetization decision faster using CMA-Flow than I would have on my own.' },
+  { code: 'EFFIC-02', domain: 'EFFIC', text: 'Reaching a monetization decision using CMA-Flow took less effort than reviewing my own records and spreadsheets myself.' },
+  { code: 'EFFIC-03', domain: 'EFFIC', text: 'Overall, CMA-Flow made the process of reaching a monetization decision efficient.' },
+];
+
+const ISO25010_ITEMS_BY_CODE = new Map(ISO25010_ITEMS.map((item) => [item.code, item]));
+
+// ------------------------------------------------------------------
+// Role-aware lookups — every place in this file (and its callers in
+// routes/evaluation.js, routes/admin.js) that used to reach straight
+// for TAM_ITEMS / TAM_ITEMS_BY_CODE / DOMAIN_LABELS now goes through
+// one of these instead, exactly mirroring tablesFor()'s own
+// EXPERT_ROLE-vs-everything-else split above: a Template Evaluator
+// gets the original TAM instrument; an SME Owner (or any other/absent
+// role, same default tablesFor() already uses) gets ISO/IEC 25010.
+// ------------------------------------------------------------------
+function itemsFor(role) {
+  return role === EXPERT_ROLE ? TAM_ITEMS : ISO25010_ITEMS;
+}
+function itemsByCodeFor(role) {
+  return role === EXPERT_ROLE ? TAM_ITEMS_BY_CODE : ISO25010_ITEMS_BY_CODE;
+}
+function domainCodesFor(role) {
+  return role === EXPERT_ROLE ? TAM_DOMAIN_CODES : ISO_DOMAIN_CODES;
+}
+function domainLabelsFor(role) {
+  return role === EXPERT_ROLE ? DOMAIN_LABELS : ISO_DOMAIN_LABELS;
+}
+
+function groupItemsByDomain(role) {
+  const items = itemsFor(role);
+  const labels = domainLabelsFor(role);
+  return domainCodesFor(role).map((domain) => ({
     domain,
-    label: DOMAIN_LABELS[domain],
-    items: TAM_ITEMS.filter((item) => item.domain === domain),
+    label: labels[domain],
+    items: items.filter((item) => item.domain === domain),
   }));
 }
 
@@ -301,8 +386,9 @@ async function completeTask(session, accountId, taskNumber, { neededAssistance, 
 // evaluation" (all 17). `answers` is [{ code, rating, remark }, ...].
 async function saveResponses(session, accountId, answers, role) {
   const t = tablesFor(role);
+  const itemsByCode = itemsByCodeFor(role);
   for (const answer of answers) {
-    const item = TAM_ITEMS_BY_CODE.get(answer.code);
+    const item = itemsByCode.get(answer.code);
     if (!item) continue; // ignore anything not a real item code
     const rating = answer.rating === null || answer.rating === undefined || answer.rating === ''
       ? null
@@ -317,15 +403,18 @@ async function saveResponses(session, accountId, answers, role) {
   }
 }
 
-// Validates the full 17-item instrument's own rule (Section 4.1): every
-// item must be rated, and any rating of 3 or below must carry a remark.
-// Returns { ok, missingCodes, needsRemarkCodes } — both arrays empty
-// means the questionnaire is ready to be marked complete.
+// Validates the full instrument's own rule (Section 4.1, carried over
+// unchanged for the ISO/IEC 25010 instrument): every item must be
+// rated, and any rating of 3 or below must carry a remark. Returns
+// { ok, missingCodes, needsRemarkCodes } — both arrays empty means the
+// questionnaire is ready to be marked complete. itemsFor(role) picks the
+// 17-item TAM set for a Template Evaluator or the 15-item ISO/IEC 25010
+// set for everyone else, same split as groupItemsByDomain()/saveResponses().
 async function validateQuestionnaire(sessionId, role) {
   const responses = await getResponses(sessionId, role);
   const missingCodes = [];
   const needsRemarkCodes = [];
-  for (const item of TAM_ITEMS) {
+  for (const item of itemsFor(role)) {
     const r = responses.get(item.code);
     if (!r || r.rating === null || r.rating === undefined) {
       missingCodes.push(item.code);
@@ -443,7 +532,16 @@ async function listAllExpertEvaluationStatuses() {
 // expert_evaluation_sessions header comment in db/schema.sql). sme_owner
 // callers never pass it — every SME Owner account is 'walkthrough', so
 // filtering would be a no-op there, not an omission.
-async function summarizeCompletedResponses(responsesTable, sessionsTable, evaluationFlowFilter) {
+//
+// role picks which item list/domain set this summary is scored against —
+// itemsFor(role)/domainCodesFor(role)/domainLabelsFor(role): the 17-item
+// TAM instrument for EXPERT_ROLE callers (getCompletedExpertResponseSummary,
+// unchanged), or the 15-item ISO/IEC 25010 instrument for everyone else
+// (getCompletedResponseSummary, the SME Owner population this was revised
+// for). Defaults to SME_ROLE's own ISO/IEC 25010 scoring exactly like
+// tablesFor()/itemsFor() default everywhere else in this file, so this
+// stays additive rather than a breaking signature change.
+async function summarizeCompletedResponses(responsesTable, sessionsTable, evaluationFlowFilter, role) {
   const params = [];
   let flowJoin = '';
   if (evaluationFlowFilter) {
@@ -480,21 +578,23 @@ async function summarizeCompletedResponses(responsesTable, sessionsTable, evalua
     };
   }
 
-  const byItem = TAM_ITEMS.map((item) => {
+  const items = itemsFor(role);
+  const labels = domainLabelsFor(role);
+  const byItem = items.map((item) => {
     const values = rows.filter((r) => r.item_code === item.code).map((r) => r.rating);
     return { code: item.code, domain: item.domain, text: item.text, ...summarize(values) };
   });
 
-  const byDomain = ['PU', 'PEOU', 'BI'].map((domain) => {
+  const byDomain = domainCodesFor(role).map((domain) => {
     const values = rows.filter((r) => r.domain === domain).map((r) => r.rating);
-    return { domain, label: DOMAIN_LABELS[domain], ...summarize(values) };
+    return { domain, label: labels[domain], ...summarize(values) };
   });
 
   return { byItem, byDomain, completedCount: completedCountRows[0].n };
 }
 
 async function getCompletedResponseSummary() {
-  return summarizeCompletedResponses('evaluation_responses', 'evaluation_sessions');
+  return summarizeCompletedResponses('evaluation_responses', 'evaluation_sessions', undefined, SME_ROLE);
 }
 
 // Returns { walkthrough, direct } — two separate summaries, never one
@@ -506,8 +606,8 @@ async function getCompletedResponseSummary() {
 // table.
 async function getCompletedExpertResponseSummary() {
   const [walkthrough, direct] = await Promise.all([
-    summarizeCompletedResponses('expert_evaluation_responses', 'expert_evaluation_sessions', 'walkthrough'),
-    summarizeCompletedResponses('expert_evaluation_responses', 'expert_evaluation_sessions', 'direct'),
+    summarizeCompletedResponses('expert_evaluation_responses', 'expert_evaluation_sessions', 'walkthrough', EXPERT_ROLE),
+    summarizeCompletedResponses('expert_evaluation_responses', 'expert_evaluation_sessions', 'direct', EXPERT_ROLE),
   ]);
   return { walkthrough, direct };
 }
@@ -595,6 +695,12 @@ module.exports = {
   WALKTHROUGH_TASKS,
   TAM_ITEMS,
   DOMAIN_LABELS,
+  ISO25010_ITEMS,
+  ISO_DOMAIN_LABELS,
+  itemsFor,
+  itemsByCodeFor,
+  domainCodesFor,
+  domainLabelsFor,
   groupItemsByDomain,
   getOrCreateSession,
   getEvaluationState,

@@ -12,7 +12,7 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const {
-  WALKTHROUGH_TASKS, TAM_ITEMS, groupItemsByDomain, EXPERT_ROLE,
+  WALKTHROUGH_TASKS, itemsFor, groupItemsByDomain, EXPERT_ROLE,
   getEvaluationState, recordConsent, startTaskIfNeeded, completeTask,
   saveResponses, validateQuestionnaire, markCompleted, getModuleVisits,
 } = require('../services/tamEvaluation');
@@ -55,6 +55,7 @@ router.get('/evaluation', async (req, res, next) => {
         session,
         isExpert,
         isDirectFlow,
+        questionnaireItemCount: itemsFor(role).length,
       });
     }
 
@@ -98,7 +99,7 @@ router.get('/evaluation', async (req, res, next) => {
         title: 'End-User Evaluation — Questionnaire',
         active: 'evaluation-questionnaire',
         session,
-        domains: groupItemsByDomain(),
+        domains: groupItemsByDomain(role),
         responses,
         errors: null,
         isExpert,
@@ -115,7 +116,7 @@ router.get('/evaluation', async (req, res, next) => {
       tasks: WALKTHROUGH_TASKS,
       taskLogs,
       moduleVisits,
-      domains: groupItemsByDomain(),
+      domains: groupItemsByDomain(role),
       responses,
       isExpert,
       isDirectFlow,
@@ -198,7 +199,7 @@ router.post('/evaluation/questionnaire', async (req, res, next) => {
       return res.redirect('/evaluation');
     }
 
-    const answers = TAM_ITEMS.map((item) => ({
+    const answers = itemsFor(role).map((item) => ({
       code: item.code,
       rating: req.body[`rating_${item.code}`],
       remark: req.body[`remark_${item.code}`],
@@ -213,7 +214,7 @@ router.post('/evaluation/questionnaire', async (req, res, next) => {
           title: 'End-User Evaluation — Questionnaire',
           active: 'evaluation-questionnaire',
           session,
-          domains: groupItemsByDomain(),
+          domains: groupItemsByDomain(role),
           responses,
           errors: validation,
           isExpert,

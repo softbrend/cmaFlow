@@ -639,6 +639,31 @@ CREATE INDEX IF NOT EXISTS idx_evaluation_responses_session
 CREATE INDEX IF NOT EXISTS idx_evaluation_responses_account
     ON evaluation_responses(account_id);
 
+-- Widen evaluation_responses.domain to also allow the ISO/IEC 25010
+-- Quality-in-Use domain codes (EFF, RISK, SAT, EFFIC) used by the SME
+-- Owner questionnaire as of 2 October 2026 — see tamEvaluation.js's
+-- ISO25010_ITEMS / itemsFor(). The original PU/PEOU/BI values stay valid
+-- too, so every row already logged under the earlier TAM-based SME Owner
+-- instrument is untouched and still satisfies the constraint — this is a
+-- widen, not a replace. This ONLY touches evaluation_responses;
+-- expert_evaluation_responses's own, separately-named domain constraint
+-- further down this file is deliberately left at PU/PEOU/BI only, because
+-- Template Evaluator accounts still take the original 17-item TAM
+-- instrument and the already-collected results from the previous 15
+-- evaluators must keep scoring against exactly those three domains.
+-- DROP+re-ADD rather than the usual bare "ADD CONSTRAINT ... EXCEPTION
+-- WHEN duplicate_object" pattern, because this one needs to actually
+-- change an existing constraint's definition, not just tolerate it
+-- already existing.
+ALTER TABLE evaluation_responses DROP CONSTRAINT IF EXISTS evaluation_responses_domain_check;
+DO $$ BEGIN
+  ALTER TABLE evaluation_responses
+      ADD CONSTRAINT evaluation_responses_domain_check
+      CHECK (domain IN ('PU', 'PEOU', 'BI', 'EFF', 'RISK', 'SAT', 'EFFIC'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
 -- One-time backfill for sme_accounts.cohort (added 2 October 2026, see the
 -- column's own comment up near sme_accounts_role_check): every SME Owner
 -- account that already has an evaluation_sessions row — i.e. it actually
