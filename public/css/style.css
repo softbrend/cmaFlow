@@ -853,6 +853,18 @@ body.stage-evaluation-data-browser .form-hint { font-size: 15px; }
    treats the two as equivalent for nav highlighting only). */
 body.stage-evaluation-dataset-editor .main-inner { max-width: 1600px; }
 
+/* Bounded vertical scroll for the grid itself (added 3 October 2026, per
+   Brenda's request for a scrollbar on this table). .table-scroll alone
+   (overflow-x: auto only) lets a 50-row table just keep growing, so the
+   whole PAGE scrolls instead — carrying the "+ Add row" bar and page
+   title out of view along with it. .eval-editor-scroll caps the table's
+   own height and gives it its own vertical scrollbar, so the rest of the
+   page (and the Add-row bar above it) stays put while scrolling through
+   rows. .excel-table thead th's existing position: sticky keeps the
+   column headers pinned to the top of THIS scroll area specifically, now
+   that it (not .main) is the nearest scrolling ancestor. */
+.eval-editor-scroll { max-height: 65vh; overflow-y: auto; }
+
 /* Editable cells layered on .excel-table's existing look: a text cursor
    and a visible focus ring while typing (contenteditable gives no default
    focus style of its own, unlike an <input>), then a brief green flash on
