@@ -1003,6 +1003,35 @@ body.stage-evaluation-dataset-editor .main-inner { max-width: 1600px; }
    that it (not .main) is the nearest scrolling ancestor. */
 .eval-editor-scroll { max-height: 65vh; overflow-y: auto; }
 
+/* ---------------- Business Owner Evaluator — User Manual: full-width
+   layout, larger type ----------------
+   Added 3 October 2026 per Brenda's request: the manual previously sat
+   inside the same 760px .form-card.wide as every short form in the app
+   (signup, templates, admin), leaving a large empty gap on wide screens,
+   with the heading, description, and body text all at the app's default
+   compact-form sizes even though this page is meant to be read start to
+   finish rather than skimmed like a form. Scoped to body.stage-user-manual
+   (routes/templates.js's GET /user-manual sets active: 'user-manual') so
+   nothing else that still relies on .form-card.wide/.page-subtitle/
+   .form-hint/.table-simple staying at their compact defaults is affected —
+   same approach already used above for body.stage-evaluation-data-browser
+   and body.stage-evaluation-dataset-editor. Every .form-card.wide on this
+   page IS the manual's own card (Contents + the 8 numbered sections), so
+   scoping by body class alone — no second component class needed — is
+   enough to widen all of them safely. */
+body.stage-user-manual .main-inner { max-width: none; }
+body.stage-user-manual .form-card.wide { max-width: none; width: 100%; }
+
+/* Heading and description scaled up together with the 20px body text
+   below, so the page reads as one consistent, larger type scale rather
+   than a small headline sitting over oversized paragraphs. */
+body.stage-user-manual .page-title { font-size: 44px; }
+body.stage-user-manual .page-subtitle { font-size: 20px; max-width: none; line-height: 1.65; }
+body.stage-user-manual .form-title { font-size: 30px; }
+body.stage-user-manual .form-hint { font-size: 20px; line-height: 1.75; }
+body.stage-user-manual .table-simple th { font-size: 15px; }
+body.stage-user-manual .table-simple td { font-size: 19px; }
+
 /* "Add row" form (views/dashboard/evaluation-dataset-editor.ejs, added
    3 October 2026, replacing the earlier "insert a blank row, then edit
    each cell" flow) — a simple centered modal: a dimmed overlay behind a
