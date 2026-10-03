@@ -1,6 +1,12 @@
 <div class="page-title">✏️ <span class="page-title-text">Edit Your Evaluation Dataset</span></div>
 <p class="page-subtitle page-subtitle-wide">
-  <% if (categoryLabel) { %><strong><%= categoryLabel %></strong> — <% } %><%= records.length %> row<%= records.length === 1 ? '' : 's' %>, this is your own working copy of this category's template — separate from the shared template CSV, and separate from any other category's copy you hold. These are already-recorded transactions, so existing rows are locked — you can't edit or delete them here. Use <strong>+ Add row</strong> below to add new records as they happen; new rows are picked up the next time you open one of the four analytics modules, if this copy is your current default dataset.
+  <% if (categoryLabel) { %><strong><%= categoryLabel %></strong> — <% } %><%= records.length %> row<%= records.length === 1 ? '' : 's' %>, this is your own working copy of this category's template — separate from the shared template CSV, and separate from any other category's copy you hold.
+  <% if (isBlankOrigin) { %>
+    You started this copy blank, so every row is your own real data — click any cell to edit it in place, use <strong>Delete</strong> to remove a row you don't want, and <strong>+ Add row</strong> below to add a new one.
+  <% } else { %>
+    These are already-recorded transactions, so existing rows are locked — you can't edit or delete them here. Use <strong>+ Add row</strong> below to add new records as they happen;
+  <% } %>
+  new rows are picked up the next time you open one of the four analytics modules, if this copy is your current default dataset.
   <a href="/sme-templates/evaluation-dataset" style="margin-left: 6px;">All your dataset copies</a> ·
   <a href="/sme-templates">Download SME Templates</a>
 </p>
@@ -19,18 +25,26 @@
 
   <div class="form-card wide data-browser-card" style="max-width: none;">
     <div class="table-scroll eval-editor-scroll">
-      <table class="table-simple excel-table" id="eval-editor-table" data-dataset-row-id="<%= datasetRowId %>" data-columns="<%= columns.join('|') %>">
+      <table class="table-simple excel-table" id="eval-editor-table" data-dataset-row-id="<%= datasetRowId %>" data-columns="<%= columns.join('|') %>" data-editable="<%= isBlankOrigin ? '1' : '0' %>">
         <thead>
           <tr>
             <% columns.forEach(function (col) { %><th><%= col.replace(/_/g, ' ') %></th><% }); %>
+            <% if (isBlankOrigin) { %><th></th><% } %>
           </tr>
         </thead>
         <tbody>
           <% records.forEach(function (r) { %>
             <tr data-record-id="<%= r.id %>">
               <% columns.forEach(function (col) { %>
-                <td><%= r.data[col] === undefined || r.data[col] === null ? '' : r.data[col] %></td>
+                <% if (isBlankOrigin) { %>
+                  <td contenteditable="true" data-column="<%= col %>"><%= r.data[col] === undefined || r.data[col] === null ? '' : r.data[col] %></td>
+                <% } else { %>
+                  <td><%= r.data[col] === undefined || r.data[col] === null ? '' : r.data[col] %></td>
+                <% } %>
               <% }); %>
+              <% if (isBlankOrigin) { %>
+                <td style="text-align: right; white-space: nowrap;"><button type="button" class="btn btn-ghost btn-sm eval-delete-row">Delete</button></td>
+              <% } %>
             </tr>
           <% }); %>
         </tbody>
@@ -89,11 +103,16 @@
 <script>
 (function () {
   // Existing rows are locked — already-recorded transactions, not a live
-  // spreadsheet (per Brenda, 3 October 2026) — so this script is just the
-  // "+ Add row" flow now. The PATCH/DELETE wiring (click-to-edit cells,
-  // per-row Delete) that used to live here was removed along with the
-  // server routes it called (routes/templates.js no longer registers
-  // PATCH/DELETE /rows/:recordId at all).
+  // spreadsheet (per Brenda, 3 October 2026) — UNLESS this copy was
+  // started blank (isEditable below, from the table's own data-editable
+  // attribute, set from isBlankOrigin by routes/templates.js): then every
+  // row is the account's own real data, and the click-to-edit-a-cell /
+  // per-row Delete wiring below talks to the PATCH/DELETE routes
+  // reintroduced in routes/templates.js, scoped there to this same
+  // isBlankOrigin check. A prefilled copy's table has no contenteditable
+  // cells and no Delete buttons at all (see the EJS above), so isEditable
+  // is false there and this script never attempts a PATCH/DELETE call
+  // regardless.
   var table = document.getElementById('eval-editor-table');
   if (!table) return; // no columns — nothing to wire up
 
@@ -101,6 +120,7 @@
   var countEl = document.getElementById('eval-editor-count');
   var addBtn = document.getElementById('eval-add-row');
   var columns = table.getAttribute('data-columns').split('|');
+  var isEditable = table.getAttribute('data-editable') === '1';
   var rowsBase = '/sme-templates/evaluation-dataset/' + table.getAttribute('data-dataset-row-id') + '/rows';
 
   function rowCount() {
@@ -111,14 +131,102 @@
     countEl.textContent = 'Showing ' + n + ' row' + (n === 1 ? '' : 's') + '.';
   }
 
+  // Brief visual confirmation on a cell after a PATCH resolves — green
+  // flash for success, red for a rejected/failed save (which also
+  // restores the cell's previous text, so a failed edit never looks like
+  // it silently stuck).
+  function flashCell(td, ok) {
+    td.classList.remove('cell-saved', 'cell-error');
+    td.classList.add(ok ? 'cell-saved' : 'cell-error');
+    setTimeout(function () { td.classList.remove('cell-saved', 'cell-error'); }, 1200);
+  }
+
+  function wireCell(td) {
+    var original = td.textContent;
+    td.addEventListener('focus', function () { original = td.textContent; });
+    td.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); td.blur(); }
+    });
+    td.addEventListener('blur', function () {
+      var value = td.textContent;
+      if (value === original) return;
+      var tr = td.closest('tr');
+      var recordId = tr.getAttribute('data-record-id');
+      var column = td.getAttribute('data-column');
+      fetch(rowsBase + '/' + recordId, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ column: column, value: value }),
+      })
+        .then(function (resp) { return resp.json().then(function (body) { return { ok: resp.ok, body: body }; }); })
+        .then(function (result) {
+          if (!result.ok) {
+            td.textContent = original;
+            flashCell(td, false);
+            return;
+          }
+          original = value;
+          flashCell(td, true);
+        })
+        .catch(function () {
+          td.textContent = original;
+          flashCell(td, false);
+        });
+    });
+  }
+
+  function wireDeleteButton(btn) {
+    btn.addEventListener('click', function () {
+      var tr = btn.closest('tr');
+      var recordId = tr.getAttribute('data-record-id');
+      if (!window.confirm('Delete this row? This cannot be undone.')) return;
+      btn.disabled = true;
+      fetch(rowsBase + '/' + recordId, { method: 'DELETE' })
+        .then(function (resp) {
+          if (!resp.ok) { throw new Error('delete failed'); }
+          return resp.json();
+        })
+        .then(function () {
+          tr.parentNode.removeChild(tr);
+          refreshCount();
+        })
+        .catch(function () {
+          btn.disabled = false;
+          window.alert("Couldn't delete that row — please try again.");
+        });
+    });
+  }
+
+  if (isEditable) {
+    Array.prototype.forEach.call(tbody.querySelectorAll('td[contenteditable="true"]'), wireCell);
+    Array.prototype.forEach.call(tbody.querySelectorAll('.eval-delete-row'), wireDeleteButton);
+  }
+
   function buildRow(recordId, data) {
     var tr = document.createElement('tr');
     tr.setAttribute('data-record-id', recordId);
     columns.forEach(function (col) {
       var td = document.createElement('td');
       td.textContent = (data && data[col] !== undefined && data[col] !== null) ? data[col] : '';
+      if (isEditable) {
+        td.setAttribute('contenteditable', 'true');
+        td.setAttribute('data-column', col);
+        wireCell(td);
+      }
       tr.appendChild(td);
     });
+    if (isEditable) {
+      var actionTd = document.createElement('td');
+      actionTd.style.textAlign = 'right';
+      actionTd.style.whiteSpace = 'nowrap';
+      var delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'btn btn-ghost btn-sm eval-delete-row';
+      delBtn.textContent = 'Delete';
+      wireDeleteButton(delBtn);
+      actionTd.appendChild(delBtn);
+      tr.appendChild(actionTd);
+    }
     return tr;
   }
 

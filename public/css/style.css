@@ -972,6 +972,25 @@ body.stage-evaluation-data-browser .form-hint { font-size: 15px; }
 .excel-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--heading, var(--primary)) 4%, transparent); }
 .excel-table tbody tr:hover td { background: var(--row-current-bg); }
 
+/* Click-to-edit cells + per-row Delete, ONLY for a blank-origin copy
+   (views/dashboard/evaluation-dataset-editor.ejs's isBlankOrigin — added
+   3 October 2026 alongside the blank-template feature). Every rule here
+   is keyed off td[contenteditable="true"]/.eval-delete-row, which the
+   view only ever renders on that one dataset type, so a prefilled
+   copy's grid is visually unaffected — still the plain, locked table it
+   already was. */
+.excel-table td[contenteditable="true"] { cursor: text; }
+.excel-table td[contenteditable="true"]:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.excel-table td[contenteditable="true"]:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: var(--bg-card);
+  white-space: pre-wrap;
+}
+.excel-table td.cell-saved { background: color-mix(in srgb, var(--ok) 22%, transparent) !important; transition: background 0.2s ease; }
+.excel-table td.cell-error { background: color-mix(in srgb, var(--danger) 22%, transparent) !important; transition: background 0.2s ease; }
+.excel-table .eval-delete-row { white-space: nowrap; }
+
 /* Business Owner Evaluator's editable CRUD grid (GET /sme-templates/
    evaluation-dataset, added 2 October 2026) — same wide-page treatment as
    body.stage-evaluation-data-browser above, under its own stage class

@@ -43,6 +43,21 @@
     </div>
 
     <div class="field">
+      <label>Starting dataset</label>
+      <div style="display:flex; flex-direction:column; gap:10px; margin-top:4px;">
+        <label style="display:flex; align-items:flex-start; gap:8px; font-weight:400; cursor:pointer;">
+          <input type="radio" name="dataset_origin" value="prefilled" style="margin-top:3px;" <%= (old.dataset_origin || 'prefilled') === 'prefilled' ? 'checked' : '' %> />
+          <span>Use the category's 50 sample rows <span class="form-hint" style="display:block; margin:2px 0 0;">Synthetic, ready-made data — add new rows as you go, but the existing rows stay locked.</span></span>
+        </label>
+        <label style="display:flex; align-items:flex-start; gap:8px; font-weight:400; cursor:pointer;">
+          <input type="radio" name="dataset_origin" value="blank" style="margin-top:3px;" <%= old.dataset_origin === 'blank' ? 'checked' : '' %> />
+          <span>Start blank and enter my own real records <span class="form-hint" style="display:block; margin:2px 0 0;">Same columns, zero pre-filled rows — full add / edit / delete, since every row is real data you type in yourself.</span></span>
+        </label>
+      </div>
+      <p class="form-hint" style="margin: 7px 0 0;">You can add other categories, or start a blank copy of this one, later from Download SME Templates — whichever you choose here isn't final.</p>
+    </div>
+
+    <div class="field">
       <label for="password">Password</label>
       <input type="password" id="password" name="password" minlength="8" required />
     </div>

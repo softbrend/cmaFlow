@@ -21,10 +21,21 @@
         <% if (copies.length === 0) { %>
           <tr><td colspan="6" style="color: var(--text-muted);">You don't have any dataset copies yet. <a href="/sme-templates">Pick a business category</a> to get your first one.</td></tr>
         <% } %>
+        <%
+          // Added 3 October 2026, alongside the blank-template feature —
+          // this listing now includes both tracks (see services/
+          // templateEvaluationIngest.js's listEvaluationDatasetCopies()),
+          // so each row needs its own cue for which kind of copy it is: a
+          // blank-origin one (dataset_id prefixed EVALBLANK_) is full
+          // add/edit/delete, real data the account typed in itself;
+          // anything else is the locked, prefilled, add-only 50-row
+          // synthetic copy it has always been.
+        %>
         <% copies.forEach(function (c) {
-             var isCurrent = defaultDatasetId && c.id === defaultDatasetId; %>
+             var isCurrent = defaultDatasetId && c.id === defaultDatasetId;
+             var isBlank = c.dataset_id && c.dataset_id.indexOf('EVALBLANK_') === 0; %>
           <tr<% if (isCurrent) { %> style="background: var(--bg-input);"<% } %>>
-            <td><%= c.domain || c.dataset_name %><% if (isCurrent) { %> <span class="badge badge-active" style="margin-left: 6px;">★ Current</span><% } %></td>
+            <td><%= c.domain || c.dataset_name %><% if (isCurrent) { %> <span class="badge badge-active" style="margin-left: 6px;">★ Current</span><% } %> <span class="badge <%= isBlank ? 'badge-active' : 'badge-inactive' %>" style="margin-left: 6px;"><%= isBlank ? 'Your own data (editable)' : 'Synthetic template (locked)' %></span></td>
             <td style="color: var(--text-muted); font-size: 13px;"><%= c.dataset_id %></td>
             <td><%= c.row_count %></td>
             <td><%= new Date(c.created_at).toLocaleDateString() %></td>

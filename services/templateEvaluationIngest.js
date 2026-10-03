@@ -81,9 +81,39 @@ const EVAL_COPY_PREFIX = 'EVALCOPY_';
 // built once here rather than re-escaped at every call site.
 const EVAL_COPY_PREFIX_LIKE = `${EVAL_COPY_PREFIX.replace(/_/g, '\\_')}%`;
 
+// A BLANK, real-data copy for one category — added 3 October 2026, per
+// Brenda's "a button to select that the business owner will use the
+// blank template, and can do all the CRUD operations, so their datasets
+// will be treated as evaluation but real datasets" request. Its own
+// prefix, entirely parallel to EVAL_COPY_PREFIX above and never matched
+// by findEvaluationCopyByCategory() (the PREFILLED track's own lookup) —
+// that separation is what lets an account hold a prefilled copy AND a
+// blank copy of the SAME category at once, each independently tracked,
+// without either flow's "already have one? switch, don't re-ingest"
+// safety check ever confusing the two. See isBlankDatasetId() and
+// ingestBlankTemplateForEvaluation() below.
+const EVAL_BLANK_PREFIX = 'EVALBLANK_';
+const EVAL_BLANK_PREFIX_LIKE = `${EVAL_BLANK_PREFIX.replace(/_/g, '\\_')}%`;
+
 function datasetIdForCategory(resolvedTemplate) {
   const base = resolvedTemplate.row.template_file.replace(/\.csv$/i, '');
   return sanitizeDatasetId(`${EVAL_COPY_PREFIX}${base}`);
+}
+
+function blankDatasetIdForCategory(resolvedTemplate) {
+  const base = resolvedTemplate.row.template_file.replace(/\.csv$/i, '');
+  return sanitizeDatasetId(`${EVAL_BLANK_PREFIX}${base}`);
+}
+
+// Whether a given uploaded_datasets.dataset_id names a BLANK, real-data
+// copy rather than a prefilled synthetic one (EVALCOPY_*/EVALUATION_DEFAULT)
+// or a manually-uploaded dataset. routes/templates.js's CRUD routes use
+// this to decide whether a copy's rows may be edited or deleted at all —
+// a prefilled copy's rows stay locked (add-only), per the still-standing
+// 3 October 2026 decision for that dataset type; only a blank-origin copy
+// gets full add/edit/delete.
+function isBlankDatasetId(datasetId) {
+  return typeof datasetId === 'string' && datasetId.indexOf(EVAL_BLANK_PREFIX) === 0;
 }
 
 // resolvedTemplate: { row, fullPath } from routes/templates.js's own
@@ -176,6 +206,99 @@ async function ingestTemplateForEvaluation(accountId, resolvedTemplate, records)
 }
 
 // ------------------------------------------------------------------
+// Blank, real-data copies (added 3 October 2026) — same uploaded_datasets
+// / dataset_files shape as ingestTemplateForEvaluation() above, so the
+// four analytics modules read a blank-origin copy exactly like any other
+// dataset, but with ZERO dataset_records rows inserted and its own
+// EVALBLANK_ dataset_id (see above) instead of EVALCOPY_. Lets a Business
+// Owner Evaluator build a copy entirely out of their own CRUD-entered
+// rows — real records, not the 50 synthetic ones — while picking up the
+// category's own column shape (read from the template CSV's header row
+// only; no data rows from it are ever inserted) so the editor grid and
+// the "Add row" modal still know what fields to show.
+// ------------------------------------------------------------------
+
+// resolvedTemplate: { row, fullPath } — same shape routes/templates.js's
+// resolveTemplateFile() and this module's own resolveTemplateForCategory()
+// (below) both produce, so either call site can use this unchanged.
+async function ingestBlankTemplateForEvaluation(accountId, resolvedTemplate) {
+  const datasetId = blankDatasetIdForCategory(resolvedTemplate);
+  const datasetName = `${resolvedTemplate.row.sme_business_category} (Your Own Data)`;
+  const sanitizedId = sanitizeDatasetId(datasetId);
+
+  // Only the header row is actually used — parsed the same way as the
+  // prefilled path, then every data row is discarded. That's the entire
+  // difference between "blank" and "prefilled": same column shape, zero
+  // rows.
+  const raw = fs.readFileSync(resolvedTemplate.fullPath, 'utf-8');
+  const sample = parse(raw, { columns: true, skip_empty_lines: true });
+  const columns = sample.length ? Object.keys(sample[0]) : [];
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Replaces this account's own PREVIOUS blank copy of this exact
+    // category, if it has one — mirrors ingestTemplateForEvaluation()'s
+    // own safety above. Scoped to (account_id, dataset_id), and this
+    // dataset_id is derived only from the category + the EVALBLANK_
+    // prefix, so it can never touch a prefilled copy of the same
+    // category (different dataset_id), another account's row, or a
+    // dataset uploaded manually.
+    await client.query(
+      `DELETE FROM uploaded_datasets WHERE account_id = $1 AND dataset_id = $2`,
+      [accountId, datasetId]
+    );
+
+    const { rows: inserted } = await client.query(
+      `INSERT INTO uploaded_datasets (account_id, dataset_id, dataset_name, domain)
+       VALUES ($1, $2, $3, $4) RETURNING id`,
+      [accountId, datasetId, datasetName, resolvedTemplate.row.sme_business_category]
+    );
+    const datasetRowId = inserted[0].id;
+
+    // A real file on disk, same layout every other dataset copy uses —
+    // header row only (no data rows), so dataset_files.stored_path still
+    // points at something real on disk rather than a dangling reference.
+    const originalName = resolvedTemplate.row.template_file;
+    const destDir = path.join(DATASETS_ROOT, String(accountId), sanitizedId, EVAL_FILE_TYPE);
+    fs.mkdirSync(destDir, { recursive: true });
+    const destPath = path.join(destDir, originalName);
+    const headerOnlyCsv = `${columns.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')}\n`;
+    fs.writeFileSync(destPath, headerOnlyCsv, 'utf-8');
+    const storedPath = path.join('uploads', 'datasets', String(accountId), sanitizedId, EVAL_FILE_TYPE, originalName);
+
+    await client.query(
+      `INSERT INTO dataset_files (dataset_id, account_id, file_type, original_name, stored_path, row_count)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [datasetRowId, accountId, EVAL_FILE_TYPE, originalName, storedPath, 0]
+    );
+
+    // No insertDatasetRecords() call at all — zero rows is the entire
+    // point of "blank" — and no profiling either: there's nothing yet to
+    // profile, and getOrBuildFullProfile() already handles "no profile
+    // row yet" lazily the first time this copy is opened, the same as it
+    // would for a brand-new real upload with zero rows so far.
+
+    await client.query('COMMIT');
+
+    // Same "becomes the account's working dataset" behavior as
+    // ingestTemplateForEvaluation() — a Business Owner Evaluator starting
+    // a blank copy, whether at signup or later from Download SME
+    // Templates, means "I want to use this one," exactly like picking a
+    // prefilled template does.
+    await setDefaultDataset(accountId, datasetRowId);
+
+    return { datasetRowId, rowCount: 0, columns };
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// ------------------------------------------------------------------
 // Auto-default at signup (added 2 October 2026, per Brenda's explicit
 // request): the business category a Template Evaluator declares at
 // signup (routes/auth.js's business_category field — validated there
@@ -230,6 +353,19 @@ async function ingestDefaultTemplateForCategory(accountId, categoryName) {
   return { templateFile: resolved.row.template_file, datasetRowId };
 }
 
+// Same idea as ingestDefaultTemplateForCategory() just above, but for the
+// BLANK track — called once, right after a Business Owner Evaluator
+// account is created, when they picked "start blank" at signup (see
+// routes/auth.js's dataset_origin handling in /businessOwner-signup/
+// register). Returns { templateFile, datasetRowId, columns } on success,
+// or null if the category didn't resolve to a manifest row.
+async function ingestDefaultBlankTemplateForCategory(accountId, categoryName) {
+  const resolved = resolveTemplateForCategory(categoryName);
+  if (!resolved) return null;
+  const { datasetRowId, columns } = await ingestBlankTemplateForEvaluation(accountId, resolved);
+  return { templateFile: resolved.row.template_file, datasetRowId, columns };
+}
+
 // ------------------------------------------------------------------
 // Multi-copy lookups (added 3 October 2026) — every query below matches
 // BOTH this feature's own EVALCOPY_* ids (one per category, see
@@ -263,6 +399,25 @@ async function findEvaluationCopyByCategory(accountId, categoryName) {
   return rows[0] ? rows[0].id : null;
 }
 
+// The BLANK track's own counterpart to findEvaluationCopyByCategory()
+// just above — deliberately a separate query matching ONLY EVALBLANK_,
+// never EVALCOPY_/EVALUATION_DEFAULT, so the two tracks' "already have a
+// copy of this category? switch to it, don't re-ingest" safety checks
+// can never cross-match each other's rows. routes/templates.js's POST
+// /sme-templates/start-blank calls this first, before ever re-ingesting,
+// so clicking "start blank" a second time for a category the account has
+// already been typing real rows into switches to that existing copy
+// instead of silently wiping it out.
+async function findBlankCopyByCategory(accountId, categoryName) {
+  const { rows } = await pool.query(
+    `SELECT id FROM uploaded_datasets
+      WHERE account_id = $1 AND domain = $2 AND dataset_id LIKE $3 ESCAPE '\\'
+      ORDER BY created_at DESC LIMIT 1`,
+    [accountId, categoryName, EVAL_BLANK_PREFIX_LIKE]
+  );
+  return rows[0] ? rows[0].id : null;
+}
+
 // Every evaluation-template copy this account currently holds — one row
 // per category it has ever picked (not one per pick: re-picking a
 // category replaces that category's own row in place, per
@@ -281,10 +436,10 @@ async function listEvaluationDatasetCopies(accountId) {
        FROM uploaded_datasets ud
        LEFT JOIN dataset_files df ON df.dataset_id = ud.id
       WHERE ud.account_id = $1
-        AND (ud.dataset_id LIKE $2 ESCAPE '\\' OR ud.dataset_id = $3)
+        AND (ud.dataset_id LIKE $2 ESCAPE '\\' OR ud.dataset_id = $3 OR ud.dataset_id LIKE $4 ESCAPE '\\')
       GROUP BY ud.id
       ORDER BY ud.created_at DESC`,
-    [accountId, EVAL_COPY_PREFIX_LIKE, EVAL_DATASET_ID]
+    [accountId, EVAL_COPY_PREFIX_LIKE, EVAL_DATASET_ID, EVAL_BLANK_PREFIX_LIKE]
   );
   return rows;
 }
@@ -297,21 +452,25 @@ async function listEvaluationDatasetCopies(accountId) {
 // layers the actual dataset_records fetch on top.
 async function getEvaluationDatasetById(accountId, datasetRowId) {
   const { rows } = await pool.query(
-    `SELECT id, dataset_name, domain FROM uploaded_datasets
+    `SELECT id, dataset_id, dataset_name, domain FROM uploaded_datasets
       WHERE id = $1 AND account_id = $2
-        AND (dataset_id LIKE $3 ESCAPE '\\' OR dataset_id = $4)`,
-    [datasetRowId, accountId, EVAL_COPY_PREFIX_LIKE, EVAL_DATASET_ID]
+        AND (dataset_id LIKE $3 ESCAPE '\\' OR dataset_id = $4 OR dataset_id LIKE $5 ESCAPE '\\')`,
+    [datasetRowId, accountId, EVAL_COPY_PREFIX_LIKE, EVAL_DATASET_ID, EVAL_BLANK_PREFIX_LIKE]
   );
   return rows[0] || null;
 }
 
 module.exports = {
   ingestTemplateForEvaluation,
+  ingestBlankTemplateForEvaluation,
   EVAL_DATASET_ID,
   EVAL_FILE_TYPE,
   resolveTemplateForCategory,
   ingestDefaultTemplateForCategory,
+  ingestDefaultBlankTemplateForCategory,
   findEvaluationCopyByCategory,
+  findBlankCopyByCategory,
   listEvaluationDatasetCopies,
   getEvaluationDatasetById,
+  isBlankDatasetId,
 };

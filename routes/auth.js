@@ -5,7 +5,7 @@ const pool = require('../db/pool');
 const { redirectIfAuthed } = require('../middleware/auth');
 const { ensureDefaultDataset } = require('../services/accountDatasets');
 const { loadCategories, isValidCategory } = require('../services/smeCategories');
-const { ingestDefaultTemplateForCategory } = require('../services/templateEvaluationIngest');
+const { ingestDefaultTemplateForCategory, ingestDefaultBlankTemplateForCategory } = require('../services/templateEvaluationIngest');
 
 const router = express.Router();
 const SALT_ROUNDS = 12;
@@ -382,8 +382,16 @@ router.post('/businessOwner-signup/register', redirectIfAuthed, businessOwnerSig
   }
 
   const {
-    username, full_name, affiliation, email, business_category, password,
+    username, full_name, affiliation, email, business_category, password, dataset_origin,
   } = req.body;
+  // Added 3 October 2026, per Brenda's "both" instruction (offer the
+  // blank-vs-prefilled choice at signup AND again later from Download
+  // SME Templates): 'blank' means this account's very first copy is a
+  // zero-row, real-data working copy instead of the 50 synthetic rows.
+  // Anything else (missing field, old client, bad value) defaults to the
+  // existing prefilled behavior — the exact same default every account
+  // created before this choice existed already got.
+  const useBlankDataset = dataset_origin === 'blank';
 
   try {
     const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
@@ -401,11 +409,14 @@ router.post('/businessOwner-signup/register', redirectIfAuthed, businessOwnerSig
     // Auto-default, same as /expert-signup/register above: the business
     // category just declared becomes this account's default CSV for
     // evaluation immediately, through the exact same ingest a manual "Use
-    // for evaluation" click on /sme-templates runs. Non-fatal — on any
-    // error here the account still exists and is usable, just starting
-    // with no dataset assigned, exactly as if this block didn't run.
+    // for evaluation" (or, new as of 3 October 2026, "Start with blank
+    // template") click on /sme-templates runs. Non-fatal — on any error
+    // here the account still exists and is usable, just starting with no
+    // dataset assigned, exactly as if this block didn't run.
     try {
-      const ingested = await ingestDefaultTemplateForCategory(account.id, business_category);
+      const ingested = useBlankDataset
+        ? await ingestDefaultBlankTemplateForCategory(account.id, business_category)
+        : await ingestDefaultTemplateForCategory(account.id, business_category);
       if (ingested) {
         await pool.query('UPDATE sme_accounts SET evaluation_template_file = $1 WHERE id = $2', [ingested.templateFile, account.id]);
         account.evaluation_template_file = ingested.templateFile;

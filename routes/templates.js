@@ -27,6 +27,10 @@ const pool = require('../db/pool');
 const {
   ingestTemplateForEvaluation, EVAL_FILE_TYPE,
   findEvaluationCopyByCategory, listEvaluationDatasetCopies, getEvaluationDatasetById,
+  // Blank-track (added 3 October 2026, per Brenda's "blank template...
+  // real datasets" request) — see services/templateEvaluationIngest.js's
+  // own module-header comment on that track for the full picture.
+  ingestBlankTemplateForEvaluation, findBlankCopyByCategory, isBlankDatasetId,
 } = require('../services/templateEvaluationIngest');
 // Only for the "switch without re-ingesting" path inside POST
 // /sme-templates/set-evaluation-default below — see its own comment.
@@ -106,7 +110,47 @@ async function loadEvaluationDataset(accountId, datasetRowId) {
       ORDER BY row_index, id`,
     [datasetRow.id, accountId, EVAL_FILE_TYPE]
   );
-  return { datasetRowId: datasetRow.id, categoryLabel: datasetRow.domain, records };
+  return {
+    datasetRowId: datasetRow.id,
+    categoryLabel: datasetRow.domain,
+    records,
+    // Added 3 October 2026, alongside the blank-template feature — true
+    // only for a copy started blank (dataset_id prefixed EVALBLANK_, see
+    // services/templateEvaluationIngest.js). The PATCH/DELETE routes
+    // below check this before touching a single row: a prefilled
+    // (EVALCOPY_/EVALUATION_DEFAULT) copy's existing rows stay locked,
+    // per the still-standing 3 October decision for that dataset type —
+    // only a blank-origin copy, made entirely of the account's own
+    // CRUD-entered rows, gets full edit/delete.
+    isBlankOrigin: isBlankDatasetId(datasetRow.dataset_id),
+  };
+}
+
+// Shared by the editor GET route and the Create/Update routes below —
+// resolves the column list for ONE dataset copy. For a copy that already
+// has rows, that's just this copy's own data shape (unchanged from
+// before). For a copy with ZERO rows — which, before the blank-template
+// feature, only ever meant "nothing to show yet" — this now also covers
+// a freshly-started blank copy, so its columns are read from its own
+// category's template CSV header instead (the exact same file
+// resolveTemplateFile()/ingestBlankTemplateForEvaluation() already read
+// to build it), never from an actual data row it doesn't have. Returns
+// [] only if even that lookup fails (e.g. a manifest edited out from
+// under an existing copy), which the callers treat as "no columns to
+// show or add against."
+function resolveColumnsForDataset(evalData) {
+  if (evalData.records.length > 0) return Object.keys(evalData.records[0].data);
+  if (!evalData.categoryLabel) return [];
+  try {
+    const manifest = loadManifest();
+    const manifestRow = manifest.find((r) => r.sme_business_category === evalData.categoryLabel);
+    if (!manifestRow) return [];
+    const raw = fs.readFileSync(path.join(TEMPLATES_ROOT, manifestRow.template_file), 'utf-8');
+    const sample = parse(raw, { columns: true, skip_empty_lines: true });
+    return sample.length ? Object.keys(sample[0]) : [];
+  } catch (err) {
+    return [];
+  }
 }
 
 // Re-counts this account's evaluation dataset's rows straight from
@@ -233,10 +277,26 @@ router.get('/sme-templates', requireAuth, async (req, res, next) => {
     // already fully described by evaluationTemplateFile/isEvalDefault
     // alone, so it needs no such map.
     let categoryToDatasetRowId = null;
+    // Blank-track counterpart to categoryToDatasetRowId just below —
+    // added 3 October 2026 alongside the blank-template feature. Built
+    // from the SAME listEvaluationDatasetCopies() call, split by
+    // isBlankDatasetId() rather than two separate queries, since an
+    // account can hold both a prefilled AND a blank copy of the same
+    // category at once (two different dataset_ids) and the "Download SME
+    // Templates" table needs to show the right action for each track
+    // independently per row.
+    let categoryToBlankDatasetRowId = null;
     if (isBusinessOwner) {
       const copies = await listEvaluationDatasetCopies(user.id);
       categoryToDatasetRowId = {};
-      copies.forEach((c) => { categoryToDatasetRowId[c.domain] = c.id; });
+      categoryToBlankDatasetRowId = {};
+      copies.forEach((c) => {
+        if (isBlankDatasetId(c.dataset_id)) {
+          categoryToBlankDatasetRowId[c.domain] = c.id;
+        } else {
+          categoryToDatasetRowId[c.domain] = c.id;
+        }
+      });
     }
     res.render('dashboard/sme-templates', {
       title: 'Download SME Templates',
@@ -248,6 +308,7 @@ router.get('/sme-templates', requireAuth, async (req, res, next) => {
       isBusinessOwner,
       evaluationTemplateFile,
       categoryToDatasetRowId,
+      categoryToBlankDatasetRowId,
     });
   } catch (err) {
     next(err);
@@ -314,6 +375,58 @@ router.post('/sme-templates/set-evaluation-default', requireTemplateEligible, as
     req.session.user.default_dataset_id = datasetRowId;
 
     res.redirect('/sme-templates');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /sme-templates/start-blank — Business Owner Evaluator only (added
+// 3 October 2026, per Brenda: "there is a button to select that the
+// business owner will use the blank template, and can do all the CRUD
+// operations, so their datasets will be treated as evaluation but real
+// datasets"). This is the BLANK track's own counterpart to POST
+// /sme-templates/set-evaluation-default just above: same category input
+// (a manifest template_file, resolved the same way), but it ingests a
+// zero-row copy (ingestBlankTemplateForEvaluation()) instead of the
+// prefilled 50-row one, and the two tracks' existing-copy checks are
+// deliberately separate (findBlankCopyByCategory() vs
+// findEvaluationCopyByCategory()) so neither one's "already have one?
+// switch, don't re-ingest" safety ever matches the other's row — a
+// second "start blank" click for a category the account is already
+// filling in with real rows must switch to that same copy, never
+// silently wipe it by re-ingesting. requireBusinessOwner (not
+// requireTemplateEligible), since full CRUD on a blank copy is a
+// Business Owner Evaluator concept only — Template Evaluator keeps no UI
+// path to this route at all (see views/dashboard/sme-templates.ejs).
+router.post('/sme-templates/start-blank', requireBusinessOwner, async (req, res, next) => {
+  try {
+    const resolved = resolveTemplateFile(req.body.template_file);
+    if (!resolved) {
+      return res.redirect('/sme-templates');
+    }
+
+    const accountId = req.session.userId;
+    const category = resolved.row.sme_business_category;
+
+    let datasetRowId = await findBlankCopyByCategory(accountId, category);
+    if (datasetRowId) {
+      await setDefaultDataset(accountId, datasetRowId);
+    } else {
+      ({ datasetRowId } = await ingestBlankTemplateForEvaluation(accountId, resolved));
+    }
+
+    await pool.query(
+      'UPDATE sme_accounts SET evaluation_template_file = $1 WHERE id = $2',
+      [resolved.row.template_file, accountId],
+    );
+    req.session.user.evaluation_template_file = resolved.row.template_file;
+    req.session.user.default_dataset_id = datasetRowId;
+
+    // Straight to the editor for this copy — unlike picking a prefilled
+    // template (which has 50 rows already to browse from /sme-templates
+    // itself), a fresh blank copy's whole point is to start typing rows
+    // in immediately.
+    res.redirect(`/sme-templates/evaluation-dataset/${datasetRowId}`);
   } catch (err) {
     next(err);
   }
@@ -476,7 +589,11 @@ router.get('/sme-templates/evaluation-dataset/:datasetRowId', requireBusinessOwn
       req.session.flashError = 'Pick a business category template first, from Download SME Templates.';
       return res.redirect('/sme-templates');
     }
-    const columns = evalData.records.length > 0 ? Object.keys(evalData.records[0].data) : [];
+    // resolveColumnsForDataset() (above) is what makes a freshly-started
+    // blank copy (zero rows) still show its full column grid, by reading
+    // its category's template CSV header instead of row 0 — see that
+    // function's own comment.
+    const columns = resolveColumnsForDataset(evalData);
     // Drives the "Add new row" modal's per-field dropdowns — see
     // computeColumnChoices()'s own comment for the rule.
     const columnChoices = computeColumnChoices(columns, evalData.records);
@@ -494,6 +611,11 @@ router.get('/sme-templates/evaluation-dataset/:datasetRowId', requireBusinessOwn
       columns,
       records: evalData.records,
       columnChoices,
+      // Added 3 October 2026 — see loadEvaluationDataset()'s own comment.
+      // Only a blank-origin copy gets contenteditable cells and per-row
+      // Delete in the view below; a prefilled copy stays exactly as
+      // locked as it was before this feature existed.
+      isBlankOrigin: evalData.isBlankOrigin,
     });
   } catch (err) {
     next(err);
@@ -529,11 +651,17 @@ router.post('/sme-templates/evaluation-dataset/:datasetRowId/rows', requireBusin
 
     const evalData = await loadEvaluationDataset(accountId, datasetRowId);
     if (!evalData) return res.status(404).json({ error: 'not_found' });
-    if (evalData.records.length === 0) {
-      return res.status(400).json({ error: 'no_columns', message: 'This dataset has no rows to copy column names from yet.' });
-    }
 
-    const columns = Object.keys(evalData.records[0].data);
+    // resolveColumnsForDataset() covers a freshly-started blank copy
+    // (zero rows, columns read from its category's template header) as
+    // well as a copy that already has rows — see that function's own
+    // comment. This replaces the old hard refusal on "no rows yet," which
+    // predates the blank-template feature and would otherwise block the
+    // very first row ever added to a blank copy.
+    const columns = resolveColumnsForDataset(evalData);
+    if (columns.length === 0) {
+      return res.status(400).json({ error: 'no_columns', message: 'This dataset has no columns to add a row against — pick a business category first.' });
+    }
     const submitted = req.body && typeof req.body.data === 'object' && req.body.data !== null ? req.body.data : null;
     const newRow = {};
     columns.forEach((c) => {
@@ -560,15 +688,88 @@ router.post('/sme-templates/evaluation-dataset/:datasetRowId/rows', requireBusin
 });
 
 // PATCH and DELETE /sme-templates/evaluation-dataset/:datasetRowId/rows/
-// :recordId — intentionally removed (3 October 2026, per Brenda: "the
+// :recordId — removed entirely on 3 October 2026 (per Brenda: "the
 // datasets is already past records, only allowing the business owners to
-// Add New records"). These rows are each account's already-recorded
-// historical transactions, not a live spreadsheet to be edited or trimmed
-// after the fact — only POST /rows (Add new row, above) remains, so a
-// Business Owner Evaluator can grow a copy with new records (still picked
-// up by the four analytics modules via touchEvaluationDataset(), same as
-// before) without being able to alter or remove what's already there. The
-// view (views/dashboard/evaluation-dataset-editor.ejs) no longer renders
-// editable cells or Delete buttons to match.
+// Add New records"), then REINTRODUCED the same day, scoped ONLY to a
+// blank-origin copy (loadEvaluationDataset()'s isBlankOrigin flag — see
+// its own comment), per Brenda's follow-up request: a Business Owner
+// Evaluator who started a copy blank is typing in their own real records
+// from scratch, so those rows are never "already-recorded historical
+// transactions" the way a prefilled copy's 50 synthetic rows are — full
+// add/edit/delete makes sense there and nowhere else. A prefilled
+// (EVALCOPY_/EVALUATION_DEFAULT) copy's rows stay exactly as locked as
+// the comment above originally made them: both routes 403 immediately if
+// isBlankOrigin is false, before touching a single row.
+//
+// Update: one cell at a time (column + new value), matching the editor's
+// click-to-edit-a-cell UI (views/dashboard/evaluation-dataset-editor.ejs)
+// rather than a whole-row replace — jsonb_set's own create_missing:true
+// default means this also tolerates a row missing that key outright,
+// though a blank-origin copy's rows are always written with every
+// column present (this router's own POST /rows) so this should never
+// actually need to create one.
+router.patch('/sme-templates/evaluation-dataset/:datasetRowId/rows/:recordId', requireBusinessOwner, async (req, res, next) => {
+  try {
+    const accountId = req.session.userId;
+    const datasetRowId = parseInt(req.params.datasetRowId, 10);
+    const recordId = parseInt(req.params.recordId, 10);
+    if (!datasetRowId || !recordId) return res.status(400).json({ error: 'bad_request' });
+
+    const evalData = await loadEvaluationDataset(accountId, datasetRowId);
+    if (!evalData) return res.status(404).json({ error: 'not_found' });
+    if (!evalData.isBlankOrigin) {
+      return res.status(403).json({ error: 'locked', message: "This copy's existing rows are locked — only a copy you started blank yourself can be edited here." });
+    }
+
+    const columns = resolveColumnsForDataset(evalData);
+    const column = req.body && req.body.column;
+    if (!column || !columns.includes(column)) {
+      return res.status(400).json({ error: 'bad_column', message: 'Unknown column.' });
+    }
+    const value = req.body && req.body.value;
+    const stringValue = value === undefined || value === null ? '' : String(value);
+
+    const { rows: updated } = await pool.query(
+      `UPDATE dataset_records SET data = jsonb_set(data, $1::text[], $2::jsonb, true)
+        WHERE id = $3 AND dataset_id = $4 AND account_id = $5 AND file_type = $6
+        RETURNING id, data`,
+      [[column], JSON.stringify(stringValue), recordId, evalData.datasetRowId, accountId, EVAL_FILE_TYPE]
+    );
+    if (!updated[0]) return res.status(404).json({ error: 'not_found' });
+
+    await touchEvaluationDataset(evalData.datasetRowId, accountId);
+    res.json({ ok: true, row: updated[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Delete: removes one row outright. Scoped to isBlankOrigin, exactly
+// like PATCH just above, for the same reason.
+router.delete('/sme-templates/evaluation-dataset/:datasetRowId/rows/:recordId', requireBusinessOwner, async (req, res, next) => {
+  try {
+    const accountId = req.session.userId;
+    const datasetRowId = parseInt(req.params.datasetRowId, 10);
+    const recordId = parseInt(req.params.recordId, 10);
+    if (!datasetRowId || !recordId) return res.status(400).json({ error: 'bad_request' });
+
+    const evalData = await loadEvaluationDataset(accountId, datasetRowId);
+    if (!evalData) return res.status(404).json({ error: 'not_found' });
+    if (!evalData.isBlankOrigin) {
+      return res.status(403).json({ error: 'locked', message: "This copy's existing rows are locked — only a copy you started blank yourself can have rows deleted here." });
+    }
+
+    const deleteResult = await pool.query(
+      `DELETE FROM dataset_records WHERE id = $1 AND dataset_id = $2 AND account_id = $3 AND file_type = $4`,
+      [recordId, evalData.datasetRowId, accountId, EVAL_FILE_TYPE]
+    );
+    if (!deleteResult.rowCount) return res.status(404).json({ error: 'not_found' });
+
+    await touchEvaluationDataset(evalData.datasetRowId, accountId);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
 
 module.exports = router;

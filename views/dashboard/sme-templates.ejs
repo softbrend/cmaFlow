@@ -19,8 +19,9 @@
          var defaultRow = manifest.find(function (r) { return r.template_file === evaluationTemplateFile; }); %>
       <p class="form-hint" style="margin-bottom: 10px;">You're currently using <strong><%= defaultRow ? defaultRow.sme_business_category : evaluationTemplateFile %></strong> as your default CSV for evaluation<% if (isBusinessOwner) { %> — add, edit, or delete rows on its own page and the four analytics modules (Descriptive, Diagnostic, Predictive, Prescriptive) will reflect your changes next time you open them. Each category you pick below keeps its own separate, editable copy under its own dataset ID — picking a different one never erases this one.<% } else { %> — its 50 rows are what you'll browse and filter below. Pick "Use for evaluation" on a different row any time to switch.<% } %></p>
       <% if (isBusinessOwner) { %>
-        <a class="btn btn-accent btn-sm" href="/sme-templates/evaluation-dataset/<%= categoryToDatasetRowId[defaultRow ? defaultRow.sme_business_category : ''] %>">Open editable dataset (add / edit / delete rows) →</a>
+        <a class="btn btn-accent btn-sm" href="/sme-templates/evaluation-dataset/<%= categoryToDatasetRowId[defaultRow ? defaultRow.sme_business_category : ''] %>">Open editable dataset (add rows) →</a>
         <a class="btn btn-ghost btn-sm" href="/sme-templates/evaluation-dataset">View all your dataset copies</a>
+        <p class="form-hint" style="margin: 10px 0 0;">Prefer to work from a blank sheet instead? Use <strong>Start blank (my own data)</strong> on any row below — every row in that copy is real data you type in yourself, so you get full add / edit / delete there, not just Add.</p>
       <% } else { %>
         <a class="btn btn-accent btn-sm" href="/sme-templates/evaluation-data">Browse records in table format</a>
       <% } %>
@@ -41,6 +42,7 @@
           <th>Analytics supported</th>
           <th></th>
           <% if (isExpertEvaluator) { %><th></th><% } %>
+          <% if (isBusinessOwner) { %><th></th><% } %>
         </tr>
       </thead>
       <tbody>
@@ -93,6 +95,29 @@
                       <button type="submit" class="btn btn-ghost btn-sm">Use for evaluation</button>
                     </form>
                   <% } %>
+                <% } %>
+              </td>
+            <% } %>
+            <% if (isBusinessOwner) { %>
+              <%
+                // Blank track's own per-row action — fully independent of
+                // the prefilled column just above, since an account can
+                // hold both a prefilled AND a blank copy of the same
+                // category at once (two separate dataset_ids — see
+                // services/templateEvaluationIngest.js). ownBlankId comes
+                // from categoryToBlankDatasetRowId (routes/templates.js's
+                // GET /sme-templates), built the same way ownDatasetRowId
+                // is, just filtered to EVALBLANK_* instead.
+                var ownBlankId = categoryToBlankDatasetRowId ? categoryToBlankDatasetRowId[row.sme_business_category] : null;
+              %>
+              <td style="text-align: right; white-space: nowrap;">
+                <% if (ownBlankId) { %>
+                  <a class="btn btn-ghost btn-sm" href="/sme-templates/evaluation-dataset/<%= ownBlankId %>">Edit my data</a>
+                <% } else { %>
+                  <form method="POST" action="/sme-templates/start-blank" style="display:inline;">
+                    <input type="hidden" name="template_file" value="<%= row.template_file %>" />
+                    <button type="submit" class="btn btn-ghost btn-sm">Start blank (my own data)</button>
+                  </form>
                 <% } %>
               </td>
             <% } %>
