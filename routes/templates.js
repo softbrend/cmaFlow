@@ -35,6 +35,13 @@ const {
 // Only for the "switch without re-ingesting" path inside POST
 // /sme-templates/set-evaluation-default below — see its own comment.
 const { setDefaultDataset } = require('../services/accountDatasets');
+// For GET /user-manual below — reads the live six-task walkthrough
+// definitions and the ISO/IEC 25010 domain labels/item counts straight
+// from the single source of truth, so the manual can never drift out of
+// sync with the actual instrument if either is ever revised.
+const {
+  WALKTHROUGH_TASKS, ISO_DOMAIN_LABELS, ISO25010_ITEMS,
+} = require('../services/tamEvaluation');
 
 const router = express.Router();
 const TEMPLATES_ROOT = path.join(__dirname, '..', 'data', 'sme-templates');
@@ -487,6 +494,40 @@ router.get('/sme-templates/reference/:file', requireAuth, (req, res) => {
     return res.status(404).render('errors/404', { title: 'Not found', layout: false });
   }
   res.download(path.join(TEMPLATES_ROOT, fileName), fileName);
+});
+
+// GET /user-manual — added 3 October 2026, per Brenda's explicit
+// request: a step-by-step guide to every process a Business Owner
+// Evaluator goes through, reachable from the sidebar directly below
+// their "Business Owner Evaluator Evaluation" link (views/partials/
+// sidebar.ejs). Reachable by any signed-in account (requireAuth only,
+// same discipline as /sme-templates above — the content below carries
+// no participant data, so there's no reason to restrict it by role),
+// but the sidebar only ever links to it for Business Owner Evaluator,
+// since that's the one role the content is actually written for.
+// middleware/evaluationGate.js allows this route at every lock state
+// (added to ALWAYS_ALLOWED_PREFIXES, same as /evaluation and
+// /sme-templates) — a brand-new, still-locked account is exactly who
+// most needs it.
+//
+// WALKTHROUGH_TASKS/ISO_DOMAIN_LABELS/ISO25010_ITEMS are passed straight
+// from services/tamEvaluation.js rather than re-typed into the view, so
+// the manual's six-task table and questionnaire-domain summary can never
+// silently drift out of sync with the actual instrument if either is
+// revised later.
+router.get('/user-manual', requireAuth, (req, res) => {
+  const isoDomainCounts = {};
+  ISO25010_ITEMS.forEach((item) => {
+    isoDomainCounts[item.domain] = (isoDomainCounts[item.domain] || 0) + 1;
+  });
+  res.render('dashboard/user-manual', {
+    title: 'User Manual',
+    active: 'user-manual',
+    tasks: WALKTHROUGH_TASKS,
+    isoDomainLabels: ISO_DOMAIN_LABELS,
+    isoDomainCounts,
+    isoItemCount: ISO25010_ITEMS.length,
+  });
 });
 
 // ------------------------------------------------------------------

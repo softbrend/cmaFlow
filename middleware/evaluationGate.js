@@ -74,8 +74,13 @@ const TASK_ROUTE_PREFIXES = WALKTHROUGH_TASKS.map((t) => ({ number: t.number, pr
 // aren't one of the six walkthrough modules at all.
 const COMPLETED_ONLY_PREFIXES = ['/monetization-discovery'];
 
-// Always reachable, whatever the lock state.
-const ALWAYS_ALLOWED_PREFIXES = ['/evaluation', '/logout', '/healthz', '/sme-templates'];
+// Always reachable, whatever the lock state. /user-manual (added
+// 3 October 2026) joins /evaluation and /sme-templates here for the same
+// reason: a brand-new, still-locked Business Owner Evaluator account —
+// exactly the account most likely to need step-by-step guidance — must
+// be able to reach it from the very first page it loads, not just after
+// finishing the walkthrough.
+const ALWAYS_ALLOWED_PREFIXES = ['/evaluation', '/logout', '/healthz', '/sme-templates', '/user-manual'];
 
 function pathMatches(path, prefix) {
   return path === prefix || path.startsWith(`${prefix}/`);

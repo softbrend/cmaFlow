@@ -1,0 +1,116 @@
+<div class="page-title">📘 <span class="page-title-text">User Manual</span></div>
+<p class="page-subtitle">A step-by-step guide to every process you'll go through as a Business Owner Evaluator — from choosing your dataset to submitting your evaluation. Come back to this page any time from the navigation panel.</p>
+
+<div class="form-card wide" style="margin-bottom: 18px;">
+  <div class="form-title" style="font-size: 15px;">Contents</div>
+  <p class="form-hint" style="margin: 0;">
+    <a href="#before-you-begin">1. Before you begin</a> ·
+    <a href="#choosing-your-dataset">2. Choosing how your dataset starts</a> ·
+    <a href="#working-with-your-dataset">3. Working with your dataset</a> ·
+    <a href="#the-six-tasks">4. The six-task walkthrough</a> ·
+    <a href="#the-four-modules">5. The four analytics modules</a> ·
+    <a href="#the-questionnaire">6. The evaluation questionnaire</a> ·
+    <a href="#after-you-submit">7. After you submit</a> ·
+    <a href="#faq">8. Frequently asked questions</a>
+  </p>
+</div>
+
+<div class="form-card wide" id="before-you-begin" style="margin-bottom: 18px;">
+  <div class="form-title" style="font-size: 18px;">1. Before you begin</div>
+  <p class="form-hint">
+    When you signed up at <strong>/businessOwner-signup</strong>, you picked the business category closest to the one you're evaluating CMA-Flow for. That choice is what CMA-Flow uses to give you a ready-made dataset to start from, and it's also what frames the questions you'll answer at the end — everything in this evaluation is built around one real monetization decision for a business like yours.
+  </p>
+  <p class="form-hint">
+    The first time you open any analytics page or the evaluation itself, you'll see an informed-consent screen under the Data Privacy Act (Republic Act No. 10173). It explains exactly what's recorded, and you can withdraw your consent at any time, even after starting — there's always a "Withdraw from this evaluation" link available once you've agreed. Nothing is recorded before you agree.
+  </p>
+  <p class="form-hint" style="margin-bottom: 0;">
+    Until you finish the evaluation below, the navigation panel on the left only shows what you need for it — Download SME Templates, this User Manual, and your evaluation link. The four analytics modules unlock as you reach them in the six-task walkthrough (section 4).
+  </p>
+</div>
+
+<div class="form-card wide" id="choosing-your-dataset" style="margin-bottom: 18px;">
+  <div class="form-title" style="font-size: 18px;">2. Choosing how your dataset starts</div>
+  <p class="form-hint">
+    From <strong>Download SME Templates</strong> in the navigation panel, every business category — not just the one you picked at signup — has two ways to get a working dataset. You can hold more than one at a time, and switch which one is your "current" dataset whenever you like.
+  </p>
+  <p class="form-hint">
+    <strong>Use the category's sample rows.</strong> Every category ships with 50 ready-made rows built to drive real output across all four analytics modules. This is the fastest way to see CMA-Flow working end to end. These rows represent already-recorded transactions, so they're locked — you can't edit or delete them — but you can always use <strong>+ Add row</strong> to add new ones.
+  </p>
+  <p class="form-hint" style="margin-bottom: 0;">
+    <strong>Start blank and enter your own real records.</strong> Click <strong>Start blank (my own data)</strong> on any category row to get an empty copy with the same columns but zero pre-filled rows. Every row in this copy is real data you type in yourself, so you get full control: add, edit in place, and delete. This is the option to pick if you want CMA-Flow's analytics to reflect your own actual business, not a synthetic example.
+  </p>
+</div>
+
+<div class="form-card wide" id="working-with-your-dataset" style="margin-bottom: 18px;">
+  <div class="form-title" style="font-size: 18px;">3. Working with your dataset</div>
+  <p class="form-hint">
+    Click <strong>Edit records</strong> (sample copies) or <strong>Edit my data</strong> (blank copies) on any category row to open its grid. On a copy you started blank, click any cell to edit it in place, use the <strong>Delete</strong> button on a row to remove it, and <strong>+ Add row</strong> to add a new one through a simple form. On a sample copy, existing rows are locked — only <strong>+ Add row</strong> is available.
+  </p>
+  <p class="form-hint">
+    <strong>My Evaluation Dataset Copies</strong> (linked from Download SME Templates) lists every copy you've started, sample and blank alike, and marks which one is your ★ Current dataset — the one the four analytics modules and Task 1 of the walkthrough actually use. Use <strong>Set as current</strong> on any row to switch to it; your edits on every other copy are always kept, never erased by switching.
+  </p>
+  <p class="form-hint" style="margin-bottom: 0;">
+    Whatever you change — adding, editing, or deleting a row — is picked up automatically the next time you open any of the four analytics modules, as long as that copy is your current dataset.
+  </p>
+</div>
+
+<div class="form-card wide" id="the-six-tasks" style="margin-bottom: 18px;">
+  <div class="form-title" style="font-size: 18px;">4. The six-task walkthrough</div>
+  <p class="form-hint">
+    Your evaluation link (labeled <strong>Business Owner Evaluator Evaluation</strong> in the navigation panel) walks you through six short tasks, one per module, in order — each one unlocks the next. Task 1 is usually already done for you: if you have a current dataset assigned, you'll see it on the walkthrough screen with a <strong>Use</strong> button to confirm it.
+  </p>
+  <div class="table-scroll">
+    <table class="table-simple">
+      <thead><tr><th>#</th><th>Module</th><th>What to do</th></tr></thead>
+      <tbody>
+        <% tasks.forEach(function (t) { %>
+          <tr>
+            <td><%= t.number %></td>
+            <td><%= t.moduleLabel %></td>
+            <td style="color: var(--text-muted);"><%= t.instructions %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="form-card wide" id="the-four-modules" style="margin-bottom: 18px;">
+  <div class="form-title" style="font-size: 18px;">5. The four analytics modules</div>
+  <p class="form-hint">
+    These are the same four modules the walkthrough's tasks 3 through 6 send you through, available any time afterward from the navigation panel.
+  </p>
+  <p class="form-hint"><strong>Descriptive analytics</strong> — Understand what happened in your business data through automatically generated KPIs, trends, distributions, and patterns.</p>
+  <p class="form-hint"><strong>Diagnostic insights</strong> — Understand why performance moved: root-cause views built from correlations, comparisons, and decompositions in your own data.</p>
+  <p class="form-hint"><strong>Predictive analytics</strong> — See where your business is headed: churn risk, lifecycle stage, revenue forecasts, and price what-if scenarios, every score explainable by its own rule.</p>
+  <p class="form-hint" style="margin-bottom: 0;"><strong>Prescriptive recommendations</strong> — Get a ranked, reasoned recommendation for which revenue model to run next; every candidate always shows its reasoning, never a bare score.</p>
+</div>
+
+<div class="form-card wide" id="the-questionnaire" style="margin-bottom: 18px;">
+  <div class="form-title" style="font-size: 18px;">6. The evaluation questionnaire</div>
+  <p class="form-hint">
+    Once all six tasks are complete, you'll answer <%= isoItemCount %> short statements about the <em>monetization decision</em> you reached using CMA-Flow — not about the software in general. For each one, you'll rate how much you agree on a 5-point scale from Strongly Disagree to Strongly Agree. There's no time limit, and you can take as long as you need to answer honestly.
+  </p>
+  <p class="form-hint" style="margin-bottom: 0;">The statements are grouped into four areas:</p>
+  <ul style="margin: 8px 0 0; padding-left: 20px; color: var(--text-muted); font-size: 14px; line-height: 1.7;">
+    <% Object.keys(isoDomainLabels).forEach(function (code) { %>
+      <li><strong><%= isoDomainLabels[code] %></strong> (<%= isoDomainCounts[code] || 0 %> statements)</li>
+    <% }); %>
+  </ul>
+</div>
+
+<div class="form-card wide" id="after-you-submit" style="margin-bottom: 18px;">
+  <div class="form-title" style="font-size: 18px;">7. After you submit</div>
+  <p class="form-hint" style="margin-bottom: 0;">
+    Submitting the questionnaire takes you to a completion page — a read-only record of your walkthrough and your answers. You can still sign back in any time afterward to browse your datasets or the four analytics modules; only the walkthrough and questionnaire themselves are locked once completed.
+  </p>
+</div>
+
+<div class="form-card wide" id="faq" style="max-width: none;">
+  <div class="form-title" style="font-size: 18px;">8. Frequently asked questions</div>
+  <p class="form-hint"><strong>Can I switch to a different business category partway through?</strong> Yes. Download SME Templates and My Evaluation Dataset Copies are both always reachable from the navigation panel. Switching your current dataset never deletes your work on any other copy.</p>
+  <p class="form-hint"><strong>I made a mistake on a row I started blank. Can I fix it?</strong> Yes — click any cell in that row to edit it in place, or use the Delete button to remove the row entirely. This only works on a copy you started blank; the sample 50-row copies stay locked by design, since those rows represent transactions that have already happened.</p>
+  <p class="form-hint"><strong>What if I change my mind about participating?</strong> A "Withdraw from this evaluation" link is available any time after you've given consent, from the evaluation screens themselves.</p>
+  <p class="form-hint"><strong>Do I need to finish all six tasks in one sitting?</strong> No — you can sign out and come back later. Your progress through the tasks is saved, and each task you've already reached stays unlocked.</p>
+  <p class="form-hint" style="margin-bottom: 0;"><strong>Who can see my answers?</strong> Your responses are analyzed and reported only in aggregate and de-identified form by the researcher conducting this evaluation — never by name or account, and never shared outside this research. Full details are on the informed-consent screen you agree to before anything is recorded.</p>
+</div>

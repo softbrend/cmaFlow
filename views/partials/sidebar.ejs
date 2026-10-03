@@ -71,6 +71,19 @@
           public/css/style.css's body.stage-evaluation-questionnaire rules —
           so this link still has to light up for both values. %>
       <li><a href="/evaluation" class="<%= (active === 'evaluation' || active === 'evaluation-questionnaire') ? 'active' : '' %>"><span class="nav-dot"></span><%= evalRoleLabel %></a></li>
+      <%# User Manual (added 3 October 2026) — directly below the
+          evaluation link, per Brenda's explicit placement request.
+          Business Owner Evaluator only: the content is a step-by-step
+          guide written for that role's own process (dataset choice,
+          CRUD, the six tasks, the ISO/IEC 25010 questionnaire), so it has
+          no reason to appear for SME Owner or Template Evaluator.
+          Reachable at every lock state (middleware/evaluationGate.js's
+          ALWAYS_ALLOWED_PREFIXES), same as the evaluation link above it —
+          this branch is for a still-locked account, exactly who most
+          needs it. %>
+      <% if (currentUser && currentUser.role === 'Business Owner Evaluator') { %>
+        <li><a href="/user-manual" class="<%= active === 'user-manual' ? 'active' : '' %>"><span class="nav-dot"></span>User Manual</a></li>
+      <% } %>
     <% } else { %>
       <%# The four analytics stages carry a stage-colored icon chip instead
           of the plain gold nav-dot — the same DESCRIPTIVE → DIAGNOSTIC →
@@ -91,6 +104,10 @@
         <li><a href="/monetization-discovery" class="<%= active === 'monetization-discovery' ? 'active' : '' %>"><span class="nav-dot"></span>Monetization discovery</a></li>
       <% } %>
       <li><a href="/evaluation" class="<%= (active === 'evaluation' || active === 'evaluation-questionnaire') ? 'active' : '' %>"><span class="nav-dot"></span><%= evalRoleLabel %></a></li>
+      <%# User Manual — same placement/scoping as the locked branch above. %>
+      <% if (currentUser && currentUser.role === 'Business Owner Evaluator') { %>
+        <li><a href="/user-manual" class="<%= active === 'user-manual' ? 'active' : '' %>"><span class="nav-dot"></span>User Manual</a></li>
+      <% } %>
     <% } %>
   </ul>
 
