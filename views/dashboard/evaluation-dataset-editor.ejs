@@ -43,6 +43,36 @@
       </table>
     </div>
   </div>
+
+  <!-- "Add row" opens this as a form instead of inserting a blank row
+       directly — every field for the new record, with Cancel (discards,
+       nothing is sent) and Save (POSTs the filled-in values as the new
+       row and refreshes the four analytics modules next time they're
+       opened, same as any other edit here). Hidden by default; toggled by
+       the script below. -->
+  <div id="eval-add-row-overlay" class="eval-modal-overlay" style="display:none;">
+    <div class="eval-modal" role="dialog" aria-modal="true" aria-labelledby="eval-add-row-title">
+      <form id="eval-add-row-form">
+        <div class="eval-modal-header">
+          <h2 id="eval-add-row-title" class="form-title" style="font-size: 19px; margin: 0;">Add new row</h2>
+          <p class="form-hint" style="margin: 6px 0 0;">Fill in as many fields as you have — leave the rest blank. Save adds this as a new row and updates the four analytics modules next time you open them.</p>
+        </div>
+        <div class="eval-modal-body">
+          <% columns.forEach(function (col) { %>
+            <div class="field">
+              <label for="eval-add-field-<%= col %>"><%= col.replace(/_/g, ' ') %></label>
+              <input type="text" id="eval-add-field-<%= col %>" name="<%= col %>" data-column="<%= col %>" autocomplete="off" />
+            </div>
+          <% }); %>
+        </div>
+        <div id="eval-add-row-alert" class="alert-error" style="display:none;" role="alert"></div>
+        <div class="eval-modal-footer">
+          <button type="button" id="eval-add-row-cancel" class="btn btn-ghost">Cancel</button>
+          <button type="submit" id="eval-add-row-save" class="btn btn-accent">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
 <% } %>
 
 <script>
@@ -190,27 +220,75 @@
   Array.prototype.forEach.call(tbody.querySelectorAll('.eval-delete-row'), wireDeleteButton);
   refreshDeleteButtons();
 
-  addBtn.addEventListener('click', function () {
-    clearError();
-    addBtn.disabled = true;
-    fetch(rowsBase, { method: 'POST' })
+  // "+ Add row" opens a form (one field per column) instead of inserting
+  // a blank row straight away — Cancel discards it with no request sent
+  // at all; Save is the only path that actually creates the row.
+  var overlay = document.getElementById('eval-add-row-overlay');
+  var addForm = document.getElementById('eval-add-row-form');
+  var addAlert = document.getElementById('eval-add-row-alert');
+  var cancelBtn = document.getElementById('eval-add-row-cancel');
+  var saveBtn = document.getElementById('eval-add-row-save');
+
+  function showAddError(message) {
+    addAlert.textContent = message;
+    addAlert.style.display = '';
+  }
+  function clearAddError() {
+    addAlert.style.display = 'none';
+  }
+
+  function openAddModal() {
+    clearAddError();
+    addForm.reset();
+    overlay.style.display = 'flex';
+    var firstInput = addForm.querySelector('input');
+    if (firstInput) firstInput.focus();
+  }
+  function closeAddModal() {
+    overlay.style.display = 'none';
+  }
+
+  addBtn.addEventListener('click', openAddModal);
+  cancelBtn.addEventListener('click', closeAddModal);
+  overlay.addEventListener('click', function (e) {
+    if (e.target === overlay) closeAddModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && overlay.style.display !== 'none') closeAddModal();
+  });
+
+  addForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    clearAddError();
+    var data = {};
+    Array.prototype.forEach.call(addForm.querySelectorAll('input[data-column]'), function (input) {
+      data[input.getAttribute('data-column')] = input.value;
+    });
+    saveBtn.disabled = true;
+    cancelBtn.disabled = true;
+    fetch(rowsBase, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: data }),
+    })
       .then(function (resp) { return resp.json().then(function (body) { return { ok: resp.ok, body: body }; }); })
       .then(function (result) {
-        addBtn.disabled = false;
+        saveBtn.disabled = false;
+        cancelBtn.disabled = false;
         if (!result.ok) {
-          showError((result.body && result.body.message) || "Couldn't add a new row — please try again.");
+          showAddError((result.body && result.body.message) || "Couldn't add a new row — please try again.");
           return;
         }
         var tr = buildRow(result.body.row.id, result.body.row.data);
         tbody.appendChild(tr);
         refreshCount();
         refreshDeleteButtons();
-        var firstCell = tr.querySelector('td[contenteditable="true"]');
-        if (firstCell) firstCell.focus();
+        closeAddModal();
       })
       .catch(function () {
-        addBtn.disabled = false;
-        showError('A network error prevented adding a new row — please try again.');
+        saveBtn.disabled = false;
+        cancelBtn.disabled = false;
+        showAddError('A network error prevented adding a new row — please try again.');
       });
   });
 })();

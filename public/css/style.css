@@ -881,6 +881,57 @@ body.stage-evaluation-dataset-editor .main-inner { max-width: 1600px; }
 .excel-table td.cell-error { outline: 2px solid var(--danger); outline-offset: -2px; }
 .excel-table tbody tr.row-pending { opacity: 0.5; }
 
+/* "Add row" form (views/dashboard/evaluation-dataset-editor.ejs, added
+   3 October 2026, replacing the earlier "insert a blank row, then edit
+   each cell" flow) — a simple centered modal: a dimmed overlay behind a
+   scrollable card with one field per column, laid out two per row so a
+   wide dataset's field list doesn't turn into one very long column.
+   Cancel/overlay-click/Escape all just hide this again with nothing
+   sent; only Save's form submit (wired in the script) ever reaches the
+   server. */
+.eval-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 20, 16, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 50;
+}
+.eval-modal {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: 0 20px 46px rgba(0, 0, 0, 0.4);
+  width: 100%;
+  max-width: 640px;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.eval-modal-header { padding: 26px 28px 0; }
+.eval-modal-body {
+  padding: 18px 28px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0 16px;
+}
+.eval-modal-body .field { margin-bottom: 14px; }
+.eval-modal #eval-add-row-alert { margin: 0 28px 14px; }
+.eval-modal-footer {
+  padding: 16px 28px 26px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+}
+@media (max-width: 560px) {
+  .eval-modal-body { grid-template-columns: 1fr; }
+}
+
 .alert-error {
   background: var(--alert-error-bg);
   border: 1px solid var(--danger);
