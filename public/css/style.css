@@ -260,36 +260,33 @@ a { color: inherit; }
 .header-signout:hover { background: #fbe0dc; }
 
 /* ---------------- Sidebar ----------------
-   "Opera What's New" palette (per Brenda's 3 October 2026 request — this
-   REPLACES the Deep Navy Teal palette set earlier the same day: Brenda
-   supplied two reference screenshots of Opera's "What's new" page and
-   asked every left-side panel to follow its font, text sizes, text color
-   and background. The sidebar (<aside class="sidebar">) is the only
-   literal left-side panel in the app that's present on every process —
-   there is no second one anywhere else in the codebase (checked: no
-   other left-positioned rail/panel exists), so this is the full scope of
-   that request. Hardcoded hex values here rather than redefining
-   --bg-panel/--border/--text-muted, since those shared tokens also drive
-   the header bar, form cards, chart cards, and modals elsewhere in the
-   app; scoping the new colors to .sidebar's own rules keeps this a
-   sidebar-only re-theme, same discipline as the teal palette it replaces.
+   Deep Navy Teal palette — RESTORED 3 October 2026 per Brenda's explicit
+   request ("restore the left navigation color like this", with two
+   screenshots of the live app's previous dark teal nav), reverting the
+   "Opera What's New" cream palette that had briefly replaced it the same
+   day. Hex values below were sampled directly from Brenda's reference
+   screenshots (not reconstructed from memory) to match the prior look
+   exactly: #073b4c for the sidebar body (a distinct, slightly bluer teal
+   than --bg's #0b4037, kept as its own literal rather than forced onto
+   that shared token), #0b6477 for the active nav pill. The header-brand
+   logo strip above the sidebar (views/partials/header.ejs) was never
+   touched by the cream round in the first place — it already uses
+   var(--bg-panel), which the screenshots confirm pixel-for-pixel — so no
+   change was needed there.
 
-   The reference is a warm cream page with bold near-black headings and
-   dark charcoal body text — no color accent anywhere, it's monochrome.
-   Translated onto the sidebar: cream background, charcoal text, and a
-   slightly darker "card" cream tone (--sidebar-card below, lifted from
-   the screenshot's two content boxes) standing in for the active/hover
-   states that the teal palette used to carry with color. The one
-   deliberate exception is the four analytics-stage .nav-icon chips
-   (Descriptive/Diagnostic/Predictive/Prescriptive) — kept in their own
-   stage colors, same as every prior palette round, since that's a
-   separate, already-settled design decision (the pipeline identity also
-   used on each stage's own page) and not what this request was about. */
+   Hardcoded hex values here rather than redefining --bg-panel/--border/
+   --text-muted, since those shared tokens also drive the header bar,
+   form cards, chart cards, and modals elsewhere in the app; scoping the
+   new colors to .sidebar's own rules keeps this a sidebar-only re-theme,
+   same discipline the cream round itself followed. The four
+   analytics-stage .nav-icon chips (Descriptive/Diagnostic/Predictive/
+   Prescriptive) keep their own stage colors throughout — untouched by
+   either palette swap, a separate, already-settled design decision. */
 .sidebar {
   width: 280px;
   flex-shrink: 0;
-  background: #FAF6EA; /* Cream page background, matching the Opera reference */
-  border-right: 1px solid #E2DCC6; /* Warm light divider */
+  background: #073b4c;
+  border-right: 1px solid var(--border);
   padding: 20px 20px 24px;
   display: flex;
   flex-direction: column;
@@ -375,17 +372,15 @@ a { color: inherit; }
 .upload-progress-label.is-done { color: var(--alert-success-text); font-weight: 600; }
 
 .nav-heading {
-  /* Smallest text in the sidebar — 18px floor kept from Brenda's earlier
-     3 October 2026 sizing request; only the color changes here, to a
-     bold dark charcoal matching the Opera reference's heading weight
-     (its "NAVIGATION" equivalent is the only all-caps label in this
-     panel, so it reads as the nearest match to that reference's bold
-     headline treatment). */
+  /* 18px floor kept from Brenda's earlier 3 October 2026 sizing request
+     (unaffected by this palette revert — only color/background changed
+     here, back to the light, slightly muted label color the dark navy
+     teal version used). */
   font-size: 18px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #1E1C16; /* Dark charcoal, matching the reference's headline color */
+  color: var(--text-muted);
   margin: 6px 0 10px;
 }
 
@@ -397,24 +392,24 @@ a { color: inherit; }
   padding: 10px 12px;
   border-radius: 10px;
   text-decoration: none;
-  color: #2B2A22; /* Dark charcoal — normal menu text, matching the reference's body copy */
+  color: var(--text); /* Light near-white — normal menu text on the dark teal background */
   font-size: 21px;
   transition: background 0.15s ease, color 0.15s ease;
 }
-.nav-list a:hover { background: #F2EEDE; color: #1E1C16; } /* Lighter cream card tone on hover */
+.nav-list a:hover { background: rgba(255, 255, 255, 0.06); color: var(--text); }
 .nav-list a.active {
-  color: #1E1C16; /* Dark charcoal, same ink as the rest — no color accent, matching the reference's monochrome look */
+  color: var(--text);
   font-weight: 700;
-  background: #EFEAD6; /* The reference's "card" cream tone, standing in for a colored active state */
+  background: #0b6477; /* Lighter teal pill, sampled from Brenda's reference screenshot */
 }
 .nav-dot {
   width: 15px;
   height: 15px;
   border-radius: 50%;
-  border: 2px solid #5B5744; /* Muted warm charcoal — normal menu icons */
+  border: 2px solid var(--text-muted);
   flex-shrink: 0;
 }
-.nav-list a.active .nav-dot { border-color: #1E1C16; background: radial-gradient(circle, #1E1C16 0 5px, transparent 6px); } /* Solid dark-charcoal active accent — no color, per the reference */
+.nav-list a.active .nav-dot { border-color: var(--accent); background: radial-gradient(circle, var(--accent) 0 5px, transparent 6px); } /* Gold active accent, matching the brand's CTA/highlight color */
 
 /* The four analytics-pipeline stages get their own stage-colored icon
    chip instead of a generic gold nav-dot — the same colors/icons as the
@@ -430,24 +425,22 @@ a { color: inherit; }
   justify-content: center;
   font-size: 14px;
   flex-shrink: 0;
-  background: rgba(30, 28, 22, 0.06); /* Dark-on-cream tint (was a white tint, tuned for the old dark sidebar) */
-  filter: grayscale(0.6) opacity(0.75);
+  background: rgba(255, 255, 255, 0.06); /* White tint, back to its original value for the dark sidebar */
 }
 .nav-list a.active .nav-icon,
 .nav-list a:hover .nav-icon { filter: none; }
-/* Opacity raised slightly from the teal palette's 0.28 (0.34) — these
-   rgba tints read a little lighter mixed against the new cream
-   background than they did against dark navy, so the bump keeps the
-   four stage colors equally legible here. */
-.nav-icon.stage-descriptive-analytics { background: rgba(22, 104, 168, 0.34); }
-.nav-icon.stage-diagnostic-insights { background: rgba(13, 148, 136, 0.34); }
-.nav-icon.stage-predictive-analytics { background: rgba(90, 69, 201, 0.34); }
-.nav-icon.stage-prescriptive-recommendations { background: rgba(44, 134, 89, 0.34); }
+/* Opacity back to 0.28 — the cream round had bumped this to 0.34 since
+   these rgba tints read lighter against a light background; restored
+   here since the background is dark navy teal again. */
+.nav-icon.stage-descriptive-analytics { background: rgba(22, 104, 168, 0.28); }
+.nav-icon.stage-diagnostic-insights { background: rgba(13, 148, 136, 0.28); }
+.nav-icon.stage-predictive-analytics { background: rgba(90, 69, 201, 0.28); }
+.nav-icon.stage-prescriptive-recommendations { background: rgba(44, 134, 89, 0.28); }
 
 .sidebar-footer {
   margin-top: auto;
   padding-top: 16px;
-  border-top: 1px solid #E2DCC6; /* Warm light divider, separating Sign out from the nav list */
+  border-top: 1px solid var(--border);
 }
 /* Sign-out button text, scoped here rather than raised on the shared
    .btn class, which every button app-wide (forms, modals, tab actions)
