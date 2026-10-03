@@ -1022,13 +1022,17 @@ body.stage-evaluation-dataset-editor .main-inner { max-width: 1600px; }
 body.stage-user-manual .main-inner { max-width: none; }
 body.stage-user-manual .form-card.wide { max-width: none; width: 100%; }
 
-/* Heading and description scaled up together with the 20px body text
-   below, so the page reads as one consistent, larger type scale rather
-   than a small headline sitting over oversized paragraphs. */
+/* Headings (.page-title, .form-title) keep their larger sizes from above.
+   Description text (.page-subtitle, .form-hint) is instead matched to the
+   .page-subtitle size every other page already uses unscoped — the same
+   16.5px seen on Descriptive analytics / Diagnostic insights / Predictive
+   analytics / Prescriptive recommendations — so the manual's prose reads
+   at the same size as the rest of the app's page descriptions rather than
+   its own larger scale; 3 October 2026, per Brenda's follow-up request. */
 body.stage-user-manual .page-title { font-size: 44px; }
-body.stage-user-manual .page-subtitle { font-size: 20px; max-width: none; line-height: 1.65; }
+body.stage-user-manual .page-subtitle { font-size: 16.5px; max-width: none; line-height: 1.6; }
 body.stage-user-manual .form-title { font-size: 30px; }
-body.stage-user-manual .form-hint { font-size: 20px; line-height: 1.75; }
+body.stage-user-manual .form-hint { font-size: 16.5px; line-height: 1.6; }
 body.stage-user-manual .table-simple th { font-size: 15px; }
 body.stage-user-manual .table-simple td { font-size: 19px; }
 
