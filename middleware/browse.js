@@ -102,9 +102,24 @@ function buildColumnMeta(rows, columns) {
   });
 }
 
-// Applies ?f_<column>=value / ?fmin_<column>= / ?fmax_<column>= query params to the row set.
+// Applies ?q= (free-text, any column) and ?f_<column>=value / ?fmin_<column>=
+// / ?fmax_<column>= query params to the row set. ?q narrows across every
+// column at once — the Filters panel's own "Search" field (views/dashboard/
+// browse-dataset.ejs), same idea as the live free-text box on the Browse
+// Evaluation CSV page, just applied server-side here since this page's
+// filtering already round-trips through a full page reload rather than
+// client-side JS. Combined with the per-column filters below via AND, same
+// as those are combined with each other.
 function applyFilters(rows, columnMeta, query) {
   let filtered = rows;
+
+  const q = typeof query.q === 'string' ? query.q.trim().toLowerCase() : '';
+  if (q) {
+    filtered = filtered.filter((r) => columnMeta.some((meta) => {
+      const v = r[meta.name];
+      return v !== undefined && v !== null && String(v).toLowerCase().includes(q);
+    }));
+  }
 
   columnMeta.forEach((meta) => {
     if (meta.type === 'number') {

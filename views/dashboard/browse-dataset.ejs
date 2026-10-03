@@ -15,15 +15,30 @@ function qs(overrides) {
   &nbsp;·&nbsp; <a href="/browse-dataset/<%= dataset.id %>/<%= fileType %>/evaluation" style="color: var(--accent); font-weight:600;">🧪 Evaluation Report</a>
 </p>
 
-<div class="form-card wide" style="margin-bottom: 18px;">
-  <div class="form-title">Filters</div>
+<div class="form-card wide filter-bar" style="margin-bottom: 18px;">
+  <div class="filter-bar-head">
+    <div class="filter-bar-title">Filters</div>
+    <div class="filter-bar-actions">
+      <% if (columns.length > 0) { %>
+        <button type="submit" form="browse-filter-form" class="btn btn-accent btn-sm">Search</button>
+      <% } %>
+      <button type="button" class="btn btn-ghost btn-sm" data-filter-toggle>Hide filters</button>
+    </div>
+  </div>
   <% if (columns.length === 0) { %>
-    <p style="color: var(--text-muted);">This file has no columns to filter on.</p>
+    <p style="color: var(--text-muted); margin: 14px 0 0;">This file has no columns to filter on.</p>
   <% } else { %>
-    <form method="GET" action="/browse-dataset/<%= dataset.id %>/<%= fileType %>">
-      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px 16px;">
+    <form method="GET" id="browse-filter-form" action="/browse-dataset/<%= dataset.id %>/<%= fileType %>" class="filter-bar-body" data-filter-body>
+      <div class="filter-bar-row filter-bar-row-search">
+        <div class="field filter-field filter-field-search">
+          <label>Search</label>
+          <input type="text" name="q" placeholder="Search any column — e.g. a customer id, category, status…" value="<%= query.q || '' %>" />
+        </div>
+      </div>
+      <div class="filter-bar-divider"></div>
+      <div class="filter-bar-grid">
         <% columnMeta.forEach(function(meta) { %>
-          <div class="field" style="margin-bottom:0;">
+          <div class="field filter-field">
             <label><%= meta.name %></label>
             <% if (meta.type === 'select') { %>
               <select name="f_<%= meta.name %>">
@@ -44,13 +59,31 @@ function qs(overrides) {
         <% }); %>
       </div>
 
-      <div style="display:flex; gap:10px; margin-top: 18px;">
+      <div class="filter-bar-row filter-bar-row-actions">
         <button type="submit" class="btn btn-accent">Apply filters</button>
         <a href="/browse-dataset/<%= dataset.id %>/<%= fileType %>" class="btn btn-ghost">Clear filters</a>
       </div>
     </form>
   <% } %>
 </div>
+
+<script>
+(function () {
+  // Collapsible filters panel — mirrors Final Grade Encoding's "Hide class
+  // list" pattern. Purely a display toggle (no filters are cleared), so
+  // hiding the panel never discards a search already typed in; re-showing
+  // it brings everything back exactly as left.
+  var toggle = document.querySelector('[data-filter-toggle]');
+  var body = document.querySelector('[data-filter-body]');
+  if (toggle && body) {
+    toggle.addEventListener('click', function () {
+      var hidden = body.style.display === 'none';
+      body.style.display = hidden ? '' : 'none';
+      toggle.textContent = hidden ? 'Hide filters' : 'Show filters';
+    });
+  }
+})();
+</script>
 
 <div class="form-card wide">
   <div class="form-title">Records</div>

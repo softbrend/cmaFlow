@@ -676,6 +676,54 @@ a { color: inherit; }
 .field-checkbox { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; font-size: 14px; }
 .field-checkbox input { width: auto; }
 
+/* ---------------- Filter bar (Browse Dataset's "Filters" panel) ----------------
+   Restyled per Brenda's request (3 October 2026) to match a reference
+   screenshot from another app's "Final Grade Encoding" filters: an
+   uppercase "FILTERS" label with a dark search button pinned to the same
+   row, a full-width divider under that header, a dedicated free-text
+   Search field of its own above the per-column filters, and a "Hide
+   filters" toggle — useful here since a wide SME dataset can have 20+
+   filterable columns, far more than that reference page's fixed filter
+   set. Field inputs/selects still reuse .field's own styling (the
+   `.field filter-field` double-class in the view) so this only changes
+   the label treatment, spacing, and the new header/divider/search row —
+   not the bordered input look used everywhere else in the app. */
+.filter-bar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.filter-bar-title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.filter-bar-actions { display: flex; gap: 10px; flex-shrink: 0; }
+.filter-bar-divider { height: 1px; background: var(--border); margin: 4px 0 16px; }
+.filter-bar-row-search { margin-bottom: 0; }
+.filter-bar-row-actions { display: flex; gap: 10px; margin-top: 18px; }
+.filter-bar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px 16px;
+}
+.filter-bar .filter-field { margin-bottom: 0; }
+.filter-bar .filter-field label {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.filter-field-search { max-width: 480px; }
+.filter-field-search input { font-size: 14.5px; }
+
 /* ---------------- TAM End-User Evaluation ---------------- */
 .eval-steps { display: flex; gap: 8px; margin: 4px 0 24px; flex-wrap: wrap; }
 .eval-step {
