@@ -49,7 +49,9 @@
 // evaluateDiagnostics(ctx) alongside evaluateMetrics(ctx); routes/
 // dashboard.js turns the plain result objects below into HTML.
 
-const { tryParseNumber, toMonthKey } = require('./datasetProfiler');
+const {
+  tryParseNumber, toMonthKey, BOOL_TRUE, BOOL_FALSE,
+} = require('./datasetProfiler');
 const {
   findRoleColumn, resolveGeo, sumColumn, titleize, entityLabelFromIdColumn,
   pluralize, STATUS_NAME_RE, CANCEL_VALUE_RE, GENERIC_CATEGORY_NAME_RE,
@@ -1909,6 +1911,395 @@ const RELEVANCE_BY_ID = {
   PAYMENT_BEHAVIOR_CROSSTAB: 0.55,
 };
 
+// ---------------------------------------------------------------------
+// Automatic, cross-domain KPI Driver Analysis — generalizes the 16 fixed,
+// Olist/e-commerce-shaped findings above (revenue, orders, AOV, freight,
+// delivery, reviews, sellers, cancellations, payment, geo, repeat
+// purchase, ...) to ANY SME business category those never anticipated —
+// tourism occupancy, agriculture yield/spoilage, manufacturing defects,
+// IT/SaaS churn, health & wellness no-shows, and so on.
+//
+// Commissioned directly: "the diagnostic analytics must be dynamically
+// generate[d] ... based on the structure of the datasets" — followed by a
+// worked example across many SME templates (Accommodation & Tourism,
+// Agriculture & Agribusiness, IT & Digital Services, Manufacturing,
+// Health & Wellness, ...), each with its own domain vocabulary but the
+// SAME underlying recipe stated explicitly in that example: "I recommend
+// implementing this as a general KPI -> Candidate Drivers -> Statistical
+// Tests/Effect Sizes -> Driver Ranking -> Natural-Language Diagnostic
+// Findings pipeline. That would make the diagnostic component genuinely
+// schema-independent rather than a collection of predefined [per-domain]
+// charts."
+//
+// This is built as a thin ORCHESTRATION layer, not a new statistics
+// engine — every actual computation reuses primitive C (explainFactorsFor)
+// or primitive E (explainBinaryFactorsFor) exactly as already defined
+// above, plus the SAME CAAGA priority/confidence scoring and the SAME
+// factorTables()/binaryFactorTables() view-layer renderers the fixed
+// FREIGHT_DRIVERS/DELIVERY_DELAY_DRIVERS/REVIEW_SCORE_DRIVERS and
+// CANCELLATION_DRIVERS/REPEAT_PURCHASE_DRIVERS findings already use (see
+// routes/dashboard.js). What's new here is WHICH column plays the target
+// and WHICH columns play the candidates — decided at run time from this
+// dataset's own profiled column kinds and business-semantic roles,
+// never a fixed per-domain list of names.
+//
+// KPI (target) discovery, in priority order (so MAX_KPI_CANDIDATES trims
+// the least central ones first on a very wide dataset):
+//   1. Revenue (or a listed price used as its fallback — findRevenueColumn)
+//   2. Cost
+//   3. Profit, derived per row as revenue - cost, when both exist (never
+//      tested against revenue or cost themselves as candidates below —
+//      that would be circular, since profit is defined FROM them)
+//   4. A rating/review-score column
+//   5. A quantity column
+//   6. Any boolean column whose name reads as a bad/good OUTCOME EVENT
+//      (cancellation, no-show, churn, defect, return, downtime, ...) —
+//      promotion/membership-style flags are deliberately excluded here,
+//      since those read as levers a business pulls, not outcomes it
+//      observes; they remain available as DRIVER candidates instead (see
+//      discoverDriverCandidates() below).
+//   7. Any numeric/percentage column whose name reads as a rate/ratio
+//      (occupancy_rate, defect_rate, no_show_rate, utilization, ...)
+//   8. Any other currency/numeric/rating column not already claimed by a
+//      revenue/cost/price/quantity role — the exact same "leftover
+//      measure" philosophy services/metricRegistry.js's own
+//      buildLeftoverMeasureMetrics() already uses for descriptive KPIs
+//      (a yield figure, a spoilage count, a downtime total, ...), reused
+//      here so an arbitrary domain's own named outcome column still
+//      becomes a KPI candidate without a new per-domain rule.
+// ---------------------------------------------------------------------
+const OUTCOME_FLAG_NAME_RE = /cancel|no[-_ ]?shows?|churn|attrition|default|complaint|return|reject|fail|defect|spoil(?:age)?|downtime|late|delay|dropout|lapse/i;
+const RATE_NAME_RE = /\boccupancy\b|\butili[sz]ation\b|\bconversion\b|\bretention\b|\bcompletion\b|\bdefect\b|\bspoilage\b|\bchurn\b|\bno[-_ ]?shows?\b|\bcancellation\b|\brate\b/i;
+// \b does not treat "_"/"-" as a word boundary (they're \w characters in a
+// JS regex), so a plain \b-based pattern never matches a column named with
+// underscores — "defect_rate_pct" would fail \bdefect\b and \brate\b both,
+// since neither "defect" nor "rate" is followed by a non-word character.
+// Real SME column headers are overwhelmingly snake_case/kebab-case, so
+// every \b-based name-pattern test above normalizes the column name through
+// this first — spaces are genuine word boundaries, letting \b work as
+// intended. Caught by a live cross-domain test (defect_rate_pct silently
+// failing to register as a KPI on a synthetic manufacturing dataset).
+function normalizeForWordMatch(name) {
+  return String(name).replace(/[_-]+/g, ' ');
+}
+const EXCLUDE_DRIVER_KINDS = new Set(['id', 'date', 'text', 'url', 'empty', 'geo_lat', 'geo_lng']);
+const MAX_KPI_CANDIDATES = 8;
+const MAX_DRIVER_CANDIDATE_POOL = 30;
+const MIN_CATEGORY_GROUP_SIZE = 2;
+const MAX_CATEGORY_CARDINALITY = 20;
+const SMALL_SAMPLE_THRESHOLD = 30;
+
+// A column resolved only by ROLE (findRoleColumn — revenue/cost/quantity)
+// carries just {name, role, confidence}, not the full profiled stats, so
+// its own min/max is looked up here from ctx.factFileProfile.columns
+// before it's allowed to consume a KPI slot. A column with no variance
+// at all (every row the same — e.g. a "quantity" that is always 1 on a
+// per-booking fact table) can never produce a real correlation/eta result
+// anyway (explainFactorsFor's target-side math requires nonzero target
+// variance), so without this check it would silently occupy one of
+// MAX_KPI_CANDIDATES' limited slots and crowd out a KPI that actually
+// varies — exactly what a live synthetic-tourism-dataset test caught
+// (a constant quantity column pushed occupancy_rate out of the window).
+function kpiColumnHasVariance(ctx, name) {
+  const profiled = ctx.factFileProfile.columns.find((c) => c.name === name);
+  if (!profiled || profiled.min === undefined || profiled.max === undefined) return true;
+  return profiled.min !== profiled.max;
+}
+
+function discoverKpiCandidates(ctx) {
+  if (!ctx.factFileProfile) return [];
+  const kpis = [];
+  const usedNames = new Set();
+
+  const addNumeric = (col, label, excludeExtra = []) => {
+    if (!col || usedNames.has(col.name) || !kpiColumnHasVariance(ctx, col.name)) return;
+    usedNames.add(col.name);
+    kpis.push({
+      type: 'numeric', column: col.name, label, excludeExtra, accessor: (row) => tryParseNumber(row[col.name]),
+    });
+  };
+  const addBinary = (col, label) => {
+    if (!col || usedNames.has(col.name)) return;
+    usedNames.add(col.name);
+    kpis.push({
+      type: 'binary',
+      column: col.name,
+      label,
+      excludeExtra: [],
+      accessor: (row) => {
+        const raw = row[col.name];
+        const v = String(raw === undefined || raw === null ? '' : raw).trim().toLowerCase();
+        if (BOOL_TRUE.has(v)) return true;
+        if (BOOL_FALSE.has(v)) return false;
+        return null;
+      },
+    });
+  };
+
+  const revInfo = findRevenueColumn(ctx);
+  if (revInfo) addNumeric(revInfo.col, revInfo.isFallback ? `${titleize(revInfo.col.name)} (used as revenue)` : titleize(revInfo.col.name));
+
+  const costCol = findRoleColumn(ctx.factFile, 'cost');
+  if (costCol) addNumeric(costCol, titleize(costCol.name));
+
+  if (revInfo && costCol) {
+    kpis.push({
+      type: 'numeric',
+      column: '__profit__',
+      label: 'Profit (revenue - cost)',
+      excludeExtra: [revInfo.col.name, costCol.name],
+      accessor: (row) => {
+        const r = tryParseNumber(row[revInfo.col.name]);
+        const c = tryParseNumber(row[costCol.name]);
+        return (r === null || c === null) ? null : r - c;
+      },
+    });
+  }
+
+  const ratingCol = findRatingColumn(ctx);
+  if (ratingCol) addNumeric(ratingCol, titleize(ratingCol.name));
+
+  const qtyCol = findRoleColumn(ctx.factFile, 'quantity');
+  if (qtyCol) addNumeric(qtyCol, titleize(qtyCol.name));
+
+  ctx.factFileProfile.columns
+    .filter((c) => c.kind === 'boolean' && OUTCOME_FLAG_NAME_RE.test(c.name) && c.trueCount > 0 && c.falseCount > 0 && (c.trueCount + c.falseCount) >= 10)
+    .forEach((c) => addBinary(c, titleize(c.name)));
+
+  ctx.factFileProfile.columns
+    .filter((c) => ['numeric', 'percentage'].includes(c.kind) && RATE_NAME_RE.test(normalizeForWordMatch(c.name)) && c.mean !== null && !usedNames.has(c.name))
+    .forEach((c) => addNumeric(c, titleize(c.name)));
+
+  // Same CLAIMED_MEASURE_ROLES role list services/metricRegistry.js's
+  // buildLeftoverMeasureMetrics() uses, inlined rather than imported — a
+  // small, stable set of role NAMES (not a private implementation detail)
+  // that this file already duplicates the reasoning for elsewhere (see
+  // this engine's own revenue/cost/quantity role lookups above).
+  const claimedRoleNames = new Set(
+    Object.entries(ctx.factFile.columnRoles || {})
+      .filter(([, r]) => ['revenue', 'cost', 'price', 'quantity'].includes(r.role))
+      .map(([name]) => name)
+  );
+  ctx.factFileProfile.columns
+    .filter((c) => ['currency', 'numeric', 'rating'].includes(c.kind) && c.mean !== null
+      && !claimedRoleNames.has(c.name) && !usedNames.has(c.name) && !FREIGHT_NAME_RE.test(c.name))
+    .forEach((c) => addNumeric(c, titleize(c.name)));
+
+  return kpis.slice(0, MAX_KPI_CANDIDATES);
+}
+
+// Candidate DRIVER columns for one KPI — every other column on the SAME
+// fact table whose profiled kind supports one of explainFactorsFor()'s/
+// explainBinaryFactorsFor()'s two branches, excluding the KPI's own
+// column(s), ids, dates, free text, and anything the profiler couldn't
+// classify. A boolean column (promotion_flag, membership_flag, ...) is
+// included here as a 2-level categorical ('Yes'/'No') — the exact kind of
+// LEVER the commissioning example's "Promotion Effect Analysis" asks for,
+// distinct from the OUTCOME-flag KPIs discoverKpiCandidates() builds above.
+function discoverDriverCandidates(ctx, excludeNames) {
+  if (!ctx.factFileProfile) return [];
+  const candidates = [];
+  const seen = new Set(excludeNames);
+
+  ctx.factFileProfile.columns.forEach((col) => {
+    if (seen.has(col.name) || EXCLUDE_DRIVER_KINDS.has(col.kind)) return;
+    if (['numeric', 'currency', 'percentage', 'rating'].includes(col.kind) && col.mean !== null) {
+      candidates.push({ label: titleize(col.name), type: 'numeric', accessor: (row) => tryParseNumber(row[col.name]) });
+      seen.add(col.name);
+    } else if (col.kind === 'category' && col.uniqueCount >= MIN_CATEGORY_GROUP_SIZE && col.uniqueCount <= MAX_CATEGORY_CARDINALITY) {
+      candidates.push({ label: titleize(col.name), type: 'categorical', accessor: (row) => row[col.name] });
+      seen.add(col.name);
+    } else if (col.kind === 'boolean' && (col.trueCount + col.falseCount) >= 10) {
+      candidates.push({
+        label: titleize(col.name),
+        type: 'categorical',
+        accessor: (row) => {
+          const raw = row[col.name];
+          const v = String(raw === undefined || raw === null ? '' : raw).trim().toLowerCase();
+          if (BOOL_TRUE.has(v)) return 'Yes';
+          if (BOOL_FALSE.has(v)) return 'No';
+          return null;
+        },
+      });
+      seen.add(col.name);
+    }
+  });
+
+  // Geography is frequently resolved INDIRECTLY (through a joined
+  // dimension file) rather than sitting as a plain 'category' column on
+  // the fact table itself — add it explicitly so a tourism/retail
+  // dataset's resolved region/state still becomes a driver candidate even
+  // when it lives on a separate file. A DIRECT geo column was already
+  // picked up by the plain 'category' branch above.
+  const geo = resolveGeo(ctx);
+  if (geo && geo.indirect && !seen.has(geo.keyCol)) {
+    candidates.push({
+      label: 'geography',
+      type: 'categorical',
+      accessor: (row) => {
+        const raw = row[geo.keyCol];
+        if (raw === null || raw === undefined) return null;
+        return geo.lookup.get(String(raw).trim()) || null;
+      },
+    });
+  }
+
+  return candidates.slice(0, MAX_DRIVER_CANDIDATE_POOL);
+}
+
+// The single strongest association out of an explainFactorsFor()/
+// explainBinaryFactorsFor() result, ACROSS its numeric and categorical
+// candidate lists, on one normalized [0, 1] scale — same comparison
+// resolveTopAssociation()/resolveTopBinaryAssociation() below already make
+// for scoring, but this also keeps the WINNING candidate's own label and a
+// plain-language detail clause for the narrative sentence.
+function describeTopFactor(result, isBinary) {
+  const numeric = result.numericResults[0];
+  const categorical = result.categoricalResults[0];
+  const numericStrength = numeric ? (isBinary ? normalizeCohensD(numeric.cohensD) : normalizeCorrelation(numeric.correlation)) : -1;
+  const categoricalStrength = categorical
+    ? (isBinary ? cramersVFromChiSquare(categorical.test.chiSquare, categorical.test.grandTotal, categorical.rowLabels.length, 2) : clamp01(categorical.eta))
+    : -1;
+  if (numericStrength < 0 && categoricalStrength < 0) return null;
+  if (numericStrength >= categoricalStrength) {
+    return {
+      label: numeric.label,
+      strength: numericStrength,
+      direction: isBinary ? null : (numeric.correlation >= 0 ? 'positive' : 'negative'),
+      detail: isBinary
+        ? `average ${numeric.trueMean.toFixed(2)} when true vs. ${numeric.falseMean.toFixed(2)} when false`
+        : (numeric.split ? `rows above ${numeric.split.threshold.toFixed(1)} average ${numeric.split.rightMean.toFixed(1)} vs. ${numeric.split.leftMean.toFixed(1)} below` : null),
+    };
+  }
+  return {
+    label: categorical.label,
+    strength: categoricalStrength,
+    direction: null,
+    detail: isBinary
+      ? (categorical.test.mostAssociatedCell ? `most associated with "${categorical.test.mostAssociatedCell.row}"` : null)
+      : (categorical.bestGroup ? `"${categorical.bestGroup.label}" differs most from the overall average (${categorical.bestGroup.mean.toFixed(2)} vs. overall ${categorical.overallMean.toFixed(2)}, n=${categorical.bestGroup.count})` : null),
+  };
+}
+
+// Natural-language diagnostic finding — the last stage of the commissioned
+// "KPI -> Candidate Drivers -> Statistical Tests/Effect Sizes -> Driver
+// Ranking -> Natural-Language Diagnostic Findings" pipeline. Association
+// language only, never causal ("is associated with," never "causes" or
+// "explains"), matching the commissioning example's own explicit guidance
+// ("Avoid saying the OTA channel caused higher revenue unless CMA-Flow
+// performs a suitable causal analysis") and this engine's existing honesty
+// policy (see file header). A thin sample (below SMALL_SAMPLE_THRESHOLD)
+// is flagged as exploratory rather than hidden — the same "preliminary
+// finding due to the small number of..." framing the commissioning
+// example itself uses for a 3-of-50-row cancellation signal.
+function kpiDriverNarrative(kpi, result, sampleSize) {
+  const top = describeTopFactor(result, kpi.type === 'binary');
+  if (!top) return `No factor tested showed a meaningful association with ${kpi.label} in this dataset.`;
+  const parts = [];
+  if (kpi.type === 'binary') {
+    parts.push(`${top.label} shows the strongest association with ${kpi.label} (strength ${top.strength.toFixed(2)} on a 0–1 scale)${top.detail ? ` — ${top.detail}` : ''}.`);
+  } else {
+    parts.push(`${top.label} shows the strongest association with ${kpi.label}${top.direction ? ` (${top.direction})` : ''} (strength ${top.strength.toFixed(2)} on a 0–1 scale)${top.detail ? ` — ${top.detail}` : ''}.`);
+  }
+  if (sampleSize !== null && sampleSize < SMALL_SAMPLE_THRESHOLD) {
+    parts.push(`Only ${sampleSize} row(s) support this comparison, so this should be treated as an exploratory signal rather than a confirmed driver.`);
+  }
+  parts.push('This reflects an observed association in this dataset, not a proven cause.');
+  return parts.join(' ');
+}
+
+function buildKpiDriverFinding(ctx, kpi) {
+  const exclude = new Set([kpi.column, ...(kpi.excludeExtra || [])]);
+  const candidates = discoverDriverCandidates(ctx, exclude);
+  if (candidates.length === 0) return null;
+
+  const result = kpi.type === 'binary'
+    ? explainBinaryFactorsFor(ctx.factFile.rows, kpi.accessor, candidates)
+    : explainFactorsFor(ctx.factFile.rows, kpi.accessor, candidates);
+  if (!result) return null;
+
+  const sampleSize = kpi.type === 'binary'
+    ? ctx.factFile.rows.filter((row) => kpi.accessor(row) !== null).length
+    : ctx.factFile.rows.reduce((n, row) => {
+      const v = kpi.accessor(row);
+      return (v !== null && Number.isFinite(v)) ? n + 1 : n;
+    }, 0);
+
+  return {
+    applicable: true,
+    kpiLabel: kpi.label,
+    kpiType: kpi.type,
+    sampleSize,
+    narrative: kpiDriverNarrative(kpi, result, sampleSize),
+    result,
+  };
+}
+
+// Orchestrator for this whole layer — one finding per discovered KPI,
+// each independently wrapped so one KPI's unexpected data shape can never
+// take down another's (same degrade-to-skip discipline evaluateDiagnostics()
+// below already applies to every fixed finding).
+function buildAutomaticKpiDriverFindings(ctx) {
+  return discoverKpiCandidates(ctx).map((kpi) => {
+    let finding;
+    try {
+      finding = buildKpiDriverFinding(ctx, kpi);
+    } catch (err) {
+      finding = null;
+    }
+    if (!finding) return null;
+    return {
+      id: `KPI_DRIVERS::${kpi.column}`,
+      label: `Why does ${kpi.label} vary?`,
+      question: `What factors are associated with ${kpi.label}?`,
+      method: kpi.type === 'binary'
+        ? "Chi-square test of association + standardized group-difference (Cohen's d), scanned across every other column on this dataset's own fact table"
+        : 'Pearson correlation + correlation-ratio (η) + a depth-1 regression-tree split, scanned across every other column on this dataset\'s own fact table',
+      ...finding,
+    };
+  }).filter(Boolean);
+}
+
+// CAAGA Stage 6 scoring for a dynamically-generated KPI_DRIVERS:: finding
+// — same computePriority()/computeConfidence() call as every fixed
+// finding below, just with generically-derived inputs instead of a
+// per-id switch case (there is no fixed id to switch on; the id itself
+// is generated per dataset). Revenue/cost/profit get the same high
+// relevance weight REVENUE_DRIVERS/ORDERS_DRIVERS/AOV_DRIVERS carry in
+// RELEVANCE_BY_ID above; every other dynamically-discovered KPI (a rate,
+// an outcome flag, a leftover measure) gets a lower default — it is real
+// and tested exactly the same way, just one step further from the core
+// financial KPIs an SME watches first.
+function scoreKpiDriverFinding(finding, ctx) {
+  const factRowCount = ctx.factFile.rows.length;
+  const K = costProxy(factRowCount);
+  const isBinary = finding.kpiType === 'binary';
+  const top = isBinary ? resolveTopBinaryAssociation(finding.result) : resolveTopAssociation(finding.result, factRowCount);
+  const strength = top ? top.strength : 0.3;
+  const quality = sufficiencyRatio(finding.sampleSize || 0, 20);
+  const relevance = /revenue|cost|profit/i.test(finding.kpiLabel || '') ? 0.85 : 0.6;
+  // Every column here (the KPI itself, not just its candidates) was
+  // matched by profiled kind and/or name pattern rather than a formal
+  // semantic role — the same honesty level FREIGHT_DRIVERS/
+  // PAYMENT_BEHAVIOR_CROSSTAB already use (0.7), nudged slightly lower
+  // since the TARGET was auto-detected here too, not just the factors.
+  const confidence = 0.6;
+  const actionability = top ? (top.actionable ? 1.0 : 0.6) : 0.4;
+  const priority = computePriority({
+    relevance, strength, quality, confidence, actionability, cost: K,
+  });
+  const conf = computeConfidence({
+    semanticConfidence: confidence, sampleSufficiency: quality, missingnessRatio: 0, stability: quality,
+  });
+  return {
+    priorityScore: priority.score,
+    priorityBand: priority.band,
+    confidence: conf.score,
+    confidenceBand: conf.band,
+    priorityFactors: priority.factors,
+  };
+}
+
 // Average confidence across the semantic-role columns (see services/
 // businessSemantics.js's scoreColumnRoles()) a finding actually depended
 // on — e.g. a revenue-driver finding is only as semantically trustworthy
@@ -2003,6 +2394,13 @@ function costProxy(factRowCount) {
 // nothing here recomputes a statistic differently than the finding's own
 // narrative already reports it.
 function scoreDiagnosticFinding(def, result, ctx) {
+  // Dynamically-generated findings (one 'KPI_DRIVERS::<column>' per
+  // auto-discovered KPI — see buildAutomaticKpiDriverFindings() above)
+  // have no fixed id to switch on below; scoreKpiDriverFinding() handles
+  // them with the same priority/confidence machinery, generically.
+  if (typeof def.id === 'string' && def.id.startsWith('KPI_DRIVERS::')) {
+    return scoreKpiDriverFinding(result, ctx);
+  }
   const relevance = RELEVANCE_BY_ID[def.id] ?? 0.7;
   const factRowCount = ctx.factFile.rows.length;
   const K = costProxy(factRowCount);
@@ -2247,11 +2645,38 @@ function evaluateDiagnostics(ctx) {
       id: def.id, label: def.label, question: def.question, method: def.method, ...result, ...score,
     };
   });
+
+  // Automatic, cross-domain KPI Driver Analysis (see the block comment
+  // above discoverKpiCandidates()) — one additional, dynamically-id'd
+  // finding per auto-discovered KPI, appended alongside the 16 fixed
+  // findings above rather than replacing them: the fixed findings stay
+  // the sharper, Olist/e-commerce-specific narratives for a retail-shaped
+  // dataset, while this layer is what actually answers the commissioned
+  // requirement for a tourism, agriculture, manufacturing, IT, or health
+  // & wellness dataset — any SME category the fixed 16 never named.
+  // Wrapped exactly like every fixed generator above: a bug in this layer
+  // degrades to "no dynamic findings this run," never a broken page.
+  let dynamicFindings = [];
+  try {
+    dynamicFindings = buildAutomaticKpiDriverFindings(ctx).map((f) => {
+      let score = {};
+      try {
+        score = scoreDiagnosticFinding(f, f, ctx);
+      } catch (err) {
+        score = {};
+      }
+      return { ...f, ...score };
+    });
+  } catch (err) {
+    dynamicFindings = [];
+  }
+
   // Rank: applicable findings first, highest priority first; not-applicable
   // findings keep their original catalog order at the end (nothing to rank
   // them by, and their relative order was never meaningful to begin with).
-  const applicableIdx = new Map(findings.map((f, i) => [f.id, i]));
-  return [...findings].sort((a, b) => {
+  const combined = [...findings, ...dynamicFindings];
+  const applicableIdx = new Map(combined.map((f, i) => [f.id, i]));
+  return [...combined].sort((a, b) => {
     if (a.applicable !== b.applicable) return a.applicable ? -1 : 1;
     if (a.applicable && b.applicable) return (b.priorityScore || 0) - (a.priorityScore || 0);
     return applicableIdx.get(a.id) - applicableIdx.get(b.id);
@@ -2288,4 +2713,10 @@ module.exports = {
   dimensionLabelAccessor,
   findByNamePattern,
   FREIGHT_NAME_RE,
+  // Automatic, cross-domain KPI Driver Analysis — exported for unit
+  // testing (scratch scripts) and potential reuse, same as every other
+  // primitive above.
+  discoverKpiCandidates,
+  discoverDriverCandidates,
+  buildAutomaticKpiDriverFindings,
 };

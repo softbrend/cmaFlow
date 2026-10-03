@@ -1893,6 +1893,24 @@ function buildDiagnosticEngineCards(bi, currency) {
 
     const tables = [];
     const stats = [];
+    // Automatic, cross-domain KPI Driver Analysis — one dynamically-id'd
+    // finding ('KPI_DRIVERS::<column>') per auto-discovered KPI (see
+    // services/diagnosticEngine.js's buildAutomaticKpiDriverFindings()),
+    // rendered generically rather than via the per-id switch below: there
+    // is no fixed id to switch on, since the id itself is generated per
+    // dataset. Reuses the exact same factorTables()/binaryFactorTables()
+    // renderers FREIGHT_DRIVERS/DELIVERY_DELAY_DRIVERS/REVIEW_SCORE_DRIVERS
+    // and CANCELLATION_DRIVERS/REPEAT_PURCHASE_DRIVERS already use below —
+    // f.result is the exact same explainFactorsFor()/explainBinaryFactorsFor()
+    // shape those pass in.
+    if (typeof f.id === 'string' && f.id.startsWith('KPI_DRIVERS::')) {
+      stats.push(renderStatTile({
+        label: 'Rows analyzed',
+        value: formatCount(f.sampleSize || 0),
+        sublabel: (f.sampleSize || 0) < 30 ? 'Exploratory — small sample' : null,
+      }));
+      tables.push(...(f.kpiType === 'binary' ? binaryFactorTables(f.result) : factorTables(f.result, currency)));
+    } else {
     switch (f.id) {
       case 'REVENUE_DRIVERS':
         if (f.overall.pct !== null) stats.push(renderStatTile({ label: 'Revenue change', value: fmtPctPoint(f.overall.pct), sublabel: `${f.overall.prevMonth} → ${f.overall.currMonth}` }));
@@ -2044,6 +2062,7 @@ function buildDiagnosticEngineCards(bi, currency) {
         break;
       default:
         break;
+    }
     }
 
     return {
