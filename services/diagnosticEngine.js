@@ -1960,6 +1960,24 @@ const RELEVANCE_BY_ID = {
 //      discoverDriverCandidates() below).
 //   7. Any numeric/percentage column whose name reads as a rate/ratio
 //      (occupancy_rate, defect_rate, no_show_rate, utilization, ...)
+//   7a. Profit Margin (%), derived per row as (revenue - cost) / revenue,
+//      when both revenue and cost exist — the single most-repeated
+//      derived KPI across the Part 2 commissioning examples (Profit
+//      Margin shows up for essentially every SME category).
+//   7b. "<X> Cost Ratio" KPIs — any numeric/currency column that reads as
+//      a COST COMPONENT (labor_cost, parts_cost, materials_cost,
+//      packaging_cost, shipping_cost, processing_cost, ...), other than
+//      the formal "cost" role column itself, expressed as a percentage of
+//      revenue. Generalizes the Part 2 examples' repeated "Labor Cost
+//      Ratio"/"Parts Cost Ratio"/"Materials Cost Ratio"/etc. pattern into
+//      one rule instead of one constant per domain.
+//   7c. "Revenue per <X>" / "Profit per <X>" efficiency KPIs — the first
+//      numeric column that reads as a service DURATION (labor_hours,
+//      service_duration_hours, creative_hours, ...), excluding anything
+//      that itself reads as a bad outcome (downtime, delay — dividing by
+//      those would be meaningless), used as the denominator. Generalizes
+//      the Part 2 examples' "Revenue/Service Hour", "Profit/Service Hour"
+//      pattern.
 //   8. Any other currency/numeric/rating column not already claimed by a
 //      revenue/cost/price/quantity role — the exact same "leftover
 //      measure" philosophy services/metricRegistry.js's own
@@ -1968,8 +1986,31 @@ const RELEVANCE_BY_ID = {
 //      here so an arbitrary domain's own named outcome column still
 //      becomes a KPI candidate without a new per-domain rule.
 // ---------------------------------------------------------------------
-const OUTCOME_FLAG_NAME_RE = /cancel|no[-_ ]?shows?|churn|attrition|default|complaint|return|reject|fail|defect|spoil(?:age)?|downtime|late|delay|dropout|lapse/i;
+// Bad OUTCOME keywords, plus — added for the Part 2 commissioning
+// examples, where "Course Completion should be a primary diagnostic KPI"
+// is the literal, repeated top recommendation — GOOD outcome keywords
+// too (completion, repeat business, renewal, retention). The tier-list
+// comment above has always described this as "a bad/good OUTCOME EVENT";
+// until now the regex itself only matched the bad half. A "good" keyword
+// here is deliberately NOT reused for the Data-Quality Consistency Check
+// below (see STATUS_MATCHABLE_OUTCOME_RE) — "completion"/"repeat" are
+// real KPI targets but never double as a STATUS column's own enum value
+// the way "Cancelled"/"Defaulted"/"No-Show" do, so cross-checking a
+// completion_flag against an unrelated status column would false-positive
+// a "mismatch" on every single dataset.
+const OUTCOME_FLAG_NAME_RE = /cancel|no[-_ ]?shows?|churn|attrition|default|complaint|return|reject|fail|defect|spoil(?:age)?|downtime|late|delay|dropout|lapse|rework|complet(?:ion|ed)|repeat|renewal|retention/i;
+// Narrower than OUTCOME_FLAG_NAME_RE above — only the bad/terminal-event
+// keywords a STATUS column's own values could plausibly also use (see the
+// comment on OUTCOME_FLAG_NAME_RE just above). Used only by
+// outcomeKeywordFor()/discoverDataQualityChecks() below.
+const STATUS_MATCHABLE_OUTCOME_RE = /cancel|no[-_ ]?shows?|churn|attrition|default|complaint|return|reject|fail|defect|spoil(?:age)?|downtime|late|delay|dropout|lapse|rework/i;
 const RATE_NAME_RE = /\boccupancy\b|\butili[sz]ation\b|\bconversion\b|\bretention\b|\bcompletion\b|\bdefect\b|\bspoilage\b|\bchurn\b|\bno[-_ ]?shows?\b|\bcancellation\b|\brate\b/i;
+// Cost-component and duration name patterns for the 7b/7c derived KPIs
+// above — both tested against normalizeForWordMatch() below for the same
+// underscore-is-not-a-\b-boundary reason RATE_NAME_RE already documents.
+const COST_COMPONENT_NAME_RE = /\bcost\b/i;
+const DURATION_NAME_RE = /\bhours?\b|\bhrs\b|\bduration\b|\bminutes?\b/i;
+const MAX_COST_RATIO_KPIS = 4;
 // \b does not treat "_"/"-" as a word boundary (they're \w characters in a
 // JS regex), so a plain \b-based pattern never matches a column named with
 // underscores — "defect_rate_pct" would fail \bdefect\b and \brate\b both,
@@ -1983,7 +2024,14 @@ function normalizeForWordMatch(name) {
   return String(name).replace(/[_-]+/g, ' ');
 }
 const EXCLUDE_DRIVER_KINDS = new Set(['id', 'date', 'text', 'url', 'empty', 'geo_lat', 'geo_lng']);
-const MAX_KPI_CANDIDATES = 8;
+// Raised from 8 (then raised again here) to make room for the 7a/7b/7c
+// derived KPI tiers added for the Part 2 commissioning examples — without
+// headroom, a wide dataset's cost-ratio/efficiency KPIs would crowd out
+// the plain leftover-measure KPIs the same way a constant "quantity"
+// column once crowded out "occupancy_rate" (see kpiColumnHasVariance()'s
+// own comment above) — MAX_COST_RATIO_KPIS additionally caps how many
+// slots any single dataset's cost-ratio tier alone can consume.
+const MAX_KPI_CANDIDATES = 16;
 const MAX_DRIVER_CANDIDATE_POOL = 30;
 const MIN_CATEGORY_GROUP_SIZE = 2;
 const MAX_CATEGORY_CARDINALITY = 20;
@@ -2056,6 +2104,22 @@ function discoverKpiCandidates(ctx) {
     });
   }
 
+  // 7a. Profit Margin (%) — see the block-comment tier list above.
+  if (revInfo && costCol) {
+    kpis.push({
+      type: 'numeric',
+      column: '__profit_margin__',
+      label: 'Profit Margin (%)',
+      excludeExtra: [revInfo.col.name, costCol.name],
+      accessor: (row) => {
+        const r = tryParseNumber(row[revInfo.col.name]);
+        const c = tryParseNumber(row[costCol.name]);
+        if (r === null || c === null || r === 0) return null;
+        return ((r - c) / r) * 100;
+      },
+    });
+  }
+
   const ratingCol = findRatingColumn(ctx);
   if (ratingCol) addNumeric(ratingCol, titleize(ratingCol.name));
 
@@ -2069,6 +2133,69 @@ function discoverKpiCandidates(ctx) {
   ctx.factFileProfile.columns
     .filter((c) => ['numeric', 'percentage'].includes(c.kind) && RATE_NAME_RE.test(normalizeForWordMatch(c.name)) && c.mean !== null && !usedNames.has(c.name))
     .forEach((c) => addNumeric(c, titleize(c.name)));
+
+  // 7b. "<X> Cost Ratio" KPIs — see the block-comment tier list above.
+  // Claiming the raw column name into usedNames here keeps the later
+  // "leftover measure" block from ALSO surfacing the same column as a
+  // second, less informative raw-value KPI (e.g. a bare "Labor Cost").
+  if (revInfo) {
+    ctx.factFileProfile.columns
+      .filter((c) => ['currency', 'numeric'].includes(c.kind) && c.mean !== null
+        && !usedNames.has(c.name) && (!costCol || c.name !== costCol.name)
+        && COST_COMPONENT_NAME_RE.test(normalizeForWordMatch(c.name)))
+      .slice(0, MAX_COST_RATIO_KPIS)
+      .forEach((c) => {
+        usedNames.add(c.name);
+        kpis.push({
+          type: 'numeric',
+          column: `${c.name}__ratio`,
+          label: `${titleize(c.name)} Ratio`,
+          excludeExtra: [c.name, revInfo.col.name],
+          accessor: (row) => {
+            const cost = tryParseNumber(row[c.name]);
+            const rev = tryParseNumber(row[revInfo.col.name]);
+            if (cost === null || rev === null || rev === 0) return null;
+            return (cost / rev) * 100;
+          },
+        });
+      });
+  }
+
+  // 7c. "Revenue per <X>" / "Profit per <X>" efficiency KPIs — see the
+  // block-comment tier list above. Only the FIRST matching duration
+  // column is used (picking several near-duplicate "per hour" KPIs off
+  // one dataset would add noise, not insight); the duration column
+  // itself is deliberately left out of usedNames so it can still appear
+  // on its own (leftover measure) or as a driver of other KPIs.
+  const durationCol = ctx.factFileProfile.columns.find((c) => ['numeric', 'currency'].includes(c.kind) && c.mean !== null && c.mean > 0
+    && DURATION_NAME_RE.test(normalizeForWordMatch(c.name)) && !OUTCOME_FLAG_NAME_RE.test(normalizeForWordMatch(c.name)));
+  if (durationCol && revInfo) {
+    kpis.push({
+      type: 'numeric',
+      column: `${durationCol.name}__revenue_efficiency`,
+      label: `Revenue per ${titleize(durationCol.name)}`,
+      excludeExtra: [durationCol.name, revInfo.col.name],
+      accessor: (row) => {
+        const rev = tryParseNumber(row[revInfo.col.name]);
+        const dur = tryParseNumber(row[durationCol.name]);
+        return (rev === null || dur === null || dur <= 0) ? null : rev / dur;
+      },
+    });
+    if (costCol) {
+      kpis.push({
+        type: 'numeric',
+        column: `${durationCol.name}__profit_efficiency`,
+        label: `Profit per ${titleize(durationCol.name)}`,
+        excludeExtra: [durationCol.name, revInfo.col.name, costCol.name],
+        accessor: (row) => {
+          const rev = tryParseNumber(row[revInfo.col.name]);
+          const cost = tryParseNumber(row[costCol.name]);
+          const dur = tryParseNumber(row[durationCol.name]);
+          return (rev === null || cost === null || dur === null || dur <= 0) ? null : (rev - cost) / dur;
+        },
+      });
+    }
+  }
 
   // Same CLAIMED_MEASURE_ROLES role list services/metricRegistry.js's
   // buildLeftoverMeasureMetrics() uses, inlined rather than imported — a
@@ -2147,65 +2274,103 @@ function discoverDriverCandidates(ctx, excludeNames) {
   return candidates.slice(0, MAX_DRIVER_CANDIDATE_POOL);
 }
 
-// The single strongest association out of an explainFactorsFor()/
-// explainBinaryFactorsFor() result, ACROSS its numeric and categorical
-// candidate lists, on one normalized [0, 1] scale — same comparison
-// resolveTopAssociation()/resolveTopBinaryAssociation() below already make
-// for scoring, but this also keeps the WINNING candidate's own label and a
-// plain-language detail clause for the narrative sentence.
-function describeTopFactor(result, isBinary) {
-  const numeric = result.numericResults[0];
-  const categorical = result.categoricalResults[0];
-  const numericStrength = numeric ? (isBinary ? normalizeCohensD(numeric.cohensD) : normalizeCorrelation(numeric.correlation)) : -1;
-  const categoricalStrength = categorical
-    ? (isBinary ? cramersVFromChiSquare(categorical.test.chiSquare, categorical.test.grandTotal, categorical.rowLabels.length, 2) : clamp01(categorical.eta))
-    : -1;
-  if (numericStrength < 0 && categoricalStrength < 0) return null;
-  if (numericStrength >= categoricalStrength) {
-    return {
-      label: numeric.label,
-      strength: numericStrength,
-      direction: isBinary ? null : (numeric.correlation >= 0 ? 'positive' : 'negative'),
+// Every association out of an explainFactorsFor()/explainBinaryFactorsFor()
+// result, ACROSS its numeric and categorical candidate lists, ranked
+// strongest-first on one normalized [0, 1] scale — same per-candidate
+// comparison resolveTopAssociation()/resolveTopBinaryAssociation() below
+// already make for scoring the WINNER only, generalized here to rank ALL
+// tested candidates so kpiDriverNarrativeParagraphs() below can report more
+// than one finding per KPI (a "Regional Alert", a "Channel Alert", ... —
+// the repeated multi-bullet pattern across every Part 2 commissioning
+// example, not just the single strongest factor Part 1 originally reported).
+function rankFactors(result, isBinary) {
+  const items = [];
+  (result.numericResults || []).forEach((r) => {
+    const strength = isBinary ? normalizeCohensD(r.cohensD) : normalizeCorrelation(r.correlation);
+    if (strength < 0) return;
+    items.push({
+      label: r.label,
+      strength,
+      direction: isBinary ? null : (r.correlation >= 0 ? 'positive' : 'negative'),
       detail: isBinary
-        ? `average ${numeric.trueMean.toFixed(2)} when true vs. ${numeric.falseMean.toFixed(2)} when false`
-        : (numeric.split ? `rows above ${numeric.split.threshold.toFixed(1)} average ${numeric.split.rightMean.toFixed(1)} vs. ${numeric.split.leftMean.toFixed(1)} below` : null),
-    };
-  }
-  return {
-    label: categorical.label,
-    strength: categoricalStrength,
-    direction: null,
-    detail: isBinary
-      ? (categorical.test.mostAssociatedCell ? `most associated with "${categorical.test.mostAssociatedCell.row}"` : null)
-      : (categorical.bestGroup ? `"${categorical.bestGroup.label}" differs most from the overall average (${categorical.bestGroup.mean.toFixed(2)} vs. overall ${categorical.overallMean.toFixed(2)}, n=${categorical.bestGroup.count})` : null),
-  };
+        ? `average ${r.trueMean.toFixed(2)} when true vs. ${r.falseMean.toFixed(2)} when false`
+        : (r.split ? `rows above ${r.split.threshold.toFixed(1)} average ${r.split.rightMean.toFixed(1)} vs. ${r.split.leftMean.toFixed(1)} below` : null),
+    });
+  });
+  (result.categoricalResults || []).forEach((r) => {
+    const strength = isBinary
+      ? cramersVFromChiSquare(r.test.chiSquare, r.test.grandTotal, r.rowLabels.length, 2)
+      : clamp01(r.eta);
+    if (strength < 0) return;
+    items.push({
+      label: r.label,
+      strength,
+      direction: null,
+      detail: isBinary
+        ? (r.test.mostAssociatedCell ? `most associated with "${r.test.mostAssociatedCell.row}"` : null)
+        : (r.bestGroup ? `"${r.bestGroup.label}" differs most from the overall average (${r.bestGroup.mean.toFixed(2)} vs. overall ${r.overallMean.toFixed(2)}, n=${r.bestGroup.count})` : null),
+    });
+  });
+  items.sort((a, b) => b.strength - a.strength);
+  return items;
 }
 
-// Natural-language diagnostic finding — the last stage of the commissioned
+// Up to this many ranked factors become their own narrative line (the lead
+// finding plus up to 3 secondary ones) — enough to mirror the Part 2
+// examples' multi-bullet "Key Diagnostic Findings" lists without listing
+// every single candidate tested, most of which carry no real signal.
+const MAX_NARRATIVE_FACTORS = 4;
+// A secondary factor below this normalized strength reads as noise, not a
+// finding — the lead factor is always reported regardless of strength
+// (callers already gate on buildKpiDriverFinding() returning null when
+// rankFactors() has nothing at all).
+const MIN_SECONDARY_FACTOR_STRENGTH = 0.12;
+
+// Natural-language diagnostic findings — the last stage of the commissioned
 // "KPI -> Candidate Drivers -> Statistical Tests/Effect Sizes -> Driver
-// Ranking -> Natural-Language Diagnostic Findings" pipeline. Association
-// language only, never causal ("is associated with," never "causes" or
-// "explains"), matching the commissioning example's own explicit guidance
-// ("Avoid saying the OTA channel caused higher revenue unless CMA-Flow
-// performs a suitable causal analysis") and this engine's existing honesty
-// policy (see file header). A thin sample (below SMALL_SAMPLE_THRESHOLD)
-// is flagged as exploratory rather than hidden — the same "preliminary
-// finding due to the small number of..." framing the commissioning
-// example itself uses for a 3-of-50-row cancellation signal.
-function kpiDriverNarrative(kpi, result, sampleSize) {
-  const top = describeTopFactor(result, kpi.type === 'binary');
-  if (!top) return `No factor tested showed a meaningful association with ${kpi.label} in this dataset.`;
-  const parts = [];
-  if (kpi.type === 'binary') {
-    parts.push(`${top.label} shows the strongest association with ${kpi.label} (strength ${top.strength.toFixed(2)} on a 0–1 scale)${top.detail ? ` — ${top.detail}` : ''}.`);
-  } else {
-    parts.push(`${top.label} shows the strongest association with ${kpi.label}${top.direction ? ` (${top.direction})` : ''} (strength ${top.strength.toFixed(2)} on a 0–1 scale)${top.detail ? ` — ${top.detail}` : ''}.`);
-  }
+// Ranking -> Natural-Language Diagnostic Findings" pipeline, now returning
+// one paragraph PER ranked factor (routes/dashboard.js's views/dashboard/
+// diagnostic-insights.ejs already renders a `narrativeParagraphs` array as
+// separate <p> lines — see the Business Descriptive Summary finding, which
+// established the convention first) rather than a single sentence, to
+// match the Part 2 examples' own "Key Diagnostic Findings" bullet lists
+// (a Category finding, a Channel finding, a Regional Alert, ... all for
+// the same target KPI). Association language only, never causal ("is
+// associated with," never "causes" or "explains"), matching the
+// commissioning example's own explicit guidance ("Avoid saying the OTA
+// channel caused higher revenue unless CMA-Flow performs a suitable causal
+// analysis") and this engine's existing honesty policy (see file header).
+// A thin sample (below SMALL_SAMPLE_THRESHOLD) is flagged as exploratory
+// rather than hidden — the same "preliminary finding due to the small
+// number of..." framing the commissioning example itself uses for a
+// 3-of-50-row cancellation signal; a thin MINORITY CLASS on an otherwise
+// adequate sample (imbalanceNote, computed by the caller) gets its own,
+// separate caveat — the same point the Part 2 "Repeat Business: Repeat
+// customers constitute 90% of the dataset, making reliable repeat-customer
+// driver analysis difficult" finding makes.
+function kpiDriverNarrativeParagraphs(kpi, result, sampleSize, imbalanceNote) {
+  const isBinary = kpi.type === 'binary';
+  const ranked = rankFactors(result, isBinary);
+  if (!ranked.length) return [`No factor tested showed a meaningful association with ${kpi.label} in this dataset.`];
+
+  const factorSentence = (f, isLead) => {
+    const verb = isLead ? 'shows the strongest association with' : 'is also associated with';
+    return isBinary
+      ? `${f.label} ${verb} ${kpi.label} (strength ${f.strength.toFixed(2)} on a 0–1 scale)${f.detail ? ` — ${f.detail}` : ''}.`
+      : `${f.label} ${verb} ${kpi.label}${f.direction ? ` (${f.direction})` : ''} (strength ${f.strength.toFixed(2)} on a 0–1 scale)${f.detail ? ` — ${f.detail}` : ''}.`;
+  };
+
+  const paragraphs = [factorSentence(ranked[0], true)];
+  ranked.slice(1, MAX_NARRATIVE_FACTORS).forEach((f) => {
+    if (f.strength < MIN_SECONDARY_FACTOR_STRENGTH) return;
+    paragraphs.push(factorSentence(f, false));
+  });
   if (sampleSize !== null && sampleSize < SMALL_SAMPLE_THRESHOLD) {
-    parts.push(`Only ${sampleSize} row(s) support this comparison, so this should be treated as an exploratory signal rather than a confirmed driver.`);
+    paragraphs.push(`Only ${sampleSize} row(s) support this comparison, so this should be treated as an exploratory signal rather than a confirmed driver.`);
   }
-  parts.push('This reflects an observed association in this dataset, not a proven cause.');
-  return parts.join(' ');
+  if (imbalanceNote) paragraphs.push(imbalanceNote);
+  paragraphs.push('This reflects an observed association in this dataset, not a proven cause.');
+  return paragraphs;
 }
 
 function buildKpiDriverFinding(ctx, kpi) {
@@ -2225,12 +2390,32 @@ function buildKpiDriverFinding(ctx, kpi) {
       return (v !== null && Number.isFinite(v)) ? n + 1 : n;
     }, 0);
 
+  // Class-imbalance caveat — only meaningful on an otherwise-adequate
+  // sample (a thin overall sample already gets the small-sample caveat
+  // above; piling both on would be redundant). See the Part 2 "Repeat
+  // Business" example this generalizes, in kpiDriverNarrativeParagraphs()'s
+  // own comment.
+  let imbalanceNote = null;
+  if (kpi.type === 'binary' && sampleSize >= SMALL_SAMPLE_THRESHOLD) {
+    const trueCount = ctx.factFile.rows.filter((row) => kpi.accessor(row) === true).length;
+    const falseCount = sampleSize - trueCount;
+    const minority = Math.min(trueCount, falseCount);
+    const minorityRatio = minority / sampleSize;
+    if (minorityRatio > 0 && minorityRatio < 0.15) {
+      const minorityIsTrue = trueCount <= falseCount;
+      imbalanceNote = `Only ${(minorityRatio * 100).toFixed(1)}% of the analyzed records are ${kpi.label} = ${minorityIsTrue ? 'true' : 'false'}, which limits how reliable driver comparisons can be for this outcome even though the overall sample size is adequate.`;
+    }
+  }
+
+  const narrativeParagraphs = kpiDriverNarrativeParagraphs(kpi, result, sampleSize, imbalanceNote);
+
   return {
     applicable: true,
     kpiLabel: kpi.label,
     kpiType: kpi.type,
     sampleSize,
-    narrative: kpiDriverNarrative(kpi, result, sampleSize),
+    narrative: narrativeParagraphs.join(' '),
+    narrativeParagraphs,
     result,
   };
 }
@@ -2290,6 +2475,123 @@ function scoreKpiDriverFinding(finding, ctx) {
   });
   const conf = computeConfidence({
     semanticConfidence: confidence, sampleSufficiency: quality, missingnessRatio: 0, stability: quality,
+  });
+  return {
+    priorityScore: priority.score,
+    priorityBand: priority.band,
+    confidence: conf.score,
+    confidenceBand: conf.band,
+    priorityFactors: priority.factors,
+  };
+}
+
+// ---------------------------------------------------------------------
+// Automatic Data-Quality Consistency Check — generalizes the Part 2
+// Personal & Household Services commissioning example's own alert:
+// "four records are cancellation-flagged, but only three records have
+// Cancelled status... the system should investigate whether one
+// cancelled booking was subsequently refunded, rescheduled, or assigned
+// another status." That example is one specific instance of a general
+// pattern this dataset-structure-driven check covers for ANY domain: a
+// boolean OUTCOME flag (the same OUTCOME_FLAG_NAME_RE pool
+// discoverKpiCandidates() already scans for KPI targets) and a
+// categorical STATUS column (STATUS_NAME_RE, imported from
+// metricRegistry.js — the same detector findCancelStatusColumn() above
+// already relies on for the fixed CANCELLATION_DRIVERS finding) SHOULD
+// agree on how many records they each mark as the same event. When they
+// don't, that's a genuine data-quality signal from the dataset's own
+// structure, not a statistical test — so it is scored separately (see
+// scoreDataQualityFinding() below) rather than through
+// scoreKpiDriverFinding()'s association-strength machinery.
+// ---------------------------------------------------------------------
+
+// The single outcome keyword (e.g. "cancel", "churn", "no-show") that
+// matched this flag column's name, reused to test status VALUES for the
+// same keyword — generalizes CANCEL_VALUE_RE (metricRegistry.js's
+// cancellation-only version) to every STATUS_MATCHABLE_OUTCOME_RE keyword.
+function outcomeKeywordFor(flagName) {
+  const m = STATUS_MATCHABLE_OUTCOME_RE.exec(normalizeForWordMatch(flagName));
+  return m ? m[0].toLowerCase() : null;
+}
+
+function discoverDataQualityChecks(ctx) {
+  if (!ctx.factFileProfile) return [];
+  const flagCols = ctx.factFileProfile.columns.filter((c) => c.kind === 'boolean' && STATUS_MATCHABLE_OUTCOME_RE.test(c.name) && (c.trueCount + c.falseCount) >= 10);
+  const statusCols = ctx.factFileProfile.columns.filter((c) => c.kind === 'category' && STATUS_NAME_RE.test(c.name));
+  const checks = [];
+  flagCols.forEach((flagCol) => {
+    const keyword = outcomeKeywordFor(flagCol.name);
+    if (!keyword) return;
+    statusCols.forEach((statusCol) => checks.push({ flagCol, statusCol, keyword }));
+  });
+  return checks;
+}
+
+function buildDataQualityFinding(ctx, check) {
+  const { flagCol, statusCol, keyword } = check;
+  let flagTrueCount = 0;
+  let statusMatchCount = 0;
+  let totalRows = 0;
+  ctx.factFile.rows.forEach((row) => {
+    totalRows += 1;
+    const rawFlag = String(row[flagCol.name] === undefined || row[flagCol.name] === null ? '' : row[flagCol.name]).trim().toLowerCase();
+    if (BOOL_TRUE.has(rawFlag)) flagTrueCount += 1;
+    const rawStatus = String(row[statusCol.name] === undefined || row[statusCol.name] === null ? '' : row[statusCol.name]).trim().toLowerCase();
+    if (rawStatus.includes(keyword)) statusMatchCount += 1;
+  });
+  // Nothing to report when neither side ever fires, or when both sides
+  // agree exactly — an alert here should mean something, not fire on
+  // every dataset just because it CAN be computed.
+  if (flagTrueCount === 0 && statusMatchCount === 0) return null;
+  if (flagTrueCount === statusMatchCount) return null;
+  return {
+    applicable: true,
+    flagLabel: titleize(flagCol.name),
+    statusLabel: titleize(statusCol.name),
+    flagTrueCount,
+    statusMatchCount,
+    totalRows,
+    narrative: `${flagTrueCount} record(s) have ${titleize(flagCol.name)} = true, while ${statusMatchCount} record(s) have a ${titleize(statusCol.name)} value naming "${keyword}". These two fields should normally agree, so the mismatched record(s) are worth checking — for example, whether a flagged record was later refunded, rescheduled, or reassigned to a different status without the flag being cleared.`,
+  };
+}
+
+// Orchestrator for this layer — same degrade-to-skip discipline every
+// other generator in this file already follows: one bad check can never
+// take down the rest of the page.
+function buildAutomaticDataQualityFindings(ctx) {
+  return discoverDataQualityChecks(ctx).map((check) => {
+    let finding;
+    try {
+      finding = buildDataQualityFinding(ctx, check);
+    } catch (err) {
+      finding = null;
+    }
+    if (!finding) return null;
+    return {
+      id: `DATA_QUALITY::${check.flagCol.name}x${check.statusCol.name}`,
+      label: `Data quality: ${titleize(check.flagCol.name)} vs. ${titleize(check.statusCol.name)}`,
+      question: `Do ${titleize(check.flagCol.name)} and ${titleize(check.statusCol.name)} agree on which records are "${check.keyword}"?`,
+      method: 'Cross-field count comparison between a boolean outcome flag and a categorical status field naming the same event',
+      ...finding,
+    };
+  }).filter(Boolean);
+}
+
+// CAAGA Stage 6 scoring for a DATA_QUALITY:: finding — deliberately NOT
+// scoreKpiDriverFinding()'s association-strength machinery (there is no
+// statistical association here, just a count mismatch). A data-quality
+// mismatch is always worth looking at (high actionability), but the
+// SIZE of the mismatch (relative to the dataset) sets how urgent it is.
+function scoreDataQualityFinding(finding) {
+  const mismatchCount = Math.abs((finding.flagTrueCount || 0) - (finding.statusMatchCount || 0));
+  const mismatchRatio = finding.totalRows ? mismatchCount / finding.totalRows : 0;
+  const strength = clamp01(mismatchRatio * 10);
+  const quality = sufficiencyRatio(finding.totalRows || 0, 20);
+  const priority = computePriority({
+    relevance: 0.5, strength, quality, confidence: 0.75, actionability: 1.0, cost: 0.05,
+  });
+  const conf = computeConfidence({
+    semanticConfidence: 0.75, sampleSufficiency: quality, missingnessRatio: 0, stability: quality,
   });
   return {
     priorityScore: priority.score,
@@ -2400,6 +2702,12 @@ function scoreDiagnosticFinding(def, result, ctx) {
   // them with the same priority/confidence machinery, generically.
   if (typeof def.id === 'string' && def.id.startsWith('KPI_DRIVERS::')) {
     return scoreKpiDriverFinding(result, ctx);
+  }
+  // Same idea for a dynamically-generated 'DATA_QUALITY::<flag>x<status>'
+  // finding (see buildAutomaticDataQualityFindings() above) — a count
+  // mismatch, not a statistical association, so it gets its own scorer.
+  if (typeof def.id === 'string' && def.id.startsWith('DATA_QUALITY::')) {
+    return scoreDataQualityFinding(result);
   }
   const relevance = RELEVANCE_BY_ID[def.id] ?? 0.7;
   const factRowCount = ctx.factFile.rows.length;
@@ -2671,10 +2979,30 @@ function evaluateDiagnostics(ctx) {
     dynamicFindings = [];
   }
 
+  // Automatic Data-Quality Consistency Check (see the block comment above
+  // discoverDataQualityChecks()) — zero or more additional, dynamically-
+  // id'd findings, one per (outcome flag, status column) pair whose
+  // counts disagree. Wrapped with the same degrade-to-skip discipline as
+  // every other layer above.
+  let dataQualityFindings = [];
+  try {
+    dataQualityFindings = buildAutomaticDataQualityFindings(ctx).map((f) => {
+      let score = {};
+      try {
+        score = scoreDiagnosticFinding(f, f, ctx);
+      } catch (err) {
+        score = {};
+      }
+      return { ...f, ...score };
+    });
+  } catch (err) {
+    dataQualityFindings = [];
+  }
+
   // Rank: applicable findings first, highest priority first; not-applicable
   // findings keep their original catalog order at the end (nothing to rank
   // them by, and their relative order was never meaningful to begin with).
-  const combined = [...findings, ...dynamicFindings];
+  const combined = [...findings, ...dynamicFindings, ...dataQualityFindings];
   const applicableIdx = new Map(combined.map((f, i) => [f.id, i]));
   return [...combined].sort((a, b) => {
     if (a.applicable !== b.applicable) return a.applicable ? -1 : 1;
@@ -2719,4 +3047,9 @@ module.exports = {
   discoverKpiCandidates,
   discoverDriverCandidates,
   buildAutomaticKpiDriverFindings,
+  // Automatic Data-Quality Consistency Check — exported for unit testing
+  // (scratch scripts) and potential reuse, same as every other primitive
+  // above.
+  discoverDataQualityChecks,
+  buildAutomaticDataQualityFindings,
 };

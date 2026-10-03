@@ -1910,6 +1910,17 @@ function buildDiagnosticEngineCards(bi, currency) {
         sublabel: (f.sampleSize || 0) < 30 ? 'Exploratory — small sample' : null,
       }));
       tables.push(...(f.kpiType === 'binary' ? binaryFactorTables(f.result) : factorTables(f.result, currency)));
+    } else if (typeof f.id === 'string' && f.id.startsWith('DATA_QUALITY::')) {
+      // Automatic Data-Quality Consistency Check — one dynamically-id'd
+      // finding ('DATA_QUALITY::<flag>x<status>') per mismatched
+      // (boolean outcome flag, categorical status) pair (see services/
+      // diagnosticEngine.js's buildAutomaticDataQualityFindings()). No
+      // statistical table to render here — the finding IS the two counts
+      // disagreeing, so three plain stat tiles say everything the
+      // narrative needs backing up.
+      stats.push(renderStatTile({ label: f.flagLabel, value: formatCount(f.flagTrueCount || 0), sublabel: 'flagged true' }));
+      stats.push(renderStatTile({ label: f.statusLabel, value: formatCount(f.statusMatchCount || 0), sublabel: 'status match' }));
+      stats.push(renderStatTile({ label: 'Rows checked', value: formatCount(f.totalRows || 0) }));
     } else {
     switch (f.id) {
       case 'REVENUE_DRIVERS':
@@ -2072,6 +2083,16 @@ function buildDiagnosticEngineCards(bi, currency) {
       method: f.method,
       applicable: true,
       narrative: f.narrative,
+      // Multi-paragraph narrative (one line per ranked driver, matching
+      // the Part 2 commissioning examples' multi-bullet "Key Diagnostic
+      // Findings" lists) — see services/diagnosticEngine.js's
+      // kpiDriverNarrativeParagraphs(). views/dashboard/
+      // diagnostic-insights.ejs already renders this array in preference
+      // to the single `narrative` string above (that convention was
+      // established first by the Business Descriptive Summary finding);
+      // undefined here for any finding that doesn't set it, which the
+      // view already handles by falling back to `narrative`.
+      narrativeParagraphs: f.narrativeParagraphs,
       stats,
       tables,
       // CAAGA Stage 6 (Priority + Confidence Engine, services/
