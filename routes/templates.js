@@ -581,11 +581,27 @@ router.patch('/sme-templates/evaluation-dataset/:datasetRowId/rows/:recordId', r
 
     const evalData = await loadEvaluationDataset(accountId, datasetRowId);
     if (!evalData) return res.status(404).json({ error: 'not_found' });
-    // column must already be one of this row's own keys — never lets an
-    // edit silently introduce a new column the rest of the grid, and
-    // every analytics module reading this dataset, doesn't know about.
     const targetRow = evalData.records.find((r) => r.id === recordId);
-    if (!targetRow || !Object.prototype.hasOwnProperty.call(targetRow.data, column)) {
+    if (!targetRow) return res.status(404).json({ error: 'not_found' });
+
+    // column must be one of this DATASET's known columns — same list the
+    // GET handler above builds from records[0].data and uses to render
+    // every row's cells, not literally an existing key on THIS row's own
+    // JSON. Source CSVs are ingested with relax_column_count (middleware/
+    // browse.js), so a short/ragged row can come out of csv-parse missing
+    // its trailing keys outright rather than holding them as '' — the grid
+    // still renders a normal, blank, editable cell for that column (driven
+    // off records[0].data, same as here), so editing it must not 404 just
+    // because this particular row's JSON happens not to have that key yet.
+    // jsonb_set's default create_missing:true below adds it the first time
+    // it's edited. This still refuses a column that isn't part of this
+    // dataset's schema at all — the actual intent of the original check
+    // (never let a request silently introduce a column the rest of the
+    // grid, and every analytics module reading this dataset, doesn't know
+    // about) — it just checks the DATASET's column list instead of one
+    // possibly-ragged row's.
+    const knownColumns = evalData.records.length > 0 ? Object.keys(evalData.records[0].data) : [];
+    if (!knownColumns.includes(column)) {
       return res.status(404).json({ error: 'not_found' });
     }
 

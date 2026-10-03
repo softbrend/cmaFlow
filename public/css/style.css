@@ -520,6 +520,15 @@ a { color: inherit; }
   line-height: 1.6;
   font-size: 16.5px;
 }
+/* .page-subtitle's 660px cap reads fine as a short one-line blurb (every
+   other page that uses it), but Edit Your Evaluation Dataset's subtitle is
+   a full explanatory paragraph — capped at 660px it wrapped into a narrow
+   column while the Excel-style grid directly below it already spans the
+   page's full 1600px (body.stage-evaluation-dataset-editor .main-inner,
+   below). Scoped to this one page's <p class="page-subtitle
+   page-subtitle-wide"> rather than raising the shared default, so every
+   short subtitle elsewhere keeps its narrower, easier-to-read line length. */
+.page-subtitle-wide { max-width: none; }
 
 /* ---------------- Stage-pipeline trademark ----------------
    DESCRIPTIVE → DIAGNOSTIC → PREDICTIVE → PRESCRIPTIVE, in that fixed
