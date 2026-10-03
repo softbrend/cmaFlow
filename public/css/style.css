@@ -259,12 +259,18 @@ a { color: inherit; }
 }
 .header-signout:hover { background: #fbe0dc; }
 
-/* ---------------- Sidebar ---------------- */
+/* ---------------- Sidebar ----------------
+   Recommended CMA-FLOW sidebar palette (per Brenda's 3 October 2026
+   request) — hardcoded hex values here rather than redefining
+   --bg-panel/--border/--text-muted, since those shared tokens also drive
+   the header bar, form cards, chart cards, and modals elsewhere in the
+   app; scoping the new colors to .sidebar's own rules keeps this a
+   sidebar-only re-theme. */
 .sidebar {
   width: 280px;
   flex-shrink: 0;
-  background: var(--bg-panel);
-  border-right: 1px solid var(--border);
+  background: #073B4C; /* Deep Navy Teal */
+  border-right: 1px solid #2A7180; /* Muted Teal divider */
   padding: 20px 20px 24px;
   display: flex;
   flex-direction: column;
@@ -350,11 +356,14 @@ a { color: inherit; }
 .upload-progress-label.is-done { color: var(--alert-success-text); font-weight: 600; }
 
 .nav-heading {
-  font-size: 12.5px;
+  /* Smallest text in the sidebar — raised to the 18px floor the rest of
+     the panel's text now scales up from (was 12.5px, per Brenda's
+     3 October 2026 request to enlarge all left-sidebar text). */
+  font-size: 18px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: #B9D6DE; /* Light Blue-Gray */
   margin: 6px 0 10px;
 }
 
@@ -366,24 +375,24 @@ a { color: inherit; }
   padding: 10px 12px;
   border-radius: 10px;
   text-decoration: none;
-  color: var(--text-muted);
-  font-size: 17px;
+  color: #F3F8FA; /* Near White — normal menu text */
+  font-size: 21px;
   transition: background 0.15s ease, color 0.15s ease;
 }
-.nav-list a:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+.nav-list a:hover { background: #10596A; color: #FFFFFF; } /* Medium Teal hover */
 .nav-list a.active {
-  color: var(--text);
+  color: #FFFFFF; /* Pure White */
   font-weight: 700;
-  background: linear-gradient(90deg, rgba(231,173,40,0.22) 0%, rgba(231,173,40,0.05) 100%);
+  background: #0B6477; /* Teal Blue */
 }
 .nav-dot {
   width: 15px;
   height: 15px;
   border-radius: 50%;
-  border: 2px solid var(--text-muted);
+  border: 2px solid #55C7D9; /* Cyan — normal menu icons */
   flex-shrink: 0;
 }
-.nav-list a.active .nav-dot { border-color: var(--accent); background: radial-gradient(circle, var(--accent) 0 5px, transparent 6px); }
+.nav-list a.active .nav-dot { border-color: #F4C542; background: radial-gradient(circle, #F4C542 0 5px, transparent 6px); } /* Logo Yellow active accent */
 
 /* The four analytics-pipeline stages get their own stage-colored icon
    chip instead of a generic gold nav-dot — the same colors/icons as the
@@ -391,13 +400,13 @@ a { color: inherit; }
    DESCRIPTIVE → DIAGNOSTIC → PREDICTIVE → PRESCRIPTIVE identity every
    time it's visible, not just on the four pages themselves. */
 .nav-icon {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 7px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 14px;
   flex-shrink: 0;
   background: rgba(255, 255, 255, 0.08);
   filter: grayscale(0.6) opacity(0.75);
@@ -409,7 +418,15 @@ a { color: inherit; }
 .nav-icon.stage-predictive-analytics { background: rgba(90, 69, 201, 0.28); }
 .nav-icon.stage-prescriptive-recommendations { background: rgba(44, 134, 89, 0.28); }
 
-.sidebar-footer { margin-top: auto; padding-top: 16px; }
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid #2A7180; /* Muted Teal divider, separating Sign out from the nav list */
+}
+/* Sign-out button text, scoped here rather than raised on the shared
+   .btn class, which every button app-wide (forms, modals, tab actions)
+   also uses. */
+.sidebar-footer .btn { font-size: 19px; }
 
 /* ---------------- Main content ---------------- */
 .main {
