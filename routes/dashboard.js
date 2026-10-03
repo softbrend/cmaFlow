@@ -1224,6 +1224,18 @@ function buildBusinessMetricsCards(bi, currency, datasetRowId = null) {
     if (m.kind === 'breakdown') {
       breakdownCharts.push(renderBarChart({
         title: m.label, items: m.value, currency, subtitle: concentrationSubtitle(m.value),
+        // Same raw-row drill-down as the trend charts above and the Full
+        // Descriptive Analytics tab (public/js/raw-row-drilldown.js) —
+        // 'raw-category' exact-match against the fact table's own
+        // dataset_records. Only wired when the metric told us which
+        // column it grouped by directly on the fact table
+        // (m.drilldownColumn — null/omitted for breakdowns resolved
+        // indirectly through a joined dimension file, where a single
+        // displayed bucket can span many raw fact rows and a one-column
+        // exact match would be wrong) and a dataset id was supplied.
+        drilldown: (datasetRowId && m.drilldownColumn) ? {
+          kind: 'raw-category', datasetId: datasetRowId, fileType: bi.factFileType, column: m.drilldownColumn,
+        } : null,
       }));
       return;
     }

@@ -98,11 +98,17 @@ function drillButton(item, drilldown, extraClass, formattedValue) {
       attrs.push(`data-col-max="${escapeHtml(String(drilldown.colMax))}"`);
       attrs.push(`data-bins="${escapeHtml(String(drilldown.bins))}"`);
     } else {
-      // Category mode's value is the raw string label; month mode's is
-      // the same "YYYY-MM" key the trend point's own label already is
-      // (services/datasetProfiler.js's toMonthKey()) — both travel as
-      // one data-value attribute either way.
-      attrs.push(`data-value="${safeLabel}"`);
+      // Category mode's value is the raw string the fact-table column
+      // actually holds — item.rawKey when a lookup substituted a
+      // friendlier display label (e.g. a customer name shown in place of
+      // a raw customer_id), otherwise item.label itself. Month mode's
+      // value is the same "YYYY-MM" key the trend point's own label
+      // already is (services/datasetProfiler.js's toMonthKey()) and has
+      // no rawKey. Both travel as one data-value attribute either way.
+      const matchValue = !isMonth && item.rawKey !== undefined && item.rawKey !== null
+        ? String(item.rawKey)
+        : item.label;
+      attrs.push(`data-value="${escapeHtml(matchValue)}"`);
     }
     return `<button type="button" class="drilldown-row-trigger rawrow-drilldown-trigger${extraClass ? ` ${extraClass}` : ''}"
       ${attrs.join(' ')} title="See the ${safeSummary || 'matching'} row(s) behind ${safeLabel}">🔍</button>`;

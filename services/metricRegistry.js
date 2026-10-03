@@ -128,6 +128,18 @@ function sumColumn(rows, colName) {
   return { total, counted };
 }
 
+// `rawKey` (added 3 October 2026, alongside breakdown-chart drill-down —
+// see routes/dashboard.js's buildBusinessMetricsCards() and services/
+// charts.js's drillButton()) is the exact grouping value as it sits on
+// ctx.factFile — always present, even when `lookup` substitutes a
+// friendlier display `label` (a joined customer/merchant/product name).
+// Drill-down needs the RAW value to filter dataset_records by (the same
+// trimmed exact-string match services/rawDrillDown.js's matchesCategory()
+// already does for the Full Descriptive tab), which a resolved display
+// name can no longer provide once substituted — label and rawKey can
+// legitimately differ, and callers that only want the display value
+// (every existing one, before this field existed) are unaffected since
+// they simply don't read it.
 function groupSumTopN(rows, keyCol, valueCol, lookup, n = TOP_N) {
   const sums = new Map();
   rows.forEach((row) => {
@@ -139,7 +151,11 @@ function groupSumTopN(rows, keyCol, valueCol, lookup, n = TOP_N) {
     sums.set(k, (sums.get(k) || 0) + val);
   });
   const ranked = [...sums.entries()].sort((a, b) => b[1] - a[1]);
-  const top = ranked.slice(0, n).map(([key, value]) => ({ label: lookup && lookup.has(key) ? lookup.get(key) : key, value }));
+  const top = ranked.slice(0, n).map(([key, value]) => ({
+    label: lookup && lookup.has(key) ? lookup.get(key) : key,
+    value,
+    rawKey: key,
+  }));
   const otherTotal = ranked.slice(n).reduce((s, [, v]) => s + v, 0);
   if (otherTotal > 0) top.push({ label: 'Other', value: otherTotal, isOther: true });
   return top;
@@ -449,7 +465,14 @@ const METRICS = [
       const note = (dim
         ? `"${revCol.name}" summed by "${custCol.name}", joined to ${dim.fileType}.${dim.labelColumn} for customer names (${dim.overlapPct.toFixed(1)}% id overlap).`
         : `"${revCol.name}" summed by "${custCol.name}" — no matching customer file was found to resolve names, so raw ids are shown.`) + revenueFallbackNote(revInfo);
-      return { value, provenance: this.provenanceFor(ctx, [revCol, custCol], note, dim ? dim.joinPath : []) };
+      // Always safe to drill down against custCol on the fact file itself
+      // — groupSumTopN groups by the RAW id regardless of whether dim's
+      // lookup substituted a friendlier name for display (see its own
+      // rawKey comment), so this never breaks even when customer names
+      // are shown instead of raw ids.
+      return {
+        value, provenance: this.provenanceFor(ctx, [revCol, custCol], note, dim ? dim.joinPath : []), drilldownColumn: custCol.name,
+      };
     },
   },
   {
@@ -466,7 +489,9 @@ const METRICS = [
       const note = (dim
         ? `"${revCol.name}" summed by "${mCol.name}", joined to ${dim.fileType}.${dim.labelColumn} for names (${dim.overlapPct.toFixed(1)}% id overlap).`
         : `"${revCol.name}" summed by "${mCol.name}" — no matching merchant file was found to resolve names.`) + revenueFallbackNote(revInfo);
-      return { value, provenance: this.provenanceFor(ctx, [revCol, mCol], note, dim ? dim.joinPath : []) };
+      return {
+        value, provenance: this.provenanceFor(ctx, [revCol, mCol], note, dim ? dim.joinPath : []), drilldownColumn: mCol.name,
+      };
     },
   },
   {
@@ -483,7 +508,9 @@ const METRICS = [
       const note = (dim
         ? `"${revCol.name}" summed by "${pCol.name}", joined to ${dim.fileType}.${dim.labelColumn} for names (${dim.overlapPct.toFixed(1)}% id overlap).`
         : `"${revCol.name}" summed by "${pCol.name}" — no matching product file was found to resolve names.`) + revenueFallbackNote(revInfo);
-      return { value, provenance: this.provenanceFor(ctx, [revCol, pCol], note, dim ? dim.joinPath : []) };
+      return {
+        value, provenance: this.provenanceFor(ctx, [revCol, pCol], note, dim ? dim.joinPath : []), drilldownColumn: pCol.name,
+      };
     },
   },
   {
@@ -509,7 +536,9 @@ const METRICS = [
       const note = (geo.indirect
         ? `"${revCol.name}" summed by "${geo.dim.geoColumn}", resolved via ${geo.dim.fileType}.${geo.keyCol} (${geo.dim.overlapPct.toFixed(1)}% id overlap).`
         : `"${revCol.name}" summed by "${geo.keyCol}".`) + revenueFallbackNote(revInfo);
-      return { value, provenance: this.provenanceFor(ctx, [revCol], note, geo.indirect ? geo.dim.joinPath : []) };
+      return {
+        value, provenance: this.provenanceFor(ctx, [revCol], note, geo.indirect ? geo.dim.joinPath : []), drilldownColumn: geo.indirect ? null : geo.keyCol,
+      };
     },
   },
   {
@@ -538,7 +567,9 @@ const METRICS = [
       const note = (category.indirect
         ? `"${revCol.name}" summed by "${category.sourceLabel}", resolved via ${category.dim.fileType}.${category.keyCol} (${category.dim.overlapPct.toFixed(1)}% id overlap).`
         : `"${revCol.name}" summed by "${category.keyCol}".`) + revenueFallbackNote(revInfo);
-      return { value, provenance: this.provenanceFor(ctx, [revCol], note, category.indirect ? category.dim.joinPath : []) };
+      return {
+        value, provenance: this.provenanceFor(ctx, [revCol], note, category.indirect ? category.dim.joinPath : []), drilldownColumn: category.indirect ? null : category.keyCol,
+      };
     },
   },
   {
@@ -673,6 +704,7 @@ const METRICS = [
       return {
         value,
         provenance: this.provenanceFor(ctx, [costCol, catCol], `"${costCol.name}" summed by "${catCol.name}", highest first.`),
+        drilldownColumn: catCol.name,
       };
     },
   },
@@ -696,7 +728,9 @@ const METRICS = [
       const note = geo.indirect
         ? `"${costCol.name}" summed by "${geo.dim.geoColumn}", resolved via ${geo.dim.fileType}.${geo.keyCol} (${geo.dim.overlapPct.toFixed(1)}% id overlap).`
         : `"${costCol.name}" summed by "${geo.keyCol}".`;
-      return { value, provenance: this.provenanceFor(ctx, [costCol], note, geo.indirect ? geo.dim.joinPath : []) };
+      return {
+        value, provenance: this.provenanceFor(ctx, [costCol], note, geo.indirect ? geo.dim.joinPath : []), drilldownColumn: geo.indirect ? null : geo.keyCol,
+      };
     },
   },
   {
@@ -1145,6 +1179,7 @@ function buildEntityBreakdownMetrics(ctx) {
           applicable: true,
           value,
           provenance: provenanceFor(ctx, [primaryCol], `"${primaryCol.name}" summed by "${col.name}", highest first — "${col.name}" doesn't resolve to a known customer/merchant/product identifier, so its own raw values are shown.`),
+          drilldownColumn: col.name,
         });
       }
     }
@@ -1158,6 +1193,7 @@ function buildEntityBreakdownMetrics(ctx) {
           applicable: true,
           value,
           provenance: provenanceFor(ctx, [qCol], `"${qCol.name}" summed by "${col.name}", highest first.`),
+          drilldownColumn: col.name,
         });
       }
     }
