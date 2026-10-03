@@ -137,6 +137,39 @@ async function touchEvaluationDataset(datasetRowId, accountId) {
   return countRows[0].n;
 }
 
+// Figures out which of the "Add new row" modal's fields should be a
+// dropdown of already-used values instead of a free-text box (added
+// 3 October 2026, per Brenda's follow-up on the modal). A column counts
+// as "choice-like" when its non-empty values across the account's own
+// copy repeat a lot — at least 2 distinct values seen, no more than
+// COLUMN_CHOICE_MAX of them, and strictly fewer distinct values than
+// there are rows (so an effectively-unique column like SKU, RECORD ID or
+// CUSTOMER ID — one distinct value per row — never turns into an
+// unusable dropdown of 50 options). Bails out of scanning a column early
+// once it's already seen more than the cap, so one free-text/ID-like
+// column with many rows doesn't cost a full table scan for nothing.
+// Returns only the columns worth offering as a dropdown, each as its
+// sorted list of existing values — evaluation-dataset-editor.ejs treats
+// any column missing from this object as plain free text.
+const COLUMN_CHOICE_MAX = 15;
+function computeColumnChoices(columns, records) {
+  const result = {};
+  columns.forEach((col) => {
+    const seen = new Set();
+    for (let i = 0; i < records.length; i += 1) {
+      const raw = records[i].data[col];
+      const v = raw === undefined || raw === null ? '' : String(raw).trim();
+      if (v === '') continue;
+      seen.add(v);
+      if (seen.size > COLUMN_CHOICE_MAX) break;
+    }
+    if (seen.size >= 2 && seen.size <= COLUMN_CHOICE_MAX && seen.size < records.length) {
+      result[col] = Array.from(seen).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+    }
+  });
+  return result;
+}
+
 function loadManifest() {
   const raw = fs.readFileSync(MANIFEST_PATH, 'utf-8');
   return parse(raw, { columns: true, skip_empty_lines: true });
@@ -444,6 +477,9 @@ router.get('/sme-templates/evaluation-dataset/:datasetRowId', requireBusinessOwn
       return res.redirect('/sme-templates');
     }
     const columns = evalData.records.length > 0 ? Object.keys(evalData.records[0].data) : [];
+    // Drives the "Add new row" modal's per-field dropdowns — see
+    // computeColumnChoices()'s own comment for the rule.
+    const columnChoices = computeColumnChoices(columns, evalData.records);
     res.render('dashboard/evaluation-dataset-editor', {
       title: 'Edit Your Evaluation Dataset',
       // Own active value (not 'sme-templates') for the same reason
@@ -457,6 +493,7 @@ router.get('/sme-templates/evaluation-dataset/:datasetRowId', requireBusinessOwn
       categoryLabel: evalData.categoryLabel,
       columns,
       records: evalData.records,
+      columnChoices,
     });
   } catch (err) {
     next(err);
