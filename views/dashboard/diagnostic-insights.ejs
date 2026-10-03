@@ -31,32 +31,45 @@
     <noscript><button type="submit" class="btn btn-ghost">Go</button></noscript>
   </form>
 
-  <% if (!hasAnyData) { %>
+  <%
+    // hasAnyData here means "this dataset's raw upload has readable
+    // Transaction/Entitlement/MonetizationConfig columns" — it only
+    // governs the 3 raw-based tabs below. The 4th tab, Dynamic
+    // diagnostics, reads a separate fact-table ctx and can have content
+    // either way, so the tab-nav itself always renders (once a dataset
+    // is selected) rather than being hidden behind this page-wide gate —
+    // otherwise a dataset whose raw file doesn't look like a literal
+    // transaction log (true for most of the SME-category templates)
+    // could never be navigated to Dynamic diagnostics at all.
+  %>
+  <% if (hasAnyData && activeView !== 'dynamic-diagnostics') { %>
+    <div class="info-box" style="margin-bottom:16px;">
+      Computed directly from <strong><%= rawInfo.sourceFileLabel || 'this dataset\'s uploaded file(s)' %></strong>'s raw uploaded columns, auto-detected and <strong>unconfirmed</strong> — <%= rawInfo.skippedRows.toLocaleString() %> row(s) with no readable amount/customer were skipped.
+    </div>
+  <% } %>
+
+  <div class="tab-nav">
+    <% views.forEach(function(v) { %>
+      <a class="tab-pill <%= activeView === v.slug ? 'active' : '' %>"
+         href="/diagnostic-insights?dataset=<%= selectedDataset.id %>&view=<%= v.slug %>">
+        <span><%= v.icon %></span> <%= v.label %>
+      </a>
+    <% }); %>
+  </div>
+
+  <% if (activeView !== 'dynamic-diagnostics' && !hasAnyData) { %>
     <div class="placeholder-card">
       <div class="emoji">🧭</div>
       <p>
         No file in this dataset's raw upload looks like Transaction, Entitlement, or Monetization Config data yet (auto-detected from its column names).
-        Upload a file with columns like amount, customer, and date.
+        Upload a file with columns like amount, customer, and date to unlock this tab.
+        The <strong>Dynamic diagnostics</strong> tab above works directly off this dataset's own columns instead, and doesn't need this.
       </p>
     </div>
-  <% } else { %>
 
-    <% if (activeView !== 'dynamic-diagnostics') { %>
-      <div class="info-box" style="margin-bottom:16px;">
-        Computed directly from <strong><%= rawInfo.sourceFileLabel || 'this dataset\'s uploaded file(s)' %></strong>'s raw uploaded columns, auto-detected and <strong>unconfirmed</strong> — <%= rawInfo.skippedRows.toLocaleString() %> row(s) with no readable amount/customer were skipped.
-      </div>
-    <% } %>
+  <% } else {
 
-    <div class="tab-nav">
-      <% views.forEach(function(v) { %>
-        <a class="tab-pill <%= activeView === v.slug ? 'active' : '' %>"
-           href="/diagnostic-insights?dataset=<%= selectedDataset.id %>&view=<%= v.slug %>">
-          <span><%= v.icon %></span> <%= v.label %>
-        </a>
-      <% }); %>
-    </div>
-
-    <% if (activeView === 'revenue-bridge') { %>
+    if (activeView === 'revenue-bridge') { %>
       <% if (!cards.bridgeTable) { %>
         <div class="info-box">Revenue bridge compares the two most recent months with transaction data (New / Expansion / Contraction / Churned revenue, per customer) — this dataset needs at least two distinct months of Transaction history to compute one.</div>
       <% } else { %>

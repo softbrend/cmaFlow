@@ -2133,13 +2133,14 @@ const DIAGNOSTIC_VIEWS = [
 router.get('/diagnostic-insights', trackDirectFlowModuleVisit('diagnostic-insights'), attachAdminViewingBanner, async (req, res, next) => {
   const accountId = resolveAccountId(req);
   try {
-    const { rows: datasets } = await pool.query(
-      `SELECT id, dataset_id, dataset_name, domain, created_at
-         FROM uploaded_datasets
-        WHERE account_id = $1
-        ORDER BY created_at DESC`,
-      [accountId]
-    );
+    // Dataset selection now goes through the same account-level "default
+    // dataset" the SME Owner Portal home page and Upload New Dataset page
+    // use (services/accountDatasets.js) — the one assigned automatically
+    // on signup/first upload and changeable anytime via "Set as default"
+    // — instead of always falling back to the most-recently-uploaded
+    // dataset. An explicit ?dataset= (clicking the picker on this page)
+    // still wins over the account default, same as before.
+    const { datasets, defaultDatasetId } = await ensureDefaultDataset(accountId);
 
     if (datasets.length === 0) {
       return res.render('dashboard/diagnostic-insights', {
@@ -2157,8 +2158,19 @@ router.get('/diagnostic-insights', trackDirectFlowModuleVisit('diagnostic-insigh
     }
 
     const requestedId = parseInt(req.query.dataset, 10);
-    const selectedDataset = datasets.find((d) => d.id === requestedId) || datasets[0];
-    const activeView = DIAGNOSTIC_VIEWS.some((v) => v.slug === req.query.view) ? req.query.view : 'revenue-bridge';
+    const selectedDataset = datasets.find((d) => d.id === requestedId)
+      || datasets.find((d) => d.id === defaultDatasetId)
+      || datasets[0];
+    // The active tab defaults smartly once we know whether this dataset's
+    // raw upload actually carries Transaction/Entitlement/Monetization-
+    // Config columns (hasRawData, below) — most of the 20 SME-category
+    // templates don't, so defaulting to 'revenue-bridge' regardless (the
+    // old behavior) landed almost every business owner on the empty
+    // state by default even though their Dynamic diagnostics tab already
+    // has real findings, every time, for every dataset (the schema-
+    // independent engine — see claude/dynamic-diagnostic-analytics.md).
+    // An explicit ?view= (clicking a tab pill) still always wins.
+    const requestedView = DIAGNOSTIC_VIEWS.some((v) => v.slug === req.query.view) ? req.query.view : null;
     // Round 7: the CMA Canonical Schema opt-in this page used to offer
     // (?source=canonical) is gone — every process in this app now reads
     // directly off the SME owner's own raw uploaded files, auto-detecting
@@ -2213,99 +2225,101 @@ router.get('/diagnostic-insights', trackDirectFlowModuleVisit('diagnostic-insigh
       };
     });
 
-    let hasAnyData = diagRaw.hasAnyData;
+    // hasRawData reflects only whether pickRawEntityRows() found readable
+    // Transaction/Entitlement/MonetizationConfig columns — the 3 "raw"
+    // tabs (Revenue bridge, Price-change impact, Cancellation reasons)
+    // need that. The 4th tab, Dynamic diagnostics, reads a completely
+    // separate fact-table business-intelligence ctx (services/
+    // fullDescriptiveAnalytics.js via getOrBuildBusinessIntelligence(),
+    // not pickRawEntityRows()) and can have real content regardless of
+    // hasRawData — most of the 20 SME-category templates' raw files
+    // don't read as a literal transaction log, so this is the common
+    // case, not an edge case. Previously this whole route bailed out
+    // with `cards: null` whenever hasRawData was false UNLESS the
+    // request already carried ?view=dynamic-diagnostics — which the tab
+    // pill links themselves only add once the user is already on this
+    // page, so a dataset like that could never be navigated to its
+    // Dynamic diagnostics tab at all: the page-level empty state
+    // rendered with no tab-nav to click into. Fixed by always rendering
+    // the tab-nav and only gating each raw tab's own content on
+    // hasRawData, in the view.
+    const hasRawData = diagRaw.hasAnyData;
     const rawInfo = diagRaw.rawInfo;
+    const { currency, bridge, byType, priceImpacts, cancellations, coverage } = diagRaw;
 
-    // The Dynamic diagnostics tab reads the fact-table business-
-    // intelligence ctx (services/fullDescriptiveAnalytics.js), not the
-    // pickRawEntityRows() picks the other 3 tabs need — so a dataset with
-    // no readable Transaction/Entitlement/MonetizationConfig columns
-    // (hasAnyData false above) can still have something to show here.
-    // Its own "nothing to show" case is handled inline, per-finding, via
-    // buildDiagnosticEngineCards()'s honest "Not applicable" shape —
-    // matching the Business Metrics tab's own established convention —
-    // rather than by this page-level empty-state gate.
-    if (activeView === 'dynamic-diagnostics') hasAnyData = true;
+    // Smart default, now that hasRawData is known: a dataset with real
+    // Transaction/Entitlement/MonetizationConfig columns still opens on
+    // Revenue bridge, same as always; one without (the common case —
+    // see the comment above requestedView) opens straight on Dynamic
+    // diagnostics instead of an empty state the business owner would
+    // otherwise have to know to click past.
+    const activeView = requestedView || (hasRawData ? 'revenue-bridge' : 'dynamic-diagnostics');
 
-    if (!hasAnyData) {
-      return res.render('dashboard/diagnostic-insights', {
-        title: 'Diagnostic insights',
-        active: 'diagnostic-insights',
-        datasets,
-        selectedDataset,
-        cards: null,
-        views: DIAGNOSTIC_VIEWS,
-        activeView,
-        hasAnyData: false,
-        dataSource,
-        rawInfo,
+    const cards = {};
+    if (hasRawData) {
+      cards.coverageKpiRow = [
+        renderStatTile({ label: 'Txns with a transaction type', value: `${coverage.txnTypePct.toFixed(1)}%` }),
+        renderStatTile({ label: 'Config rows with an effective date', value: `${coverage.effectiveDatePct.toFixed(1)}%` }),
+        renderStatTile({ label: 'Entitlements with a cancellation reason', value: `${coverage.cancelReasonPct.toFixed(1)}%` }),
+      ];
+
+      if (bridge) {
+        cards.bridgeKpiRow = [
+          renderStatTile({
+            label: 'Net new revenue',
+            value: formatCompactMoney(bridge.netNew, currency),
+            delta: bridge.netNewPct,
+            sublabel: bridge.prevLabel,
+          }),
+          renderStatTile({
+            label: `${bridge.prevLabel} → ${bridge.currLabel}`,
+            value: `${formatCompactMoney(bridge.prevTotal, currency)} → ${formatCompactMoney(bridge.currTotal, currency)}`,
+          }),
+        ];
+        cards.bridgeTable = bridge.rows.map((r) => ({
+          category: r.category,
+          amount: formatMoney(r.amount, currency),
+          count: formatCount(r.count),
+          isPositive: r.sign > 0,
+          isNegative: r.sign < 0,
+        }));
+      }
+
+      cards.byTypeChart = renderBarChart({
+        title: 'Revenue by transaction type',
+        subtitle: `Requires the optional transaction_type field — populated for ${coverage.txnTypePct.toFixed(1)}% of this dataset's transactions`,
+        items: byType.items,
+        currency,
+        emptyMessage: 'No transactions in this dataset carry a recognizable transaction-type column yet (e.g. "Type", "Billing Type") — add one to unlock this breakdown.',
+      });
+
+      cards.priceImpactTable = priceImpacts.map((i) => ({
+        product: i.product,
+        effectiveDate: new Date(i.effectiveDate).toLocaleDateString(),
+        oldPrice: formatMoney(i.oldPrice, currency),
+        newPrice: formatMoney(i.newPrice, currency),
+        pricePctChange: i.pricePctChange === null ? '—' : formatPercent(i.pricePctChange),
+        revenuePctChange: i.revenuePctChange === null ? '—' : formatPercent(i.revenuePctChange),
+        volumePctChange: i.volumePctChange === null ? '—' : formatPercent(i.volumePctChange),
+        elasticity: i.elasticity === null ? '—' : i.elasticity.toFixed(2),
+        isRevenueUp: i.revenuePctChange !== null && i.revenuePctChange > 0,
+        isRevenueDown: i.revenuePctChange !== null && i.revenuePctChange < 0,
+        inferred: !!i.inferred,
+      }));
+
+      cards.cancellationsChart = renderBarChart({
+        title: 'Entitlement cancellations by reason',
+        subtitle: `Requires the optional cancellation_reason field — populated for ${coverage.cancelReasonPct.toFixed(1)}% of this dataset's entitlements`,
+        items: cancellations.items,
+        money: false,
+        emptyMessage: 'No entitlements in this dataset carry a recognizable cancellation-reason column yet — add one to unlock this ranking.',
       });
     }
 
-    const { currency, bridge, byType, priceImpacts, cancellations, coverage } = diagRaw;
-
-    const cards = {};
-    cards.coverageKpiRow = [
-      renderStatTile({ label: 'Txns with a transaction type', value: `${coverage.txnTypePct.toFixed(1)}%` }),
-      renderStatTile({ label: 'Config rows with an effective date', value: `${coverage.effectiveDatePct.toFixed(1)}%` }),
-      renderStatTile({ label: 'Entitlements with a cancellation reason', value: `${coverage.cancelReasonPct.toFixed(1)}%` }),
-    ];
-
-    if (bridge) {
-      cards.bridgeKpiRow = [
-        renderStatTile({
-          label: 'Net new revenue',
-          value: formatCompactMoney(bridge.netNew, currency),
-          delta: bridge.netNewPct,
-          sublabel: bridge.prevLabel,
-        }),
-        renderStatTile({
-          label: `${bridge.prevLabel} → ${bridge.currLabel}`,
-          value: `${formatCompactMoney(bridge.prevTotal, currency)} → ${formatCompactMoney(bridge.currTotal, currency)}`,
-        }),
-      ];
-      cards.bridgeTable = bridge.rows.map((r) => ({
-        category: r.category,
-        amount: formatMoney(r.amount, currency),
-        count: formatCount(r.count),
-        isPositive: r.sign > 0,
-        isNegative: r.sign < 0,
-      }));
-    }
-
-    cards.byTypeChart = renderBarChart({
-      title: 'Revenue by transaction type',
-      subtitle: `Requires the optional transaction_type field — populated for ${coverage.txnTypePct.toFixed(1)}% of this dataset's transactions`,
-      items: byType.items,
-      currency,
-      emptyMessage: 'No transactions in this dataset carry a recognizable transaction-type column yet (e.g. "Type", "Billing Type") — add one to unlock this breakdown.',
-    });
-
-    cards.priceImpactTable = priceImpacts.map((i) => ({
-      product: i.product,
-      effectiveDate: new Date(i.effectiveDate).toLocaleDateString(),
-      oldPrice: formatMoney(i.oldPrice, currency),
-      newPrice: formatMoney(i.newPrice, currency),
-      pricePctChange: i.pricePctChange === null ? '—' : formatPercent(i.pricePctChange),
-      revenuePctChange: i.revenuePctChange === null ? '—' : formatPercent(i.revenuePctChange),
-      volumePctChange: i.volumePctChange === null ? '—' : formatPercent(i.volumePctChange),
-      elasticity: i.elasticity === null ? '—' : i.elasticity.toFixed(2),
-      isRevenueUp: i.revenuePctChange !== null && i.revenuePctChange > 0,
-      isRevenueDown: i.revenuePctChange !== null && i.revenuePctChange < 0,
-      inferred: !!i.inferred,
-    }));
-
-    cards.cancellationsChart = renderBarChart({
-      title: 'Entitlement cancellations by reason',
-      subtitle: `Requires the optional cancellation_reason field — populated for ${coverage.cancelReasonPct.toFixed(1)}% of this dataset's entitlements`,
-      items: cancellations.items,
-      money: false,
-      emptyMessage: 'No entitlements in this dataset carry a recognizable cancellation-reason column yet — add one to unlock this ranking.',
-    });
-
     // Dynamic diagnostics tab — only computed when actually open, same
     // "don't pay for it on every other tab" discipline as the Full
-    // Descriptive Analytics tab's own business-intelligence call.
+    // Descriptive Analytics tab's own business-intelligence call. Runs
+    // regardless of hasRawData — see the comment above.
     if (activeView === 'dynamic-diagnostics') {
       const bi = await getOrBuildBusinessIntelligence(accountId, selectedDataset.id);
       cards.diagnostics = buildDiagnosticEngineCards(bi, currency);
@@ -2330,7 +2344,7 @@ router.get('/diagnostic-insights', trackDirectFlowModuleVisit('diagnostic-insigh
       cards,
       views: DIAGNOSTIC_VIEWS,
       activeView,
-      hasAnyData: true,
+      hasAnyData: hasRawData,
       bridge,
       dataSource,
       rawInfo,
