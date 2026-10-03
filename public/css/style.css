@@ -260,17 +260,36 @@ a { color: inherit; }
 .header-signout:hover { background: #fbe0dc; }
 
 /* ---------------- Sidebar ----------------
-   Recommended CMA-FLOW sidebar palette (per Brenda's 3 October 2026
-   request) — hardcoded hex values here rather than redefining
+   "Opera What's New" palette (per Brenda's 3 October 2026 request — this
+   REPLACES the Deep Navy Teal palette set earlier the same day: Brenda
+   supplied two reference screenshots of Opera's "What's new" page and
+   asked every left-side panel to follow its font, text sizes, text color
+   and background. The sidebar (<aside class="sidebar">) is the only
+   literal left-side panel in the app that's present on every process —
+   there is no second one anywhere else in the codebase (checked: no
+   other left-positioned rail/panel exists), so this is the full scope of
+   that request. Hardcoded hex values here rather than redefining
    --bg-panel/--border/--text-muted, since those shared tokens also drive
    the header bar, form cards, chart cards, and modals elsewhere in the
    app; scoping the new colors to .sidebar's own rules keeps this a
-   sidebar-only re-theme. */
+   sidebar-only re-theme, same discipline as the teal palette it replaces.
+
+   The reference is a warm cream page with bold near-black headings and
+   dark charcoal body text — no color accent anywhere, it's monochrome.
+   Translated onto the sidebar: cream background, charcoal text, and a
+   slightly darker "card" cream tone (--sidebar-card below, lifted from
+   the screenshot's two content boxes) standing in for the active/hover
+   states that the teal palette used to carry with color. The one
+   deliberate exception is the four analytics-stage .nav-icon chips
+   (Descriptive/Diagnostic/Predictive/Prescriptive) — kept in their own
+   stage colors, same as every prior palette round, since that's a
+   separate, already-settled design decision (the pipeline identity also
+   used on each stage's own page) and not what this request was about. */
 .sidebar {
   width: 280px;
   flex-shrink: 0;
-  background: #073B4C; /* Deep Navy Teal */
-  border-right: 1px solid #2A7180; /* Muted Teal divider */
+  background: #FAF6EA; /* Cream page background, matching the Opera reference */
+  border-right: 1px solid #E2DCC6; /* Warm light divider */
   padding: 20px 20px 24px;
   display: flex;
   flex-direction: column;
@@ -356,14 +375,17 @@ a { color: inherit; }
 .upload-progress-label.is-done { color: var(--alert-success-text); font-weight: 600; }
 
 .nav-heading {
-  /* Smallest text in the sidebar — raised to the 18px floor the rest of
-     the panel's text now scales up from (was 12.5px, per Brenda's
-     3 October 2026 request to enlarge all left-sidebar text). */
+  /* Smallest text in the sidebar — 18px floor kept from Brenda's earlier
+     3 October 2026 sizing request; only the color changes here, to a
+     bold dark charcoal matching the Opera reference's heading weight
+     (its "NAVIGATION" equivalent is the only all-caps label in this
+     panel, so it reads as the nearest match to that reference's bold
+     headline treatment). */
   font-size: 18px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #B9D6DE; /* Light Blue-Gray */
+  color: #1E1C16; /* Dark charcoal, matching the reference's headline color */
   margin: 6px 0 10px;
 }
 
@@ -375,24 +397,24 @@ a { color: inherit; }
   padding: 10px 12px;
   border-radius: 10px;
   text-decoration: none;
-  color: #F3F8FA; /* Near White — normal menu text */
+  color: #2B2A22; /* Dark charcoal — normal menu text, matching the reference's body copy */
   font-size: 21px;
   transition: background 0.15s ease, color 0.15s ease;
 }
-.nav-list a:hover { background: #10596A; color: #FFFFFF; } /* Medium Teal hover */
+.nav-list a:hover { background: #F2EEDE; color: #1E1C16; } /* Lighter cream card tone on hover */
 .nav-list a.active {
-  color: #FFFFFF; /* Pure White */
+  color: #1E1C16; /* Dark charcoal, same ink as the rest — no color accent, matching the reference's monochrome look */
   font-weight: 700;
-  background: #0B6477; /* Teal Blue */
+  background: #EFEAD6; /* The reference's "card" cream tone, standing in for a colored active state */
 }
 .nav-dot {
   width: 15px;
   height: 15px;
   border-radius: 50%;
-  border: 2px solid #55C7D9; /* Cyan — normal menu icons */
+  border: 2px solid #5B5744; /* Muted warm charcoal — normal menu icons */
   flex-shrink: 0;
 }
-.nav-list a.active .nav-dot { border-color: #F4C542; background: radial-gradient(circle, #F4C542 0 5px, transparent 6px); } /* Logo Yellow active accent */
+.nav-list a.active .nav-dot { border-color: #1E1C16; background: radial-gradient(circle, #1E1C16 0 5px, transparent 6px); } /* Solid dark-charcoal active accent — no color, per the reference */
 
 /* The four analytics-pipeline stages get their own stage-colored icon
    chip instead of a generic gold nav-dot — the same colors/icons as the
@@ -408,20 +430,24 @@ a { color: inherit; }
   justify-content: center;
   font-size: 14px;
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(30, 28, 22, 0.06); /* Dark-on-cream tint (was a white tint, tuned for the old dark sidebar) */
   filter: grayscale(0.6) opacity(0.75);
 }
 .nav-list a.active .nav-icon,
 .nav-list a:hover .nav-icon { filter: none; }
-.nav-icon.stage-descriptive-analytics { background: rgba(22, 104, 168, 0.28); }
-.nav-icon.stage-diagnostic-insights { background: rgba(13, 148, 136, 0.28); }
-.nav-icon.stage-predictive-analytics { background: rgba(90, 69, 201, 0.28); }
-.nav-icon.stage-prescriptive-recommendations { background: rgba(44, 134, 89, 0.28); }
+/* Opacity raised slightly from the teal palette's 0.28 (0.34) — these
+   rgba tints read a little lighter mixed against the new cream
+   background than they did against dark navy, so the bump keeps the
+   four stage colors equally legible here. */
+.nav-icon.stage-descriptive-analytics { background: rgba(22, 104, 168, 0.34); }
+.nav-icon.stage-diagnostic-insights { background: rgba(13, 148, 136, 0.34); }
+.nav-icon.stage-predictive-analytics { background: rgba(90, 69, 201, 0.34); }
+.nav-icon.stage-prescriptive-recommendations { background: rgba(44, 134, 89, 0.34); }
 
 .sidebar-footer {
   margin-top: auto;
   padding-top: 16px;
-  border-top: 1px solid #2A7180; /* Muted Teal divider, separating Sign out from the nav list */
+  border-top: 1px solid #E2DCC6; /* Warm light divider, separating Sign out from the nav list */
 }
 /* Sign-out button text, scoped here rather than raised on the shared
    .btn class, which every button app-wide (forms, modals, tab actions)
