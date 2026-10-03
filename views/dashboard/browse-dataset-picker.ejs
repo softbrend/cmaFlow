@@ -1,6 +1,24 @@
 <div class="page-title">🔎 <span class="page-title-text">Browse Dataset</span></div>
 <p class="page-subtitle">Pick one of your uploaded datasets and a file to browse and filter its records.</p>
 
+<%
+  // Edit Dataset (added 3 October 2026, per Brenda's request) reuses the
+  // same Excel-style add/edit/delete-rows grid already reachable from
+  // Download SME Templates ("Edit records" — views/dashboard/sme-
+  // templates.ejs) rather than building a second editor: GET /sme-
+  // templates/evaluation-dataset/:datasetRowId, gated server-side by
+  // requireBusinessOwner (routes/templates.js) to Business Owner
+  // Evaluator accounts only, and — inside that — to datasets that are
+  // actually one of this account's evaluation-template copies, never a
+  // dataset uploaded manually via the plain Upload New Dataset form
+  // (getEvaluationDatasetById()'s own ownership + pattern check, which
+  // this button mirrors below so it's never shown somewhere it would
+  // just 403). A manually uploaded dataset — any SME Owner's, or a
+  // Business Owner Evaluator's own non-template upload — has no matching
+  // editor at all, so the button is simply omitted for those, same as
+  // every other role.
+  var isBusinessOwner = typeof currentUser !== 'undefined' && currentUser && currentUser.role === 'Business Owner Evaluator';
+%>
 <% if (!datasets || datasets.length === 0) { %>
   <div class="placeholder-card">
     <div class="emoji">📭</div>
@@ -11,12 +29,16 @@
   </div>
 <% } else { %>
   <% datasets.forEach(function(d) { %>
+    <% var isEvalCopy = !!(d.dataset_id && (d.dataset_id.indexOf('EVALCOPY_') === 0 || d.dataset_id === 'EVALUATION_DEFAULT')); %>
     <div class="form-card wide" style="margin-bottom: 18px;">
       <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px;">
         <div class="form-title"><%= d.dataset_name %></div>
         <span style="display:inline-flex; gap:8px;">
           <a class="btn btn-outline" href="/browse-dataset/<%= d.id %>/erd">🗺️ ERD</a>
           <a class="btn btn-outline" href="/browse-dataset/<%= d.id %>/report-catalog">📋 Report Catalog</a>
+          <% if (isBusinessOwner && isEvalCopy) { %>
+            <a class="btn btn-outline" href="/sme-templates/evaluation-dataset/<%= d.id %>">✏️ Edit Dataset</a>
+          <% } %>
         </span>
       </div>
       <p class="form-hint">

@@ -48,9 +48,9 @@ function qs(overrides) {
                 <% }); %>
               </select>
             <% } else if (meta.type === 'number') { %>
-              <div style="display:flex; gap:6px;">
-                <input type="number" name="fmin_<%= meta.name %>" placeholder="Min (<%= meta.min %>)" value="<%= query['fmin_' + meta.name] || '' %>" style="width:50%;" />
-                <input type="number" name="fmax_<%= meta.name %>" placeholder="Max (<%= meta.max %>)" value="<%= query['fmax_' + meta.name] || '' %>" style="width:50%;" />
+              <div class="filter-field-range">
+                <input type="number" name="fmin_<%= meta.name %>" placeholder="Min (<%= meta.min %>)" value="<%= query['fmin_' + meta.name] || '' %>" />
+                <input type="number" name="fmax_<%= meta.name %>" placeholder="Max (<%= meta.max %>)" value="<%= query['fmax_' + meta.name] || '' %>" />
               </div>
             <% } else { %>
               <input type="text" name="f_<%= meta.name %>" placeholder="Contains…" value="<%= query['f_' + meta.name] || '' %>" />
@@ -85,7 +85,7 @@ function qs(overrides) {
 })();
 </script>
 
-<div class="form-card wide">
+<div class="form-card wide records-card">
   <div class="form-title">Records</div>
   <p class="form-hint">
     Showing <%= pageRows.length === 0 ? 0 : (page - 1) * pageSize + 1 %>–<%= (page - 1) * pageSize + pageRows.length %>

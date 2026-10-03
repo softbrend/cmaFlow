@@ -724,6 +724,32 @@ a { color: inherit; }
 .filter-field-search { max-width: 480px; }
 .filter-field-search input { font-size: 14.5px; }
 
+/* Browse Dataset — full-width layout (per Brenda's 3 October 2026
+   follow-up: "make the Records filters in full space"). The per-column
+   Filters grid can have 20+ dynamic columns depending on the SME
+   template, and was cramped into the same 760px .form-card.wide cap
+   every short form in the app uses. :has() scopes the wider .main-inner
+   to specifically the page that contains the Filters panel
+   (.filter-bar), not the Browse Dataset picker, ERD, or Report Catalog
+   pages, which also carry body.stage-browse-dataset but don't need the
+   extra width. Same wide-page technique already used for Browse
+   Evaluation CSV and the TAM Questionnaire.
+
+   Widening the page alone does not fix Min/Max truncation on number
+   columns (order_total, tax_amount, etc. can be 6+ digits) — a wider
+   page just fits MORE 200px grid cells per row, it doesn't make any one
+   cell wider. .filter-field-range stacks the Min and Max inputs instead
+   of splitting one cell 50/50 side-by-side, so each input gets the
+   field's FULL column width regardless of how many columns the dataset
+   has or how wide the page is — the actual fix for the truncation Brenda
+   pointed at in her screenshot. */
+body.stage-browse-dataset .main-inner:has(.filter-bar) { max-width: 1600px; }
+.form-card.wide.filter-bar,
+.form-card.wide.records-card { max-width: none; width: 100%; }
+.filter-bar-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.filter-field-range { display: flex; flex-direction: column; gap: 6px; }
+.filter-field-range input { width: 100%; }
+
 /* ---------------- TAM End-User Evaluation ---------------- */
 .eval-steps { display: flex; gap: 8px; margin: 4px 0 24px; flex-wrap: wrap; }
 .eval-step {
