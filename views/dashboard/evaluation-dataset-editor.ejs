@@ -58,10 +58,20 @@
           <p class="form-hint" style="margin: 6px 0 0;">Fill in as many fields as you have — leave the rest blank. Save adds this as a new row and updates the four analytics modules next time you open them.</p>
         </div>
         <div class="eval-modal-body">
-          <% columns.forEach(function (col) { %>
+          <% columns.forEach(function (col) {
+               var choices = (typeof columnChoices !== 'undefined' && columnChoices) ? columnChoices[col] : null; %>
             <div class="field">
               <label for="eval-add-field-<%= col %>"><%= col.replace(/_/g, ' ') %></label>
-              <input type="text" id="eval-add-field-<%= col %>" name="<%= col %>" data-column="<%= col %>" autocomplete="off" />
+              <% if (choices && choices.length) { %>
+                <select id="eval-add-field-<%= col %>" name="<%= col %>" data-column="<%= col %>" class="eval-add-choice-select">
+                  <option value="">— Select —</option>
+                  <% choices.forEach(function (c) { %><option value="<%= c %>"><%= c %></option><% }); %>
+                  <option value="__other__">Other (type a new value)…</option>
+                </select>
+                <input type="text" class="eval-add-choice-other" data-column="<%= col %>" placeholder="New <%= col.replace(/_/g, ' ') %> value" style="display:none; margin-top:6px;" autocomplete="off" aria-label="New <%= col.replace(/_/g, ' ') %> value" />
+              <% } else { %>
+                <input type="text" id="eval-add-field-<%= col %>" name="<%= col %>" data-column="<%= col %>" autocomplete="off" />
+              <% } %>
             </div>
           <% }); %>
         </div>
@@ -237,12 +247,36 @@
     addAlert.style.display = 'none';
   }
 
+  // Choice fields (views/dashboard dropdowns built server-side from this
+  // column's already-used values, via routes/templates.js's
+  // computeColumnChoices()) pair a <select> with a hidden text input for
+  // "Other (type a new value)…" — shown only while that option is
+  // selected, and the one actually sent for that column when it is.
+  Array.prototype.forEach.call(addForm.querySelectorAll('.eval-add-choice-select'), function (sel) {
+    var col = sel.getAttribute('data-column');
+    var otherInput = addForm.querySelector('.eval-add-choice-other[data-column="' + col + '"]');
+    if (!otherInput) return;
+    sel.addEventListener('change', function () {
+      var isOther = sel.value === '__other__';
+      otherInput.style.display = isOther ? '' : 'none';
+      if (isOther) otherInput.focus();
+    });
+  });
+
   function openAddModal() {
     clearAddError();
     addForm.reset();
+    // form.reset() restores every control's VALUE, but not the inline
+    // display style the change listener above sets on an "Other" input —
+    // without this, reopening after a prior "Other" pick would leave
+    // that text box visibly shown even though its paired <select> is
+    // back on "— Select —".
+    Array.prototype.forEach.call(addForm.querySelectorAll('.eval-add-choice-other'), function (input) {
+      input.style.display = 'none';
+    });
     overlay.style.display = 'flex';
-    var firstInput = addForm.querySelector('input');
-    if (firstInput) firstInput.focus();
+    var firstField = addForm.querySelector('input, select');
+    if (firstField) firstField.focus();
   }
   function closeAddModal() {
     overlay.style.display = 'none';
@@ -262,7 +296,17 @@
     clearAddError();
     var data = {};
     Array.prototype.forEach.call(addForm.querySelectorAll('input[data-column]'), function (input) {
+      if (input.classList.contains('eval-add-choice-other')) return; // gathered below, only when its select picked "Other"
       data[input.getAttribute('data-column')] = input.value;
+    });
+    Array.prototype.forEach.call(addForm.querySelectorAll('select[data-column]'), function (sel) {
+      var col = sel.getAttribute('data-column');
+      if (sel.value === '__other__') {
+        var otherInput = addForm.querySelector('.eval-add-choice-other[data-column="' + col + '"]');
+        data[col] = otherInput ? otherInput.value : '';
+      } else {
+        data[col] = sel.value;
+      }
     });
     saveBtn.disabled = true;
     cancelBtn.disabled = true;

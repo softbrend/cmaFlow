@@ -464,12 +464,26 @@ router.get('/sme-templates/evaluation-dataset/:datasetRowId', requireBusinessOwn
 });
 
 // POST /sme-templates/evaluation-dataset/:datasetRowId/rows — Create:
-// appends one blank row (same columns as every existing row, all values
-// '') at the next row_index, then bumps dataset_files so the four
-// analytics modules recompute from it on next view. Refuses when the
-// dataset has no rows yet to copy a column shape from — can't happen via
-// the UI (which hides "Add row" in that case) but checked here too,
-// since this is a real API a client could call with no UI in front of it.
+// appends one row (same columns as every existing row) at the next
+// row_index, then bumps dataset_files so the four analytics modules
+// recompute from it on next view. Refuses when the dataset has no rows
+// yet to copy a column shape from — can't happen via the UI (which hides
+// "Add row" in that case) but checked here too, since this is a real API
+// a client could call with no UI in front of it.
+//
+// The new row's values come from the "Add row" modal's form
+// (views/dashboard/evaluation-dataset-editor.ejs — added 3 October 2026,
+// replacing the earlier "add a blank row, then edit each cell" flow): the
+// request body carries a `data` object keyed by column name. Only keys
+// that are already one of this dataset's own columns are accepted (same
+// discipline as the PATCH route below — never lets a request silently
+// introduce a column the rest of the grid, and every analytics module
+// reading this dataset, doesn't know about); any column missing from
+// `data`, or sent with no `data` at all (the plain "+ Add row" case with
+// no modal in front of it), falls back to ''. Every value is stored as a
+// string, same shape as every CSV-ingested cell, so
+// services/datasetProfiler.js's existing numeric/date coercion treats a
+// typed-in cell exactly like an uploaded one.
 router.post('/sme-templates/evaluation-dataset/:datasetRowId/rows', requireBusinessOwner, async (req, res, next) => {
   try {
     const accountId = req.session.userId;
@@ -483,8 +497,12 @@ router.post('/sme-templates/evaluation-dataset/:datasetRowId/rows', requireBusin
     }
 
     const columns = Object.keys(evalData.records[0].data);
-    const blank = {};
-    columns.forEach((c) => { blank[c] = ''; });
+    const submitted = req.body && typeof req.body.data === 'object' && req.body.data !== null ? req.body.data : null;
+    const newRow = {};
+    columns.forEach((c) => {
+      const v = submitted ? submitted[c] : undefined;
+      newRow[c] = v === undefined || v === null ? '' : String(v);
+    });
 
     const { rows: nextIndexRows } = await pool.query(
       `SELECT COALESCE(MAX(row_index), -1) + 1 AS next_index FROM dataset_records
@@ -494,7 +512,7 @@ router.post('/sme-templates/evaluation-dataset/:datasetRowId/rows', requireBusin
     const { rows: inserted } = await pool.query(
       `INSERT INTO dataset_records (dataset_id, account_id, file_type, row_index, data)
        VALUES ($1, $2, $3, $4, $5::jsonb) RETURNING id, data`,
-      [evalData.datasetRowId, accountId, EVAL_FILE_TYPE, nextIndexRows[0].next_index, JSON.stringify(blank)]
+      [evalData.datasetRowId, accountId, EVAL_FILE_TYPE, nextIndexRows[0].next_index, JSON.stringify(newRow)]
     );
 
     await touchEvaluationDataset(evalData.datasetRowId, accountId);

@@ -897,6 +897,12 @@ body.stage-evaluation-dataset-editor .main-inner { max-width: 1600px; }
   align-items: center;
   justify-content: center;
   padding: 24px;
+  /* Belt-and-suspenders: .eval-modal's own max-height + its body's
+     internal scroll (below) should always keep the footer in view, but
+     if a viewport is ever too short for even the header+footer chrome
+     alone, this lets the whole overlay scroll rather than clipping
+     Cancel/Save off entirely. */
+  overflow-y: auto;
   z-index: 50;
 }
 .eval-modal {
@@ -906,23 +912,36 @@ body.stage-evaluation-dataset-editor .main-inner { max-width: 1600px; }
   box-shadow: 0 20px 46px rgba(0, 0, 0, 0.4);
   width: 100%;
   max-width: 640px;
-  max-height: 86vh;
+  max-height: calc(100vh - 48px);
+  margin: auto;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
-.eval-modal-header { padding: 26px 28px 0; }
+.eval-modal-header { padding: 26px 28px 0; flex: 0 0 auto; }
+/* flex: 1 1 auto + min-height: 0 is the actual fix for the footer being
+   clipped off-screen with no way to reach it: a flex child's default
+   minimum size is its CONTENT's height, not 0, so without min-height: 0
+   this body refuses to shrink to fit .eval-modal's max-height at all —
+   it just pushes the footer (and this element's own overflow-y: auto)
+   out past .eval-modal's "overflow: hidden" edge instead of scrolling.
+   With both set, this is the part that scrolls while the header and
+   footer stay pinned in view. */
 .eval-modal-body {
   padding: 18px 28px;
   overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 0 16px;
+  align-content: start;
 }
 .eval-modal-body .field { margin-bottom: 14px; }
 .eval-modal #eval-add-row-alert { margin: 0 28px 14px; }
 .eval-modal-footer {
   padding: 16px 28px 26px;
+  flex: 0 0 auto;
   display: flex;
   justify-content: flex-end;
   gap: 10px;
