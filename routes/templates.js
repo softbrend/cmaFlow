@@ -512,10 +512,10 @@ router.get('/sme-templates/evaluation-dataset/:datasetRowId', requireBusinessOwn
 // (views/dashboard/evaluation-dataset-editor.ejs — added 3 October 2026,
 // replacing the earlier "add a blank row, then edit each cell" flow): the
 // request body carries a `data` object keyed by column name. Only keys
-// that are already one of this dataset's own columns are accepted (same
-// discipline as the PATCH route below — never lets a request silently
-// introduce a column the rest of the grid, and every analytics module
-// reading this dataset, doesn't know about); any column missing from
+// that are already one of this dataset's own columns are accepted — never
+// lets a request silently introduce a column the rest of the grid, and
+// every analytics module reading this dataset, doesn't know about; any
+// column missing from
 // `data`, or sent with no `data` at all (the plain "+ Add row" case with
 // no modal in front of it), falls back to ''. Every value is stored as a
 // string, same shape as every CSV-ingested cell, so
@@ -559,106 +559,16 @@ router.post('/sme-templates/evaluation-dataset/:datasetRowId/rows', requireBusin
   }
 });
 
-// PATCH /sme-templates/evaluation-dataset/:datasetRowId/rows/:recordId —
-// Update: edits ONE column of one row in place (jsonb_set, so the rest of
-// that row's data is untouched), scoped to this specific copy AND this
-// account, so a recordId can never reach another account's row, or even
-// a different copy of this SAME account's. Stores the new value as a
-// JSON string the same way every ingested CSV value already is —
-// services/datasetProfiler.js's tryParseNumber() (and every analytics
-// module built on it) already expects string-typed cells and coerces as
-// needed, so an edited cell behaves exactly like one that came from the
-// original upload.
-router.patch('/sme-templates/evaluation-dataset/:datasetRowId/rows/:recordId', requireBusinessOwner, async (req, res, next) => {
-  try {
-    const accountId = req.session.userId;
-    const datasetRowId = parseInt(req.params.datasetRowId, 10);
-    const recordId = parseInt(req.params.recordId, 10);
-    const { column, value } = req.body || {};
-    if (!datasetRowId || !recordId || typeof column !== 'string' || !column) {
-      return res.status(400).json({ error: 'bad_request' });
-    }
-
-    const evalData = await loadEvaluationDataset(accountId, datasetRowId);
-    if (!evalData) return res.status(404).json({ error: 'not_found' });
-    const targetRow = evalData.records.find((r) => r.id === recordId);
-    if (!targetRow) return res.status(404).json({ error: 'not_found' });
-
-    // column must be one of this DATASET's known columns — same list the
-    // GET handler above builds from records[0].data and uses to render
-    // every row's cells, not literally an existing key on THIS row's own
-    // JSON. Source CSVs are ingested with relax_column_count (middleware/
-    // browse.js), so a short/ragged row can come out of csv-parse missing
-    // its trailing keys outright rather than holding them as '' — the grid
-    // still renders a normal, blank, editable cell for that column (driven
-    // off records[0].data, same as here), so editing it must not 404 just
-    // because this particular row's JSON happens not to have that key yet.
-    // jsonb_set's default create_missing:true below adds it the first time
-    // it's edited. This still refuses a column that isn't part of this
-    // dataset's schema at all — the actual intent of the original check
-    // (never let a request silently introduce a column the rest of the
-    // grid, and every analytics module reading this dataset, doesn't know
-    // about) — it just checks the DATASET's column list instead of one
-    // possibly-ragged row's.
-    const knownColumns = evalData.records.length > 0 ? Object.keys(evalData.records[0].data) : [];
-    if (!knownColumns.includes(column)) {
-      return res.status(404).json({ error: 'not_found' });
-    }
-
-    const { rows } = await pool.query(
-      `UPDATE dataset_records
-          SET data = jsonb_set(data, $1::text[], to_jsonb($2::text))
-        WHERE id = $3 AND dataset_id = $4 AND account_id = $5 AND file_type = $6
-        RETURNING id, data`,
-      [[column], value == null ? '' : String(value), recordId, evalData.datasetRowId, accountId, EVAL_FILE_TYPE]
-    );
-    if (rows.length === 0) return res.status(404).json({ error: 'not_found' });
-
-    await touchEvaluationDataset(evalData.datasetRowId, accountId);
-    res.json({ ok: true, row: rows[0] });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// DELETE /sme-templates/evaluation-dataset/:datasetRowId/rows/:recordId —
-// Delete: removes one row outright, from this one specific copy. Refuses
-// to delete the LAST remaining row in that copy — not because the schema
-// requires it, but because an empty dataset would leave Full Descriptive
-// Analytics and the business-semantic engine profiling zero rows, which
-// every one of the four modules treats as "not applicable" rather than
-// something meaningful to show; losing a copy entirely is also very
-// unlikely to be what "like in Excel" row deletion was meant to allow
-// unsupervised. (Removing a copy ENTIRELY — not just down to one row —
-// isn't offered anywhere yet; only row-level CRUD within a copy was
-// asked for.)
-router.delete('/sme-templates/evaluation-dataset/:datasetRowId/rows/:recordId', requireBusinessOwner, async (req, res, next) => {
-  try {
-    const accountId = req.session.userId;
-    const datasetRowId = parseInt(req.params.datasetRowId, 10);
-    const recordId = parseInt(req.params.recordId, 10);
-    if (!datasetRowId || !recordId) return res.status(400).json({ error: 'bad_request' });
-
-    const evalData = await loadEvaluationDataset(accountId, datasetRowId);
-    if (!evalData) return res.status(404).json({ error: 'not_found' });
-    if (evalData.records.length <= 1) {
-      return res.status(400).json({ error: 'last_row', message: "Can't delete the last remaining row — this dataset copy would be empty." });
-    }
-    if (!evalData.records.some((r) => r.id === recordId)) {
-      return res.status(404).json({ error: 'not_found' });
-    }
-
-    const result = await pool.query(
-      `DELETE FROM dataset_records WHERE id = $1 AND dataset_id = $2 AND account_id = $3 AND file_type = $4`,
-      [recordId, evalData.datasetRowId, accountId, EVAL_FILE_TYPE]
-    );
-    if (result.rowCount === 0) return res.status(404).json({ error: 'not_found' });
-
-    await touchEvaluationDataset(evalData.datasetRowId, accountId);
-    res.json({ ok: true });
-  } catch (err) {
-    next(err);
-  }
-});
+// PATCH and DELETE /sme-templates/evaluation-dataset/:datasetRowId/rows/
+// :recordId — intentionally removed (3 October 2026, per Brenda: "the
+// datasets is already past records, only allowing the business owners to
+// Add New records"). These rows are each account's already-recorded
+// historical transactions, not a live spreadsheet to be edited or trimmed
+// after the fact — only POST /rows (Add new row, above) remains, so a
+// Business Owner Evaluator can grow a copy with new records (still picked
+// up by the four analytics modules via touchEvaluationDataset(), same as
+// before) without being able to alter or remove what's already there. The
+// view (views/dashboard/evaluation-dataset-editor.ejs) no longer renders
+// editable cells or Delete buttons to match.
 
 module.exports = router;

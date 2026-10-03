@@ -965,22 +965,6 @@ body.stage-evaluation-dataset-editor .main-inner { max-width: 1600px; }
    that it (not .main) is the nearest scrolling ancestor. */
 .eval-editor-scroll { max-height: 65vh; overflow-y: auto; }
 
-/* Editable cells layered on .excel-table's existing look: a text cursor
-   and a visible focus ring while typing (contenteditable gives no default
-   focus style of its own, unlike an <input>), then a brief green flash on
-   a successful save and a red ring on a failed one — both added/removed
-   by views/dashboard/evaluation-dataset-editor.ejs's own script, never
-   left in place past one pulse. */
-.excel-table td[contenteditable="true"] { cursor: text; }
-.excel-table td[contenteditable="true"]:focus {
-  outline: 2px solid var(--primary);
-  outline-offset: -2px;
-  background: var(--row-current-bg);
-}
-.excel-table td.cell-saved { background: var(--alert-success-bg); transition: background-color 0.9s ease; }
-.excel-table td.cell-error { outline: 2px solid var(--danger); outline-offset: -2px; }
-.excel-table tbody tr.row-pending { opacity: 0.5; }
-
 /* "Add row" form (views/dashboard/evaluation-dataset-editor.ejs, added
    3 October 2026, replacing the earlier "insert a blank row, then edit
    each cell" flow) — a simple centered modal: a dimmed overlay behind a
