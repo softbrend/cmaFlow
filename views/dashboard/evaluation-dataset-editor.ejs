@@ -48,15 +48,27 @@
        directly — every field for the new record, with Cancel (discards,
        nothing is sent) and Save (POSTs the filled-in values as the new
        row and refreshes the four analytics modules next time they're
-       opened, same as any other edit here). Hidden by default; toggled by
-       the script below. -->
+       opened, same as any other edit here). Cancel/Save sit in the
+       header, top-right, next to the title — pinned there (not at the
+       bottom of a long field list) per Brenda's request, so they're
+       always visible and clickable without scrolling down first,
+       regardless of how many fields a given dataset has. Only the field
+       grid below the header scrolls. Hidden by default; toggled by the
+       script below. -->
   <div id="eval-add-row-overlay" class="eval-modal-overlay" style="display:none;">
     <div class="eval-modal" role="dialog" aria-modal="true" aria-labelledby="eval-add-row-title">
       <form id="eval-add-row-form">
         <div class="eval-modal-header">
-          <h2 id="eval-add-row-title" class="form-title" style="font-size: 19px; margin: 0;">Add new row</h2>
-          <p class="form-hint" style="margin: 6px 0 0;">Fill in as many fields as you have — leave the rest blank. Save adds this as a new row and updates the four analytics modules next time you open them.</p>
+          <div class="eval-modal-header-row">
+            <h2 id="eval-add-row-title" class="form-title" style="font-size: 19px; margin: 0;">Add new row</h2>
+            <div class="eval-modal-header-actions">
+              <button type="button" id="eval-add-row-cancel" class="btn btn-ghost btn-sm">Cancel</button>
+              <button type="submit" id="eval-add-row-save" class="btn btn-accent btn-sm">Save</button>
+            </div>
+          </div>
+          <p class="form-hint" style="margin: 6px 0 0;">Fill in as many fields as you have — leave the rest blank. Save adds this as a new row and updates the four analytics modules next time you open them. Scroll down for more fields.</p>
         </div>
+        <div id="eval-add-row-alert" class="alert-error" style="display:none; margin: 0 28px 14px;" role="alert"></div>
         <div class="eval-modal-body">
           <% columns.forEach(function (col) {
                var choices = (typeof columnChoices !== 'undefined' && columnChoices) ? columnChoices[col] : null; %>
@@ -74,11 +86,6 @@
               <% } %>
             </div>
           <% }); %>
-        </div>
-        <div id="eval-add-row-alert" class="alert-error" style="display:none;" role="alert"></div>
-        <div class="eval-modal-footer">
-          <button type="button" id="eval-add-row-cancel" class="btn btn-ghost">Cancel</button>
-          <button type="submit" id="eval-add-row-save" class="btn btn-accent">Save</button>
         </div>
       </form>
     </div>

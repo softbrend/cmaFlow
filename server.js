@@ -59,6 +59,26 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Cache-busting query string for /css/style.css (added 3 October 2026,
+// after a style.css fix — the Add-row modal's scroll/footer layout —
+// deployed correctly server-side but a browser that had already loaded
+// the OLD stylesheet kept using its own cached copy, since a plain
+// <link href="/css/style.css"> with no version has nothing to tell the
+// browser the file changed: express.static sets no Cache-Control here,
+// so browsers fall back to HTTP's heuristic freshness, which can treat
+// an unchanged-URL file as "fresh" for a long time without even
+// re-checking the server. Computed once at boot from the file's own
+// mtime (so every deploy — a new file on disk — gets a new value
+// automatically, no version number to remember to bump by hand) and
+// exposed to every view as `cssVersion`; views/layout.ejs and
+// layout-auth.ejs append it as ?v=<cssVersion> on the stylesheet link,
+// which forces a fresh fetch the instant the file actually changes.
+try {
+  app.locals.cssVersion = fs.statSync(path.join(__dirname, 'public', 'css', 'style.css')).mtimeMs;
+} catch (e) {
+  app.locals.cssVersion = Date.now(); // missing file in some dev setup — still busts the cache, just not deploy-stable
+}
+
 // --- Health check (Render's own health probe hits this to decide whether
 // the running instance is "up" — this MUST be registered before any
 // DB-backed middleware. It used to sit after the session middleware below,
