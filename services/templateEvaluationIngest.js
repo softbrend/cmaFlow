@@ -21,13 +21,29 @@
 // of its COPY-streaming sibling, and writes/commits synchronously within
 // one request.
 //
-// Every Template Evaluator gets exactly ONE such dataset, always under the
-// fixed dataset_id below — picking a different template replaces it
-// (delete-then-recreate under the same slug) rather than accumulating a
-// new uploaded_datasets row per switch. ON DELETE CASCADE from
+// Each category a Template Evaluator or Business Owner Evaluator picks
+// gets its OWN dataset_id (see datasetIdForCategory() below, added 3
+// October 2026) — one copy per category, never deleted when a DIFFERENT
+// category is picked. Re-picking the SAME category still replaces that
+// one category's copy (delete-then-recreate under its own stable slug),
+// which is what a Template Evaluator's single "Use for evaluation" click
+// has always meant and still does; a Business Owner Evaluator gets the
+// same behavior for a category it has never picked before, but routes/
+// templates.js's POST /sme-templates/set-evaluation-default checks for an
+// existing copy FIRST and, when one exists, only switches which copy is
+// "current" (services/accountDatasets.js's setDefaultDataset()) rather
+// than calling this function again — so an account's own edits to a
+// category it already has a copy of are never silently discarded by
+// re-selecting that same category. ON DELETE CASCADE from
 // uploaded_datasets down through dataset_files, dataset_records, and
-// dataset_profiles (see db/schema.sql) means the delete alone is enough;
-// nothing has to be cleaned up by hand.
+// dataset_profiles (see db/schema.sql) means a delete-and-recreate here
+// is always a clean replacement, nothing orphaned to clean up by hand.
+//
+// None of this ever touches the shared, read-only source template CSVs
+// under data/sme-templates/ — every copy is its own physical file under
+// this account's own uploads/datasets/<accountId>/<sanitized dataset
+// id>/ folder (see destPath below), copied FROM the shared template once
+// at ingest time and never written back to it.
 const fs = require('fs');
 const path = require('path');
 const { parse } = require('csv-parse/sync');
@@ -40,8 +56,35 @@ const { setDefaultDataset } = require('./accountDatasets');
 const TEMPLATES_ROOT = path.join(__dirname, '..', 'data', 'sme-templates');
 const MANIFEST_PATH = path.join(TEMPLATES_ROOT, '00_CMAFlow_SME_Template_Manifest.csv');
 
+// The ONE fixed dataset_id every account created before 3 October 2026
+// still has for whichever single category it last picked — kept around
+// purely so that pre-existing copy stays reachable and editable under the
+// new multi-copy routes below; never written to by a NEW ingest (see
+// datasetIdForCategory()), only matched against by the lookup helpers
+// further down.
 const EVAL_DATASET_ID = 'EVALUATION_DEFAULT';
 const EVAL_FILE_TYPE = sanitizeFileType('transactions');
+
+// Every new copy (3 October 2026 onward) gets a dataset_id of the shape
+// "EVALCOPY_<template file base name>" — e.g.
+// "EVALCOPY_Retail_and_ECommerce" for Retail_and_ECommerce_template.csv.
+// Deterministic PER CATEGORY (not per pick), so re-selecting the SAME
+// category always resolves back to the SAME row (safe to replace) while a
+// DIFFERENT category always gets its own, separate id — which is the
+// entire mechanism that lets an account hold several categories' copies
+// at once, each independently listed (listEvaluationDatasetCopies()) and
+// independently edited (routes/templates.js's CRUD routes, each scoped to
+// one specific uploaded_datasets.id).
+const EVAL_COPY_PREFIX = 'EVALCOPY_';
+// '_' is a single-character wildcard in SQL LIKE, so every literal '_' in
+// the prefix has to be escaped for the prefix-match queries below —
+// built once here rather than re-escaped at every call site.
+const EVAL_COPY_PREFIX_LIKE = `${EVAL_COPY_PREFIX.replace(/_/g, '\\_')}%`;
+
+function datasetIdForCategory(resolvedTemplate) {
+  const base = resolvedTemplate.row.template_file.replace(/\.csv$/i, '');
+  return sanitizeDatasetId(`${EVAL_COPY_PREFIX}${base}`);
+}
 
 // resolvedTemplate: { row, fullPath } from routes/templates.js's own
 // resolveTemplateFile() — row.sme_business_category / row.template_file
@@ -51,7 +94,7 @@ const EVAL_FILE_TYPE = sanitizeFileType('transactions');
 // profileFile()/insertDatasetRecords() already expect from a real
 // upload's parsed rows).
 async function ingestTemplateForEvaluation(accountId, resolvedTemplate, records) {
-  const datasetId = EVAL_DATASET_ID;
+  const datasetId = datasetIdForCategory(resolvedTemplate);
   const datasetName = `${resolvedTemplate.row.sme_business_category} (Evaluation Template)`;
   const sanitizedId = sanitizeDatasetId(datasetId);
 
@@ -59,10 +102,12 @@ async function ingestTemplateForEvaluation(accountId, resolvedTemplate, records)
   try {
     await client.query('BEGIN');
 
-    // Replaces any dataset this account previously ingested this way —
-    // see module header. Scoped to (account_id, dataset_id) so this can
-    // never touch a different account's data or any dataset the
-    // evaluator uploaded manually under a different dataset_id.
+    // Replaces this account's own PREVIOUS copy of this exact category,
+    // if it has one — see module header. Scoped to (account_id,
+    // dataset_id), and dataset_id is derived from the category itself, so
+    // this can never touch a different account's data, a different
+    // category's copy, or any dataset the evaluator uploaded manually
+    // under a different dataset_id.
     await client.query(
       `DELETE FROM uploaded_datasets WHERE account_id = $1 AND dataset_id = $2`,
       [accountId, datasetId]
@@ -185,6 +230,88 @@ async function ingestDefaultTemplateForCategory(accountId, categoryName) {
   return { templateFile: resolved.row.template_file, datasetRowId };
 }
 
+// ------------------------------------------------------------------
+// Multi-copy lookups (added 3 October 2026) — every query below matches
+// BOTH this feature's own EVALCOPY_* ids (one per category, see
+// datasetIdForCategory() above) AND the single legacy EVALUATION_DEFAULT
+// id a pre-3-October account's one existing copy still carries, so an
+// account that signed up before this round loses nothing: its one copy
+// still shows up, is still editable, and still becomes the starting
+// point for a second, separate EVALCOPY_* copy the moment it picks a
+// different category. Never matches a dataset the account uploaded
+// manually via the real /upload-dataset form — those get their own
+// account-chosen dataset_id, which (barring a user typing "EVALCOPY_..."
+// or "EVALUATION_DEFAULT" into that form themselves, a self-inflicted
+// edge case not worth defending against) never collides with either
+// pattern.
+// ------------------------------------------------------------------
+
+// This account's own existing copy of ONE category, if it has one —
+// routes/templates.js's POST /sme-templates/set-evaluation-default calls
+// this FIRST, before ever re-ingesting, so re-selecting a category the
+// account has already been editing switches which copy is "current"
+// (services/accountDatasets.js's setDefaultDataset()) instead of
+// silently discarding those edits by deleting-and-recreating it.
+async function findEvaluationCopyByCategory(accountId, categoryName) {
+  const { rows } = await pool.query(
+    `SELECT id FROM uploaded_datasets
+      WHERE account_id = $1 AND domain = $2
+        AND (dataset_id LIKE $3 ESCAPE '\\' OR dataset_id = $4)
+      ORDER BY created_at DESC LIMIT 1`,
+    [accountId, categoryName, EVAL_COPY_PREFIX_LIKE, EVAL_DATASET_ID]
+  );
+  return rows[0] ? rows[0].id : null;
+}
+
+// Every evaluation-template copy this account currently holds — one row
+// per category it has ever picked (not one per pick: re-picking a
+// category replaces that category's own row in place, per
+// ingestTemplateForEvaluation()'s module-header comment). Backs both the
+// "My evaluation dataset copies" listing page and GET /sme-templates's
+// own per-category "you already have a copy of this" map
+// (routes/templates.js). row_count is read from dataset_files rather
+// than COUNT(*) on dataset_records, matching how every other dataset
+// listing in this app already reports size, and staying correct after an
+// edit because routes/templates.js's touchEvaluationDataset() keeps
+// dataset_files.row_count in sync on every Create/Delete.
+async function listEvaluationDatasetCopies(accountId) {
+  const { rows } = await pool.query(
+    `SELECT ud.id, ud.dataset_id, ud.dataset_name, ud.domain, ud.created_at,
+            COALESCE(SUM(df.row_count), 0)::int AS row_count
+       FROM uploaded_datasets ud
+       LEFT JOIN dataset_files df ON df.dataset_id = ud.id
+      WHERE ud.account_id = $1
+        AND (ud.dataset_id LIKE $2 ESCAPE '\\' OR ud.dataset_id = $3)
+      GROUP BY ud.id
+      ORDER BY ud.created_at DESC`,
+    [accountId, EVAL_COPY_PREFIX_LIKE, EVAL_DATASET_ID]
+  );
+  return rows;
+}
+
+// One specific copy by its uploaded_datasets.id, ownership- and
+// pattern-checked in the same query so a CRUD route can never be pointed
+// at another account's row, or at a dataset this account uploaded
+// manually rather than picked as a template copy. Returns the bare row
+// (id/dataset_name/domain) — routes/templates.js's own loadEvaluationDataset()
+// layers the actual dataset_records fetch on top.
+async function getEvaluationDatasetById(accountId, datasetRowId) {
+  const { rows } = await pool.query(
+    `SELECT id, dataset_name, domain FROM uploaded_datasets
+      WHERE id = $1 AND account_id = $2
+        AND (dataset_id LIKE $3 ESCAPE '\\' OR dataset_id = $4)`,
+    [datasetRowId, accountId, EVAL_COPY_PREFIX_LIKE, EVAL_DATASET_ID]
+  );
+  return rows[0] || null;
+}
+
 module.exports = {
-  ingestTemplateForEvaluation, EVAL_DATASET_ID, EVAL_FILE_TYPE, resolveTemplateForCategory, ingestDefaultTemplateForCategory,
+  ingestTemplateForEvaluation,
+  EVAL_DATASET_ID,
+  EVAL_FILE_TYPE,
+  resolveTemplateForCategory,
+  ingestDefaultTemplateForCategory,
+  findEvaluationCopyByCategory,
+  listEvaluationDatasetCopies,
+  getEvaluationDatasetById,
 };

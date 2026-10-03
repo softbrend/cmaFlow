@@ -25,13 +25,12 @@ const { parse } = require('csv-parse/sync');
 const { requireAuth } = require('../middleware/auth');
 const pool = require('../db/pool');
 const {
-  ingestTemplateForEvaluation, EVAL_DATASET_ID, EVAL_FILE_TYPE,
+  ingestTemplateForEvaluation, EVAL_FILE_TYPE,
+  findEvaluationCopyByCategory, listEvaluationDatasetCopies, getEvaluationDatasetById,
 } = require('../services/templateEvaluationIngest');
-// Only for GET /sme-templates/evaluation-dataset's page subtitle below —
-// resolves the account's stored evaluation_template_file back to its
-// category name, same lookup views/dashboard/evaluation-walkthrough.ejs's
-// Task 1 "Use" strip already uses (routes/evaluation.js).
-const { labelForTemplateFile } = require('../services/smeCategories');
+// Only for the "switch without re-ingesting" path inside POST
+// /sme-templates/set-evaluation-default below — see its own comment.
+const { setDefaultDataset } = require('../services/accountDatasets');
 
 const router = express.Router();
 const TEMPLATES_ROOT = path.join(__dirname, '..', 'data', 'sme-templates');
@@ -88,28 +87,26 @@ function requireBusinessOwner(req, res, next) {
   return res.status(403).render('errors/403', { title: 'Not authorized', layout: false });
 }
 
-// Shared by all four /sme-templates/evaluation-dataset* routes below —
-// resolves the signed-in Business Owner Evaluator's own EVALUATION_DEFAULT
-// dataset (the one auto-ingested at signup, or later re-ingested via "Use"/
-// "Use for evaluation") to its uploaded_datasets row id, plus every
-// dataset_records row currently under it, account-scoped so one account
-// can never read or touch another's rows. Returns null when the account
-// has no such dataset yet (shouldn't happen past signup, but a route
-// handler is not the place to assume it).
-async function loadEvaluationDataset(accountId) {
-  const { rows } = await pool.query(
-    `SELECT id FROM uploaded_datasets WHERE account_id = $1 AND dataset_id = $2`,
-    [accountId, EVAL_DATASET_ID]
-  );
-  const datasetRowId = rows[0] && rows[0].id;
-  if (!datasetRowId) return null;
+// Shared by all four /sme-templates/evaluation-dataset/:datasetRowId*
+// routes below — resolves ONE specific copy (by its uploaded_datasets.id,
+// not a fixed slug: a Business Owner Evaluator can hold several at once,
+// one per category it has picked — see services/templateEvaluationIngest.js's
+// module header) to its row id, category label, and every dataset_records
+// row currently under it. getEvaluationDatasetById() does the actual
+// ownership + "is this really one of this account's template copies, not
+// a manually uploaded dataset" check, so this can never read or touch
+// another account's rows, or a dataset this route isn't meant for.
+// Returns null when datasetRowId doesn't resolve to such a row at all.
+async function loadEvaluationDataset(accountId, datasetRowId) {
+  const datasetRow = await getEvaluationDatasetById(accountId, datasetRowId);
+  if (!datasetRow) return null;
   const { rows: records } = await pool.query(
     `SELECT id, data FROM dataset_records
       WHERE dataset_id = $1 AND account_id = $2 AND file_type = $3
       ORDER BY row_index, id`,
-    [datasetRowId, accountId, EVAL_FILE_TYPE]
+    [datasetRow.id, accountId, EVAL_FILE_TYPE]
   );
-  return { datasetRowId, records };
+  return { datasetRowId: datasetRow.id, categoryLabel: datasetRow.domain, records };
 }
 
 // Re-counts this account's evaluation dataset's rows straight from
@@ -156,7 +153,7 @@ function resolveTemplateFile(fileName) {
   return { row, fullPath: path.join(TEMPLATES_ROOT, row.template_file) };
 }
 
-router.get('/sme-templates', requireAuth, (req, res, next) => {
+router.get('/sme-templates', requireAuth, async (req, res, next) => {
   try {
     const manifest = loadManifest();
     const user = req.session.user;
@@ -194,6 +191,20 @@ router.get('/sme-templates', requireAuth, (req, res, next) => {
     // instead. See requireBusinessOwner() above for why this is scoped
     // more narrowly than isExpertEvaluator.
     const isBusinessOwner = !!(user && user.role === BUSINESS_ROLE);
+    // One row per category this Business Owner Evaluator already holds a
+    // copy of (added 3 October 2026, alongside the multi-copy model —
+    // see services/templateEvaluationIngest.js's module header), keyed by
+    // category name so the manifest loop below can look up, per row,
+    // whether "Edit records" has somewhere to link to yet. null for
+    // anyone else — Template Evaluator still has exactly one copy total,
+    // already fully described by evaluationTemplateFile/isEvalDefault
+    // alone, so it needs no such map.
+    let categoryToDatasetRowId = null;
+    if (isBusinessOwner) {
+      const copies = await listEvaluationDatasetCopies(user.id);
+      categoryToDatasetRowId = {};
+      copies.forEach((c) => { categoryToDatasetRowId[c.domain] = c.id; });
+    }
     res.render('dashboard/sme-templates', {
       title: 'Download SME Templates',
       active: 'sme-templates',
@@ -203,6 +214,7 @@ router.get('/sme-templates', requireAuth, (req, res, next) => {
       isDirectFlow,
       isBusinessOwner,
       evaluationTemplateFile,
+      categoryToDatasetRowId,
     });
   } catch (err) {
     next(err);
@@ -217,19 +229,31 @@ router.get('/sme-templates/download/:file', requireAuth, (req, res) => {
   res.download(resolved.fullPath, resolved.row.template_file);
 });
 
-// POST /sme-templates/set-evaluation-default — a Template Evaluator's own
-// explicit choice of which template they want to use for the evaluation.
-// This does two things, not just one: it records the choice (sme_accounts
-// .evaluation_template_file, for the "browse these exact rows" page
-// below), AND it actually ingests that template's 50 rows as this
-// account's own working dataset — the same uploaded_datasets/
-// dataset_files/dataset_records shape a real upload produces (see
-// services/templateEvaluationIngest.js) — and sets it as their
-// default_dataset_id. That second part is what makes "default" mean what
-// it says: the Descriptive/Diagnostic/Predictive/Prescriptive pages (and
-// Task 1's "Upload New Dataset" step) read an account's default dataset
-// with no manual upload needed, so picking a template here is enough to
-// drive all four analytics modules from it.
+// POST /sme-templates/set-evaluation-default — a Template Evaluator's or
+// Business Owner Evaluator's own explicit choice of which template they
+// want to use for the evaluation. This does two things, not just one: it
+// records the choice (sme_accounts.evaluation_template_file, for the
+// "browse these exact rows" page below), AND it makes that category's
+// copy the account's default dataset (sme_accounts.default_dataset_id) —
+// that second part is what makes "default" mean what it says: the
+// Descriptive/Diagnostic/Predictive/Prescriptive pages (and Task 1's
+// "Upload New Dataset" step) read an account's default dataset with no
+// manual upload needed, so picking a template here is enough to drive all
+// four analytics modules from it.
+//
+// Added 3 October 2026: checks for an existing copy of this category
+// FIRST (findEvaluationCopyByCategory()) and, when one already exists,
+// only switches which copy is current (setDefaultDataset()) — it does
+// NOT re-ingest. Only a category this account has never picked before
+// goes through the full ingestTemplateForEvaluation() (fresh copy from
+// the static template CSV). This matters most for a Business Owner
+// Evaluator switching back to a category it already has an EDITED copy
+// of (routes/templates.js's own CRUD routes below): without this check,
+// clicking "Use" to return to it would silently discard those edits by
+// deleting and recreating that row from the pristine template every
+// time. Safe for Template Evaluator too — it never edits its one
+// dataset's rows (no CRUD UI for that role), so finding vs. re-ingesting
+// the exact same category is observably identical either way for it.
 router.post('/sme-templates/set-evaluation-default', requireTemplateEligible, async (req, res, next) => {
   try {
     const resolved = resolveTemplateFile(req.body.template_file);
@@ -237,14 +261,21 @@ router.post('/sme-templates/set-evaluation-default', requireTemplateEligible, as
       return res.redirect('/sme-templates');
     }
 
-    const raw = fs.readFileSync(resolved.fullPath, 'utf-8');
-    const records = parse(raw, { columns: true, skip_empty_lines: true });
+    const accountId = req.session.userId;
+    const category = resolved.row.sme_business_category;
 
-    const { datasetRowId } = await ingestTemplateForEvaluation(req.session.userId, resolved, records);
+    let datasetRowId = await findEvaluationCopyByCategory(accountId, category);
+    if (datasetRowId) {
+      await setDefaultDataset(accountId, datasetRowId);
+    } else {
+      const raw = fs.readFileSync(resolved.fullPath, 'utf-8');
+      const records = parse(raw, { columns: true, skip_empty_lines: true });
+      ({ datasetRowId } = await ingestTemplateForEvaluation(accountId, resolved, records));
+    }
 
     await pool.query(
       'UPDATE sme_accounts SET evaluation_template_file = $1 WHERE id = $2',
-      [resolved.row.template_file, req.session.userId],
+      [resolved.row.template_file, accountId],
     );
     req.session.user.evaluation_template_file = resolved.row.template_file;
     req.session.user.default_dataset_id = datasetRowId;
@@ -313,42 +344,117 @@ router.get('/sme-templates/reference/:file', requireAuth, (req, res) => {
 });
 
 // ------------------------------------------------------------------
-// Business Owner Evaluator's own editable version of the evaluation
+// Business Owner Evaluator's own editable copies of the evaluation
 // dataset — added 2 October 2026, per Brenda's explicit request: "allow
 // the business owner to do CRUD operation on the dataset selected like
 // in excel template", specifically so a Business Owner Evaluator can
 // validate for themselves whether adding a row or changing a value
-// actually changes what the four analytics modules compute. Unlike GET
-// /sme-templates/evaluation-data above (which reads the shared, static
-// template CSV straight off disk — read-only by design, since it's also
-// what Template Evaluator browses), every route below reads and writes
-// this account's OWN already-ingested dataset_records rows — the exact
-// rows Descriptive/Diagnostic/Predictive/Prescriptive already compute
-// from — so an edit here is a real edit to the account's working dataset,
-// not a separate copy. requireBusinessOwner (not requireTemplateEligible)
-// gates all four: see that function's comment for why Template Evaluator
+// actually changes what the four analytics modules compute. Extended 3
+// October 2026, again per Brenda's explicit request, to a MULTI-copy
+// model: picking a business category no longer replaces whatever copy
+// the account already had — each category gets its own unique
+// dataset_id (services/templateEvaluationIngest.js's datasetIdForCategory())
+// and its own row in uploaded_datasets, so an account can hold several
+// categories' worth of copies at once, each independently add/edit/
+// delete-able, while the shared, read-only source template CSV under
+// data/sme-templates/ is never written to by any of this — every route
+// below reads and writes only this account's OWN already-ingested
+// dataset_records rows (the exact rows Descriptive/Diagnostic/Predictive/
+// Prescriptive compute from for whichever copy is currently "default"),
+// never the static file. requireBusinessOwner (not requireTemplateEligible)
+// gates all five: see that function's comment for why Template Evaluator
 // is deliberately excluded.
 // ------------------------------------------------------------------
 
+// GET /sme-templates/evaluation-dataset — lists every copy this account
+// currently holds (one per category it has picked), each linking to its
+// own editor below. The account's own default_dataset_id (read fresh,
+// not from session, so a switch made from another device/tab is never
+// shown as stale) marks which one is "★ Current" — i.e. which copy Task
+// 1 and the four analytics modules fall back to with no explicit
+// ?dataset= chosen.
 router.get('/sme-templates/evaluation-dataset', requireBusinessOwner, async (req, res, next) => {
   try {
     const accountId = req.session.userId;
-    const evalData = await loadEvaluationDataset(accountId);
+    const [copies, { rows: acctRows }] = await Promise.all([
+      listEvaluationDatasetCopies(accountId),
+      pool.query('SELECT default_dataset_id FROM sme_accounts WHERE id = $1', [accountId]),
+    ]);
+    const defaultDatasetId = acctRows[0] ? acctRows[0].default_dataset_id : null;
+    res.render('dashboard/evaluation-dataset-list', {
+      title: 'My Evaluation Dataset Copies',
+      // Same reasoning as the per-copy editor's own active value just
+      // below — see that route's comment.
+      active: 'evaluation-dataset-editor',
+      copies,
+      defaultDatasetId,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /sme-templates/evaluation-dataset/:datasetRowId/set-current — the
+// listing page's own "Set as current" button: switches which existing
+// copy is this account's default dataset WITHOUT touching its rows (just
+// setDefaultDataset(), same as the "already have a copy of this category"
+// branch of POST /sme-templates/set-evaluation-default above) — the
+// non-destructive counterpart to that route for when the account already
+// knows which copy (by id) it wants, rather than which category. Also
+// keeps sme_accounts.evaluation_template_file in sync (resolved from this
+// copy's own category back to its manifest template_file) since that
+// column is still what Task 1's label and the read-only Template
+// Evaluator page key off.
+router.post('/sme-templates/evaluation-dataset/:datasetRowId/set-current', requireBusinessOwner, async (req, res, next) => {
+  try {
+    const accountId = req.session.userId;
+    const datasetRowId = parseInt(req.params.datasetRowId, 10);
+    if (!datasetRowId) return res.redirect('/sme-templates/evaluation-dataset');
+
+    const datasetRow = await getEvaluationDatasetById(accountId, datasetRowId);
+    if (!datasetRow) return res.redirect('/sme-templates/evaluation-dataset');
+
+    await setDefaultDataset(accountId, datasetRow.id);
+
+    const manifest = loadManifest();
+    const manifestRow = manifest.find((r) => r.sme_business_category === datasetRow.domain);
+    if (manifestRow) {
+      await pool.query('UPDATE sme_accounts SET evaluation_template_file = $1 WHERE id = $2', [manifestRow.template_file, accountId]);
+      req.session.user.evaluation_template_file = manifestRow.template_file;
+    }
+    req.session.user.default_dataset_id = datasetRow.id;
+
+    res.redirect('/sme-templates/evaluation-dataset');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /sme-templates/evaluation-dataset/:datasetRowId — the Excel-style
+// CRUD grid for ONE specific copy, by its uploaded_datasets.id.
+router.get('/sme-templates/evaluation-dataset/:datasetRowId', requireBusinessOwner, async (req, res, next) => {
+  try {
+    const accountId = req.session.userId;
+    const datasetRowId = parseInt(req.params.datasetRowId, 10);
+    if (!datasetRowId) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
+
+    const evalData = await loadEvaluationDataset(accountId, datasetRowId);
     if (!evalData) {
       req.session.flashError = 'Pick a business category template first, from Download SME Templates.';
       return res.redirect('/sme-templates');
     }
     const columns = evalData.records.length > 0 ? Object.keys(evalData.records[0].data) : [];
-    const templateFile = req.session.user.evaluation_template_file;
-    const categoryLabel = (templateFile && labelForTemplateFile(templateFile)) || templateFile || null;
     res.render('dashboard/evaluation-dataset-editor', {
       title: 'Edit Your Evaluation Dataset',
       // Own active value (not 'sme-templates') for the same reason
       // 'evaluation-data-browser' has one — see that route's comment —
       // plus views/partials/sidebar.ejs's matching lookup, extended to
       // treat this value as "on the Download SME Templates page" too.
+      // Shared with the listing route above, so either page lights up
+      // the same nav item.
       active: 'evaluation-dataset-editor',
-      categoryLabel,
+      datasetRowId: evalData.datasetRowId,
+      categoryLabel: evalData.categoryLabel,
       columns,
       records: evalData.records,
     });
@@ -357,17 +463,20 @@ router.get('/sme-templates/evaluation-dataset', requireBusinessOwner, async (req
   }
 });
 
-// POST /sme-templates/evaluation-dataset/rows — Create: appends one blank
-// row (same columns as every existing row, all values '') at the next
-// row_index, then bumps dataset_files so the four analytics modules
-// recompute from it on next view. Refuses when the dataset has no rows
-// yet to copy a column shape from — can't happen via the UI (which hides
-// "Add row" in that case) but checked here too, since this is a real API
-// a client could call with no UI in front of it.
-router.post('/sme-templates/evaluation-dataset/rows', requireBusinessOwner, async (req, res, next) => {
+// POST /sme-templates/evaluation-dataset/:datasetRowId/rows — Create:
+// appends one blank row (same columns as every existing row, all values
+// '') at the next row_index, then bumps dataset_files so the four
+// analytics modules recompute from it on next view. Refuses when the
+// dataset has no rows yet to copy a column shape from — can't happen via
+// the UI (which hides "Add row" in that case) but checked here too,
+// since this is a real API a client could call with no UI in front of it.
+router.post('/sme-templates/evaluation-dataset/:datasetRowId/rows', requireBusinessOwner, async (req, res, next) => {
   try {
     const accountId = req.session.userId;
-    const evalData = await loadEvaluationDataset(accountId);
+    const datasetRowId = parseInt(req.params.datasetRowId, 10);
+    if (!datasetRowId) return res.status(400).json({ error: 'bad_request' });
+
+    const evalData = await loadEvaluationDataset(accountId, datasetRowId);
     if (!evalData) return res.status(404).json({ error: 'not_found' });
     if (evalData.records.length === 0) {
       return res.status(400).json({ error: 'no_columns', message: 'This dataset has no rows to copy column names from yet.' });
@@ -395,25 +504,27 @@ router.post('/sme-templates/evaluation-dataset/rows', requireBusinessOwner, asyn
   }
 });
 
-// PATCH /sme-templates/evaluation-dataset/rows/:recordId — Update: edits
-// ONE column of one row in place (jsonb_set, so the rest of that row's
-// data is untouched), scoped to this account's own evaluation dataset so
-// a recordId can never reach another account's row. Stores the new value
-// as a JSON string the same way every ingested CSV value already is —
+// PATCH /sme-templates/evaluation-dataset/:datasetRowId/rows/:recordId —
+// Update: edits ONE column of one row in place (jsonb_set, so the rest of
+// that row's data is untouched), scoped to this specific copy AND this
+// account, so a recordId can never reach another account's row, or even
+// a different copy of this SAME account's. Stores the new value as a
+// JSON string the same way every ingested CSV value already is —
 // services/datasetProfiler.js's tryParseNumber() (and every analytics
 // module built on it) already expects string-typed cells and coerces as
 // needed, so an edited cell behaves exactly like one that came from the
 // original upload.
-router.patch('/sme-templates/evaluation-dataset/rows/:recordId', requireBusinessOwner, async (req, res, next) => {
+router.patch('/sme-templates/evaluation-dataset/:datasetRowId/rows/:recordId', requireBusinessOwner, async (req, res, next) => {
   try {
     const accountId = req.session.userId;
+    const datasetRowId = parseInt(req.params.datasetRowId, 10);
     const recordId = parseInt(req.params.recordId, 10);
     const { column, value } = req.body || {};
-    if (!recordId || typeof column !== 'string' || !column) {
+    if (!datasetRowId || !recordId || typeof column !== 'string' || !column) {
       return res.status(400).json({ error: 'bad_request' });
     }
 
-    const evalData = await loadEvaluationDataset(accountId);
+    const evalData = await loadEvaluationDataset(accountId, datasetRowId);
     if (!evalData) return res.status(404).json({ error: 'not_found' });
     // column must already be one of this row's own keys — never lets an
     // edit silently introduce a new column the rest of the grid, and
@@ -439,24 +550,28 @@ router.patch('/sme-templates/evaluation-dataset/rows/:recordId', requireBusiness
   }
 });
 
-// DELETE /sme-templates/evaluation-dataset/rows/:recordId — Delete:
-// removes one row outright. Refuses to delete the LAST remaining row —
-// not because the schema requires it, but because an empty dataset would
-// leave Full Descriptive Analytics and the business-semantic engine
-// profiling zero rows, which every one of the four modules treats as "not
-// applicable" rather than something meaningful to show; losing the
-// dataset entirely is also very unlikely to be what "like in Excel" row
-// deletion was meant to allow unsupervised.
-router.delete('/sme-templates/evaluation-dataset/rows/:recordId', requireBusinessOwner, async (req, res, next) => {
+// DELETE /sme-templates/evaluation-dataset/:datasetRowId/rows/:recordId —
+// Delete: removes one row outright, from this one specific copy. Refuses
+// to delete the LAST remaining row in that copy — not because the schema
+// requires it, but because an empty dataset would leave Full Descriptive
+// Analytics and the business-semantic engine profiling zero rows, which
+// every one of the four modules treats as "not applicable" rather than
+// something meaningful to show; losing a copy entirely is also very
+// unlikely to be what "like in Excel" row deletion was meant to allow
+// unsupervised. (Removing a copy ENTIRELY — not just down to one row —
+// isn't offered anywhere yet; only row-level CRUD within a copy was
+// asked for.)
+router.delete('/sme-templates/evaluation-dataset/:datasetRowId/rows/:recordId', requireBusinessOwner, async (req, res, next) => {
   try {
     const accountId = req.session.userId;
+    const datasetRowId = parseInt(req.params.datasetRowId, 10);
     const recordId = parseInt(req.params.recordId, 10);
-    if (!recordId) return res.status(400).json({ error: 'bad_request' });
+    if (!datasetRowId || !recordId) return res.status(400).json({ error: 'bad_request' });
 
-    const evalData = await loadEvaluationDataset(accountId);
+    const evalData = await loadEvaluationDataset(accountId, datasetRowId);
     if (!evalData) return res.status(404).json({ error: 'not_found' });
     if (evalData.records.length <= 1) {
-      return res.status(400).json({ error: 'last_row', message: "Can't delete the last remaining row — the dataset would be empty." });
+      return res.status(400).json({ error: 'last_row', message: "Can't delete the last remaining row — this dataset copy would be empty." });
     }
     if (!evalData.records.some((r) => r.id === recordId)) {
       return res.status(404).json({ error: 'not_found' });

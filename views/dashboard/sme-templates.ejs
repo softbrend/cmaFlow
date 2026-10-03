@@ -17,8 +17,13 @@
     <div class="form-title" style="font-size: 15px;">Default CSV for evaluation</div>
     <% if (evaluationTemplateFile) {
          var defaultRow = manifest.find(function (r) { return r.template_file === evaluationTemplateFile; }); %>
-      <p class="form-hint" style="margin-bottom: 10px;">You're currently using <strong><%= defaultRow ? defaultRow.sme_business_category : evaluationTemplateFile %></strong> as your default CSV for evaluation<% if (isBusinessOwner) { %> — add, edit, or delete rows below and the four analytics modules (Descriptive, Diagnostic, Predictive, Prescriptive) will reflect your changes next time you open them.<% } else { %> — its 50 rows are what you'll browse and filter below. Pick "Use for evaluation" on a different row any time to switch.<% } %></p>
-      <a class="btn btn-accent btn-sm" href="<%= isBusinessOwner ? '/sme-templates/evaluation-dataset' : '/sme-templates/evaluation-data' %>"><%= isBusinessOwner ? 'Open editable dataset (add / edit / delete rows) →' : 'Browse records in table format' %></a>
+      <p class="form-hint" style="margin-bottom: 10px;">You're currently using <strong><%= defaultRow ? defaultRow.sme_business_category : evaluationTemplateFile %></strong> as your default CSV for evaluation<% if (isBusinessOwner) { %> — add, edit, or delete rows on its own page and the four analytics modules (Descriptive, Diagnostic, Predictive, Prescriptive) will reflect your changes next time you open them. Each category you pick below keeps its own separate, editable copy under its own dataset ID — picking a different one never erases this one.<% } else { %> — its 50 rows are what you'll browse and filter below. Pick "Use for evaluation" on a different row any time to switch.<% } %></p>
+      <% if (isBusinessOwner) { %>
+        <a class="btn btn-accent btn-sm" href="/sme-templates/evaluation-dataset/<%= categoryToDatasetRowId[defaultRow ? defaultRow.sme_business_category : ''] %>">Open editable dataset (add / edit / delete rows) →</a>
+        <a class="btn btn-ghost btn-sm" href="/sme-templates/evaluation-dataset">View all your dataset copies</a>
+      <% } else { %>
+        <a class="btn btn-accent btn-sm" href="/sme-templates/evaluation-data">Browse records in table format</a>
+      <% } %>
     <% } else { %>
       <p class="form-hint" style="margin-bottom: 0;">Pick "Use for evaluation" on any row below to set that template's 50 synthetic rows as your reference dataset — you'll then be able to browse and filter them in a table to check record values against the generated reports.</p>
     <% } %>
@@ -51,14 +56,43 @@
               <a class="btn btn-accent btn-sm" href="/sme-templates/download/<%= row.template_file %>">Download CSV</a>
             </td>
             <% if (isExpertEvaluator) { %>
-              <td style="text-align: right;">
-                <% if (isEvalDefault) { %>
-                  <a class="btn btn-ghost btn-sm" href="<%= isBusinessOwner ? '/sme-templates/evaluation-dataset' : '/sme-templates/evaluation-data' %>"><%= isBusinessOwner ? 'Edit records' : 'Browse records' %></a>
+              <%
+                // Business Owner Evaluator only (added 3 October 2026,
+                // alongside the multi-copy model): categoryToDatasetRowId
+                // tells us whether this account already has ITS OWN copy
+                // of this particular category, independent of whether
+                // that copy is the current default (isEvalDefault) —
+                // Template Evaluator has no such map (it only ever has
+                // the one copy total, already fully described by
+                // isEvalDefault alone), so ownDatasetRowId stays
+                // undefined and the plain Template Evaluator branch below
+                // is unchanged from before this round.
+                var ownDatasetRowId = isBusinessOwner && categoryToDatasetRowId ? categoryToDatasetRowId[row.sme_business_category] : null;
+              %>
+              <td style="text-align: right; white-space: nowrap;">
+                <% if (isBusinessOwner) { %>
+                  <% if (ownDatasetRowId) { %>
+                    <a class="btn btn-ghost btn-sm" href="/sme-templates/evaluation-dataset/<%= ownDatasetRowId %>">Edit records</a>
+                    <% if (!isEvalDefault) { %>
+                      <form method="POST" action="/sme-templates/evaluation-dataset/<%= ownDatasetRowId %>/set-current" style="display:inline;">
+                        <button type="submit" class="btn btn-ghost btn-sm">Set as current</button>
+                      </form>
+                    <% } %>
+                  <% } else { %>
+                    <form method="POST" action="/sme-templates/set-evaluation-default" style="display:inline;">
+                      <input type="hidden" name="template_file" value="<%= row.template_file %>" />
+                      <button type="submit" class="btn btn-ghost btn-sm">Use for evaluation</button>
+                    </form>
+                  <% } %>
                 <% } else { %>
-                  <form method="POST" action="/sme-templates/set-evaluation-default" style="display:inline;">
-                    <input type="hidden" name="template_file" value="<%= row.template_file %>" />
-                    <button type="submit" class="btn btn-ghost btn-sm">Use for evaluation</button>
-                  </form>
+                  <% if (isEvalDefault) { %>
+                    <a class="btn btn-ghost btn-sm" href="/sme-templates/evaluation-data">Browse records</a>
+                  <% } else { %>
+                    <form method="POST" action="/sme-templates/set-evaluation-default" style="display:inline;">
+                      <input type="hidden" name="template_file" value="<%= row.template_file %>" />
+                      <button type="submit" class="btn btn-ghost btn-sm">Use for evaluation</button>
+                    </form>
+                  <% } %>
                 <% } %>
               </td>
             <% } %>

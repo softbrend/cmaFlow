@@ -1,0 +1,46 @@
+<div class="page-title">🗂️ <span class="page-title-text">My Evaluation Dataset Copies</span></div>
+<p class="page-subtitle">
+  Every business category you've picked gets its own copy here, under its own unique dataset ID — separate from the shared template CSV and separate from each other, so editing one never affects another. Whichever copy is marked ★ Current is the one Task 1 and the four analytics modules (Descriptive, Diagnostic, Predictive, Prescriptive) use.
+  <a href="/sme-templates" style="margin-left: 6px;">Pick another category →</a>
+</p>
+
+<div class="form-card wide" style="max-width: none;">
+  <div class="table-scroll">
+    <table class="table-simple">
+      <thead>
+        <tr>
+          <th>Business category</th>
+          <th>Dataset ID</th>
+          <th>Rows</th>
+          <th>Last updated</th>
+          <th></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (copies.length === 0) { %>
+          <tr><td colspan="6" style="color: var(--text-muted);">You don't have any dataset copies yet. <a href="/sme-templates">Pick a business category</a> to get your first one.</td></tr>
+        <% } %>
+        <% copies.forEach(function (c) {
+             var isCurrent = defaultDatasetId && c.id === defaultDatasetId; %>
+          <tr<% if (isCurrent) { %> style="background: var(--bg-input);"<% } %>>
+            <td><%= c.domain || c.dataset_name %><% if (isCurrent) { %> <span class="badge badge-active" style="margin-left: 6px;">★ Current</span><% } %></td>
+            <td style="color: var(--text-muted); font-size: 13px;"><%= c.dataset_id %></td>
+            <td><%= c.row_count %></td>
+            <td><%= new Date(c.created_at).toLocaleDateString() %></td>
+            <td style="text-align: right;">
+              <a class="btn btn-ghost btn-sm" href="/sme-templates/evaluation-dataset/<%= c.id %>">Edit records</a>
+            </td>
+            <td style="text-align: right;">
+              <% if (!isCurrent) { %>
+                <form method="POST" action="/sme-templates/evaluation-dataset/<%= c.id %>/set-current" style="display:inline;">
+                  <button type="submit" class="btn btn-ghost btn-sm">Set as current</button>
+                </form>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>

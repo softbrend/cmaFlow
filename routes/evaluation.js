@@ -78,11 +78,20 @@ router.get('/evaluation', async (req, res, next) => {
       : null;
     // Business Owner Evaluator only (added 2 October 2026) — lets Task 1's
     // card offer a direct link into the new editable CRUD grid at GET
-    // /sme-templates/evaluation-dataset (routes/templates.js), alongside
-    // the "Use" button both template-system roles already get. Template
-    // Evaluator never sees this link: its own evaluation dataset stays
-    // read-only (see requireBusinessOwner()'s comment in routes/templates.js).
+    // /sme-templates/evaluation-dataset/:id (routes/templates.js),
+    // alongside the "Use" button both template-system roles already get.
+    // Template Evaluator never sees this link: its own evaluation dataset
+    // stays read-only (see requireBusinessOwner()'s comment in
+    // routes/templates.js).
     const isBusinessOwnerRole = role === BUSINESS_ROLE;
+    // The account's CURRENT copy's own row id (added 3 October 2026,
+    // alongside the multi-copy model — an account can hold several
+    // copies at once, one per category, so Task 1 links straight at
+    // whichever one is "default" rather than a bare, id-less route that
+    // no longer exists on its own). null until the account has a default
+    // dataset at all, in which case the walkthrough view falls back to
+    // linking the "My evaluation dataset copies" listing instead.
+    const evaluationDatasetRowId = (isBusinessOwnerRole && req.session.user.default_dataset_id) || null;
     const { session, taskLogs, responses } = await getEvaluationState(accountId, role, req.session.user && req.session.user.evaluation_flow);
 
     // Republic Act No. 10173 (Data Privacy Act of 2012): no walkthrough or
@@ -133,6 +142,7 @@ router.get('/evaluation', async (req, res, next) => {
         evaluationTemplateFile,
         evaluationDatasetLabel,
         isBusinessOwnerRole,
+        evaluationDatasetRowId,
       });
     }
 

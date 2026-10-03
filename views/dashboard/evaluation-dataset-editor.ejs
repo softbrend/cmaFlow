@@ -1,14 +1,15 @@
 <div class="page-title">✏️ <span class="page-title-text">Edit Your Evaluation Dataset</span></div>
 <p class="page-subtitle">
-  <% if (categoryLabel) { %><strong><%= categoryLabel %></strong> — <% } %><%= records.length %> row<%= records.length === 1 ? '' : 's' %>, this is your own working copy of the dataset Descriptive, Diagnostic, Predictive, and Prescriptive Analytics compute from. Click any cell to edit it (like a spreadsheet) — it saves automatically when you click away. Add or delete rows below. Changes here are picked up the next time you open one of the four analytics modules.
-  <a href="/sme-templates" style="margin-left: 6px;">Back to Download SME Templates</a>
+  <% if (categoryLabel) { %><strong><%= categoryLabel %></strong> — <% } %><%= records.length %> row<%= records.length === 1 ? '' : 's' %>, this is your own working copy of this category's template — separate from the shared template CSV, and separate from any other category's copy you hold. Click any cell to edit it (like a spreadsheet) — it saves automatically when you click away. Add or delete rows below. Changes here are picked up the next time you open one of the four analytics modules, if this copy is your current default dataset.
+  <a href="/sme-templates/evaluation-dataset" style="margin-left: 6px;">All your dataset copies</a> ·
+  <a href="/sme-templates">Download SME Templates</a>
 </p>
 
 <div id="eval-editor-alert" class="alert-error" style="display:none;" role="alert"></div>
 
 <% if (columns.length === 0) { %>
   <div class="form-card wide data-browser-card" style="max-width: none;">
-    <p class="form-hint" style="margin: 0;">This dataset has no rows yet, so there are no columns to show or edit. Go back to Download SME Templates and pick (or re-pick) a business category to get a fresh 50-row dataset to work with.</p>
+    <p class="form-hint" style="margin: 0;">This dataset copy has no rows, so there are no columns to show or edit. Go back to Download SME Templates and pick a business category to get a fresh copy to work with.</p>
   </div>
 <% } else { %>
   <div class="form-card wide data-browser-card" style="margin-bottom: 18px;">
@@ -20,7 +21,7 @@
 
   <div class="form-card wide data-browser-card" style="max-width: none;">
     <div class="table-scroll eval-editor-scroll">
-      <table class="table-simple excel-table" id="eval-editor-table" data-columns="<%= columns.join('|') %>">
+      <table class="table-simple excel-table" id="eval-editor-table" data-dataset-row-id="<%= datasetRowId %>" data-columns="<%= columns.join('|') %>">
         <thead>
           <tr>
             <% columns.forEach(function (col) { %><th><%= col.replace(/_/g, ' ') %></th><% }); %>
@@ -54,6 +55,7 @@
   var alertEl = document.getElementById('eval-editor-alert');
   var addBtn = document.getElementById('eval-add-row');
   var columns = table.getAttribute('data-columns').split('|');
+  var rowsBase = '/sme-templates/evaluation-dataset/' + table.getAttribute('data-dataset-row-id') + '/rows';
 
   function showError(message) {
     alertEl.textContent = message;
@@ -130,7 +132,7 @@
       var recordId = tr.getAttribute('data-record-id');
       var column = cell.getAttribute('data-column');
       tr.classList.add('row-pending');
-      fetch('/sme-templates/evaluation-dataset/rows/' + recordId, {
+      fetch(rowsBase + '/' + recordId, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ column: column, value: newValue }),
@@ -163,7 +165,7 @@
       if (!window.confirm('Delete this row? This cannot be undone.')) return;
       tr.classList.add('row-pending');
       btn.disabled = true;
-      fetch('/sme-templates/evaluation-dataset/rows/' + recordId, { method: 'DELETE' })
+      fetch(rowsBase + '/' + recordId, { method: 'DELETE' })
         .then(function (resp) { return resp.json().then(function (body) { return { ok: resp.ok, body: body }; }); })
         .then(function (result) {
           if (!result.ok) {
@@ -191,7 +193,7 @@
   addBtn.addEventListener('click', function () {
     clearError();
     addBtn.disabled = true;
-    fetch('/sme-templates/evaluation-dataset/rows', { method: 'POST' })
+    fetch(rowsBase, { method: 'POST' })
       .then(function (resp) { return resp.json().then(function (body) { return { ok: resp.ok, body: body }; }); })
       .then(function (result) {
         addBtn.disabled = false;
