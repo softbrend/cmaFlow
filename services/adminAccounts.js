@@ -117,7 +117,7 @@ async function listSmeTamAccounts(search) {
   if (trimmed) {
     const like = `%${trimmed}%`;
     const { rows } = await pool.query(
-      `SELECT id, username, owner_name, business_name, email, business_sector, role, created_at
+      `SELECT id, username, owner_name, business_name, email, business_sector, business_type, business_size, role, created_at
          FROM sme_accounts
         WHERE role = 'SME Owner-TAM Evaluator'
           AND (username ILIKE $1 OR owner_name ILIKE $1 OR business_name ILIKE $1 OR email ILIKE $1)
@@ -127,7 +127,7 @@ async function listSmeTamAccounts(search) {
     return rows;
   }
   const { rows } = await pool.query(
-    `SELECT id, username, owner_name, business_name, email, business_sector, role, created_at
+    `SELECT id, username, owner_name, business_name, email, business_sector, business_type, business_size, role, created_at
        FROM sme_accounts
       WHERE role = 'SME Owner-TAM Evaluator'
       ORDER BY created_at DESC`
@@ -137,7 +137,8 @@ async function listSmeTamAccounts(search) {
 
 async function getAccountById(id) {
   const { rows } = await pool.query(
-    `SELECT id, username, owner_name, business_name, email, role, cohort, evaluation_flow, created_at
+    `SELECT id, username, owner_name, business_name, email, role, cohort, evaluation_flow,
+            business_sector, business_type, business_size, created_at
        FROM sme_accounts WHERE id = $1`,
     [id]
   );

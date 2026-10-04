@@ -1,6 +1,12 @@
 <div class="page-title">🧪 <span class="page-title-text">SME Owner-TAM Evaluation — <%= account.owner_name %></span></div>
 <p class="page-subtitle"><%= account.username %> · <%= account.business_name %></p>
 
+<div class="ok-box" style="margin-bottom: 18px; line-height: 1.7;">
+  <div><strong>Business/Affiliation Type:</strong> <%= account.business_type || '—' %></div>
+  <div><strong>SME Business Category:</strong> <%= account.business_sector || '—' %></div>
+  <div><strong>Business Size:</strong> <%= account.business_size || '—' %></div>
+</div>
+
 <p style="margin-bottom: 18px;"><a href="/admin/sme-tam-evaluations">← Back to SME Owner-TAM evaluations</a></p>
 
 <% if (!session) { %>

@@ -499,13 +499,33 @@ router.get('/smeOwnerTam-signup/register', redirectIfAuthed, (req, res) => {
     errors: [],
     old: {},
     categories: loadCategories(),
+      businessSizes: SME_TAM_BUSINESS_SIZES,
   });
 });
 
 // Identical field set/validation to businessOwnerSignupValidators above —
 // reused directly rather than copied, so the two signup forms can never
 // drift apart on what they require.
-router.post('/smeOwnerTam-signup/register', redirectIfAuthed, businessOwnerSignupValidators, async (req, res, next) => {
+const SME_TAM_BUSINESS_SIZES = [
+  { value: 'Micro Enterprise', label: 'Micro Enterprise (1–9 employees)' },
+  { value: 'Small Enterprise', label: 'Small Enterprise (10–99 employees)' },
+  { value: 'Medium Enterprise', label: 'Medium Enterprise (100–199 employees)' },
+];
+
+const smeTamSignupValidators = [
+  ...businessOwnerSignupValidators,
+  body('business_type')
+    .trim()
+    .notEmpty().withMessage('Your business / affiliation type is required (for example: Café).')
+    .bail()
+    .isLength({ max: 100 }).withMessage('Business / affiliation type must be 100 characters or fewer.'),
+  body('business_size')
+    .trim()
+    .custom((value) => SME_TAM_BUSINESS_SIZES.some((s) => s.value === value))
+    .withMessage('Select your business size.'),
+];
+
+router.post('/smeOwnerTam-signup/register', redirectIfAuthed, smeTamSignupValidators, async (req, res, next) => {
   if (!req.session.smeTamCodeVerified) {
     return res.redirect('/smeOwnerTam-signup');
   }
@@ -518,11 +538,13 @@ router.post('/smeOwnerTam-signup/register', redirectIfAuthed, businessOwnerSignu
       errors: result.array(),
       old: req.body,
       categories: loadCategories(),
+      businessSizes: SME_TAM_BUSINESS_SIZES,
     });
   }
 
   const {
     username, full_name, affiliation, email, business_category, password, dataset_origin,
+    business_type, business_size,
   } = req.body;
   const useBlankDataset = dataset_origin === 'blank';
 
@@ -530,10 +552,10 @@ router.post('/smeOwnerTam-signup/register', redirectIfAuthed, businessOwnerSignu
     const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
     const { rows } = await pool.query(
       `INSERT INTO sme_accounts
-         (username, owner_name, business_name, email, business_sector, password_hash, role, evaluation_flow)
-       VALUES ($1, $2, $3, $4, $5, $6, 'SME Owner-TAM Evaluator', 'direct')
-       RETURNING id, username, owner_name, business_name, email, role, business_sector, assigned_dataset, evaluation_flow`,
-      [username, full_name, affiliation, email, business_category, password_hash]
+         (username, owner_name, business_name, email, business_sector, business_type, business_size, password_hash, role, evaluation_flow)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'SME Owner-TAM Evaluator', 'direct')
+       RETURNING id, username, owner_name, business_name, email, role, business_sector, business_type, business_size, assigned_dataset, evaluation_flow`,
+      [username, full_name, affiliation, email, business_category, business_type, business_size, password_hash]
     );
 
     const account = rows[0];
@@ -566,6 +588,7 @@ router.post('/smeOwnerTam-signup/register', redirectIfAuthed, businessOwnerSignu
         errors: [{ msg: 'That username or email is already registered.' }],
         old: req.body,
         categories: loadCategories(),
+      businessSizes: SME_TAM_BUSINESS_SIZES,
       });
     }
     next(err);

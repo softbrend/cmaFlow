@@ -123,6 +123,14 @@ ALTER TABLE sme_accounts VALIDATE CONSTRAINT sme_accounts_role_check;
 -- Admin accounts (no TAM responses of their own).
 ALTER TABLE sme_accounts ADD COLUMN IF NOT EXISTS cohort VARCHAR(30);
 
+-- Business profile captured at the SME Owner-TAM Evaluator signup
+-- (added 4 October 2026): what kind of business/affiliation the respondent
+-- runs (free text, e.g. 'Cafe') and its size (Micro / Small / Medium
+-- Enterprise). Both nullable — every other role's accounts, and any
+-- pre-existing account, simply leave them empty.
+ALTER TABLE sme_accounts ADD COLUMN IF NOT EXISTS business_type VARCHAR(100);
+ALTER TABLE sme_accounts ADD COLUMN IF NOT EXISTS business_size VARCHAR(50);
+
 DO $$
 BEGIN
   ALTER TABLE sme_accounts

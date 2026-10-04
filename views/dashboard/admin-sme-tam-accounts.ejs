@@ -22,7 +22,9 @@
           <th>Username</th>
           <th>Name</th>
           <th>Business / affiliation</th>
-          <th>Business category evaluated</th>
+          <th>Business / affiliation type</th>
+          <th>SME business category</th>
+          <th>Business size</th>
           <th>Email</th>
           <th>Joined</th>
           <th></th>
@@ -30,14 +32,16 @@
       </thead>
       <tbody>
         <% if (accounts.length === 0) { %>
-          <tr><td colspan="7" style="color: var(--text-muted);">No SME Owner-TAM Evaluator accounts match "<%= q %>".</td></tr>
+          <tr><td colspan="9" style="color: var(--text-muted);">No SME Owner-TAM Evaluator accounts match "<%= q %>".</td></tr>
         <% } %>
         <% accounts.forEach(function(a) { %>
           <tr>
             <td><%= a.username %></td>
             <td><%= a.owner_name %></td>
             <td><%= a.business_name %></td>
+            <td><%= a.business_type || '—' %></td>
             <td><%= a.business_sector || '—' %></td>
+            <td><%= a.business_size || '—' %></td>
             <td><%= a.email %></td>
             <td><%= new Date(a.created_at).toLocaleDateString() %></td>
             <td style="text-align: right; white-space: nowrap;">

@@ -647,6 +647,7 @@ async function listAllBusinessOwnerEvaluationStatuses() {
 async function listAllSmeTamEvaluationStatuses() {
   const { rows } = await pool.query(
     `SELECT a.id AS account_id, a.username, a.owner_name, a.business_name,
+            a.business_type, a.business_sector, a.business_size,
             s.status, s.current_task, s.started_at,
             s.consent_status, s.consent_decided_at,
             s.walkthrough_completed_at, s.completed_at,

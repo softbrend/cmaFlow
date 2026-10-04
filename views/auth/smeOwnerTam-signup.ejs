@@ -1,6 +1,6 @@
 <div class="form-card wide">
   <div class="form-title"><img src="/img/cma-flow-icon.png" alt="CMA-Flow" style="width:28px; height:28px; border-radius:7px; background:#fff; padding:2px; vertical-align:-6px; margin-right:8px;" />Create your SME Owner-TAM Evaluator account</div>
-  <p class="form-hint">Information captured: username, full name, business / affiliation, email, the business category you'll evaluate, and password. You'll download that category's CSV template (or use the one automatically assigned to you), open any of CMA-Flow's four analytics modules in whatever order you like (there is no walkthrough to follow), and complete a short evaluation whenever you are ready using the Technology Acceptance Model (TAM) questionnaire.</p>
+  <p class="form-hint">Information captured: username, full name, business / affiliation, business / affiliation type, email, SME business category, business size, and password. You'll download that category's CSV template (or use the one automatically assigned to you), open any of CMA-Flow's four analytics modules in whatever order you like (there is no walkthrough to follow), and complete a short evaluation whenever you are ready using the Technology Acceptance Model (TAM) questionnaire.</p>
 
   <% if (errors && errors.length) { %>
     <div class="alert-error">
@@ -27,12 +27,17 @@
     </div>
 
     <div class="field">
+      <label for="business_type">Business / affiliation type</label>
+      <input type="text" id="business_type" name="business_type" maxlength="100" placeholder="e.g. Café" value="<%= old.business_type || '' %>" required />
+    </div>
+
+    <div class="field">
       <label for="email">Email</label>
       <input type="email" id="email" name="email" value="<%= old.email || '' %>" required />
     </div>
 
     <div class="field">
-      <label for="business_category">Business category you will evaluate</label>
+      <label for="business_category">SME Business Category</label>
       <select id="business_category" name="business_category" required>
         <option value="" disabled <%= !old.business_category ? 'selected' : '' %>>Select a business category…</option>
         <% categories.forEach(function(c) { %>
@@ -40,6 +45,16 @@
         <% }); %>
       </select>
       <p class="form-hint" style="margin: 7px 0 0;">Pick the category closest to the business you're evaluating — its CSV template becomes your default dataset automatically, and you can switch to any other category's template later from Download SME Templates.</p>
+    </div>
+
+    <div class="field">
+      <label for="business_size">Business size</label>
+      <select id="business_size" name="business_size" required>
+        <option value="" disabled <%= !old.business_size ? 'selected' : '' %>>Select your business size…</option>
+        <% (businessSizes || []).forEach(function(s) { %>
+          <option value="<%= s.value %>" <%= old.business_size === s.value ? 'selected' : '' %>><%= s.label %></option>
+        <% }); %>
+      </select>
     </div>
 
     <div class="field">
