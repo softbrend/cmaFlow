@@ -206,7 +206,7 @@ router.get('/admin/business-owner-accounts', async (req, res, next) => {
 // ------------------------------------------------------------------
 // GET /admin/sme-tam-accounts — same search-list-and-"Change password"
 // page again, for role = 'SME Owner-TAM Evaluator' accounts only (added
-// 4 October 2026, registered through the separate access-code signup at
+// 4 October 2026, registered through the separate open signup at
 // /smeOwnerTam-signup). Never listed alongside any other population.
 // ------------------------------------------------------------------
 router.get('/admin/sme-tam-accounts', async (req, res, next) => {

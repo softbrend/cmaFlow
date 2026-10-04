@@ -445,7 +445,7 @@ router.post('/businessOwner-signup/register', redirectIfAuthed, businessOwnerSig
 
 // ------------------------------------------------------------------
 // SME Owner-TAM Evaluator signup (added 4 October 2026) — a FOURTH,
-// access-code-gated population, per Brenda's request for a new "SME Owner-
+// separate population, per Brenda's request for a new "SME Owner-
 // TAM evaluator" link: real SME owners who use the same portal the
 // Business Owner Evaluator does (business-category template or blank
 // dataset, Excel-style CRUD, User Manual, the four analytics modules) but
@@ -455,57 +455,33 @@ router.post('/businessOwner-signup/register', redirectIfAuthed, businessOwnerSig
 // results already collected for SME Owner, Template Evaluator and Business
 // Owner Evaluator are never touched. Signup mirrors /businessOwner-signup
 // exactly (same fields, same blank-vs-prefilled starting-dataset choice,
-// same auto-default template ingest) — only the role string, the access
-// code, and evaluation_flow = 'direct' differ. evaluation_flow is set to
+// same auto-default template ingest) — only the role string, the absence of an
+// access code, and evaluation_flow = 'direct' differ. evaluation_flow is set to
 // 'direct' for consistency with Template Evaluator, but nothing depends on
 // it: isDirectFlow() (services/tamEvaluation.js) treats this role as
 // direct unconditionally.
 //
-// GET  /smeOwnerTam-signup            -> the access-code form
-// POST /smeOwnerTam-signup            -> verifies the code, flags the session
-// GET  /smeOwnerTam-signup/register   -> the actual signup form (code-gated)
+// GET  /smeOwnerTam-signup            -> the signup form (open: no access code)
+// GET  /smeOwnerTam-signup/register   -> same form (kept so older links still work)
 // POST /smeOwnerTam-signup/register   -> creates the role='SME Owner-TAM Evaluator' account
+//
+// The access code was removed on 4 October 2026 at Brenda's request, to
+// make starting easier for invited SME owners: the link itself is shared
+// only with valid SME owners and is not linked from any public page.
 // ------------------------------------------------------------------
-const SME_TAM_SIGNUP_CODE = process.env.SME_TAM_SIGNUP_CODE || 'cmaflow-smetam-2026';
-
-router.get('/smeOwnerTam-signup', redirectIfAuthed, (req, res) => {
-  res.render('auth/smeOwnerTam-signup-code', {
-    title: 'SME Owner-TAM Evaluator Access',
-    layout: 'layout-auth',
-    error: null,
-  });
-});
-
-router.post('/smeOwnerTam-signup', redirectIfAuthed, (req, res) => {
-  const submitted = (req.body.access_code || '').trim();
-  if (!submitted || submitted !== SME_TAM_SIGNUP_CODE) {
-    return res.status(400).render('auth/smeOwnerTam-signup-code', {
-      title: 'SME Owner-TAM Evaluator Access',
-      layout: 'layout-auth',
-      error: 'That access code is not correct.',
-    });
-  }
-  req.session.smeTamCodeVerified = true;
-  return res.redirect('/smeOwnerTam-signup/register');
-});
-
-router.get('/smeOwnerTam-signup/register', redirectIfAuthed, (req, res) => {
-  if (!req.session.smeTamCodeVerified) {
-    return res.redirect('/smeOwnerTam-signup');
-  }
+function renderSmeTamSignup(req, res) {
   res.render('auth/smeOwnerTam-signup', {
     title: 'Create your SME Owner-TAM Evaluator account',
     layout: 'layout-auth',
     errors: [],
     old: {},
     categories: loadCategories(),
-      businessSizes: SME_TAM_BUSINESS_SIZES,
+    businessSizes: SME_TAM_BUSINESS_SIZES,
   });
-});
+}
+router.get('/smeOwnerTam-signup', redirectIfAuthed, renderSmeTamSignup);
+router.get('/smeOwnerTam-signup/register', redirectIfAuthed, renderSmeTamSignup);
 
-// Identical field set/validation to businessOwnerSignupValidators above —
-// reused directly rather than copied, so the two signup forms can never
-// drift apart on what they require.
 const SME_TAM_BUSINESS_SIZES = [
   { value: 'Micro Enterprise', label: 'Micro Enterprise (1–9 employees)' },
   { value: 'Small Enterprise', label: 'Small Enterprise (10–99 employees)' },
@@ -540,10 +516,6 @@ const smeTamSignupValidators = [
 ];
 
 router.post('/smeOwnerTam-signup/register', redirectIfAuthed, smeTamSignupValidators, async (req, res, next) => {
-  if (!req.session.smeTamCodeVerified) {
-    return res.redirect('/smeOwnerTam-signup');
-  }
-
   const result = validationResult(req);
   if (!result.isEmpty()) {
     return res.status(400).render('auth/smeOwnerTam-signup', {
@@ -579,7 +551,6 @@ router.post('/smeOwnerTam-signup/register', redirectIfAuthed, smeTamSignupValida
     );
 
     const account = rows[0];
-    delete req.session.smeTamCodeVerified; // one-time: re-entering the code is required for the next account
 
     // Same auto-default as /businessOwner-signup/register: the declared
     // category's template (or a blank copy of it, per the radio choice)
