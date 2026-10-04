@@ -505,6 +505,21 @@ async function saveResponses(session, accountId, answers, role) {
   }
 }
 
+// Free-text feedback box shown after the TAM items for the SME Owner-TAM
+// Evaluator only (added 4 October 2026). Optional; trimmed, capped at
+// FEEDBACK_MAX_LENGTH characters, and an empty box clears it. A no-op for
+// every other role, which has no feedback column.
+const FEEDBACK_MAX_LENGTH = 5000;
+async function saveFeedback(sessionId, text, role) {
+  if (role !== SME_TAM_ROLE) return null;
+  const cleaned = String(text === undefined || text === null ? '' : text).trim().slice(0, FEEDBACK_MAX_LENGTH);
+  await pool.query(
+    `UPDATE ${tablesFor(role).sessions} SET feedback = $1 WHERE id = $2`,
+    [cleaned || null, sessionId]
+  );
+  return cleaned || null;
+}
+
 // Validates the full instrument's own rule (Section 4.1, carried over
 // unchanged for the ISO/IEC 25010 instrument): every item must be
 // rated, and any rating of 3 or below must carry a remark. Returns
@@ -877,6 +892,8 @@ module.exports = {
   startTaskIfNeeded,
   completeTask,
   saveResponses,
+  saveFeedback,
+  FEEDBACK_MAX_LENGTH,
   validateQuestionnaire,
   markCompleted,
   getEvaluationStateReadOnly,

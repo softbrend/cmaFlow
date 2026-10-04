@@ -94,6 +94,15 @@
         </table>
       </div>
     <% }); %>
+
+    <div class="form-card wide" style="margin-bottom: 22px; max-width: none;">
+      <div class="form-title" style="font-size: 18px;">Respondent feedback for improving CMA-Flow</div>
+      <% if (session.feedback) { %>
+        <p style="white-space: pre-wrap; margin: 0;"><%= session.feedback %></p>
+      <% } else { %>
+        <p class="form-hint" style="margin: 0;">No feedback written.</p>
+      <% } %>
+    </div>
   <% } %>
 
 <% } %>

@@ -1068,6 +1068,11 @@ CREATE TABLE IF NOT EXISTS sme_tam_evaluation_sessions (
     UNIQUE (account_id)
 );
 
+-- Free-text improvement feedback, written by the respondent after the 17
+-- TAM items and before submitting (added 4 October 2026). Optional;
+-- saved with Save progress as well as Submit. Only this population has it.
+ALTER TABLE sme_tam_evaluation_sessions ADD COLUMN IF NOT EXISTS feedback TEXT;
+
 DO $$
 BEGIN
   ALTER TABLE sme_tam_evaluation_sessions

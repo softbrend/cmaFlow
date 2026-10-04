@@ -73,6 +73,17 @@
   </div>
 <% }); %>
 
+<% if (typeof hasFeedback !== 'undefined' && hasFeedback) { %>
+  <div class="form-card wide" style="margin-bottom: 22px;">
+    <div class="form-title" style="font-size: 18px;">Your feedback</div>
+    <% if (session.feedback) { %>
+      <p style="white-space: pre-wrap; margin: 0;"><%= session.feedback %></p>
+    <% } else { %>
+      <p class="form-hint" style="margin: 0;">You didn't leave any feedback.</p>
+    <% } %>
+  </div>
+<% } %>
+
 <p class="form-hint" style="text-align:center; margin-top: 6px;">
   You can still withdraw your consent and request that your responses above be corrected or erased — contact the
   researcher at <a href="mailto:bmbalala@ndmu.edu.ph">bmbalala@ndmu.edu.ph</a>.

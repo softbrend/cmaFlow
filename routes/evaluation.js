@@ -15,7 +15,7 @@ const {
   WALKTHROUGH_TASKS, itemsFor, groupItemsByDomain, EXPERT_ROLE, BUSINESS_ROLE, SME_TAM_ROLE,
   isDirectFlow: isDirectFlowFor,
   getEvaluationState, recordConsent, startTaskIfNeeded, completeTask,
-  saveResponses, validateQuestionnaire, markCompleted, getModuleVisits,
+  saveResponses, saveFeedback, FEEDBACK_MAX_LENGTH, validateQuestionnaire, markCompleted, getModuleVisits,
 } = require('../services/tamEvaluation');
 // Only for the Task 1 card's "dataset assigned at sign-up" readout below —
 // labelForTemplateFile() turns the evaluation_template_file a Template
@@ -170,6 +170,8 @@ router.get('/evaluation', async (req, res, next) => {
         isExpert,
         isDirectFlow,
         evalRoleLabel,
+        hasFeedback: role === SME_TAM_ROLE,
+        feedbackMaxLength: FEEDBACK_MAX_LENGTH,
       });
     }
 
@@ -187,6 +189,7 @@ router.get('/evaluation', async (req, res, next) => {
       isExpert,
       isDirectFlow,
       evalRoleLabel,
+      hasFeedback: role === SME_TAM_ROLE,
     });
   } catch (err) {
     next(err);
@@ -273,6 +276,12 @@ router.post('/evaluation/questionnaire', async (req, res, next) => {
       remark: req.body[`remark_${item.code}`],
     }));
     await saveResponses(session, accountId, answers, role);
+    // SME Owner-TAM Evaluator only: the optional improvement-feedback box.
+    // Saved on both "Save progress" and "Submit", and mirrored onto the
+    // in-memory session so a validation re-render keeps what was typed.
+    if (role === SME_TAM_ROLE) {
+      session.feedback = await saveFeedback(session.id, req.body.feedback, role);
+    }
 
     if (req.body.action === 'submit') {
       const validation = await validateQuestionnaire(session.id, role);
@@ -288,6 +297,8 @@ router.post('/evaluation/questionnaire', async (req, res, next) => {
           isExpert,
           isDirectFlow,
           evalRoleLabel,
+          hasFeedback: role === SME_TAM_ROLE,
+          feedbackMaxLength: FEEDBACK_MAX_LENGTH,
         });
       }
       await markCompleted(session.id, role);

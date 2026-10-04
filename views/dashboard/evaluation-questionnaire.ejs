@@ -83,6 +83,20 @@
     </div>
   <% }); %>
 
+  <% if (typeof hasFeedback !== 'undefined' && hasFeedback) { %>
+    <div class="form-card wide q-card" style="--q-accent: var(--accent);">
+      <div class="q-card-head">
+        <div class="form-title q-card-title">Your feedback <span class="q-domain-tag">Optional</span></div>
+      </div>
+      <p class="form-hint" style="margin: 0 0 12px;">What would make CMA-Flow stronger and better for a business like yours? Tell us what worked, what was confusing or missing, and what you'd like to see improved or added — in your own words.</p>
+      <div class="field field-remark" style="margin-bottom: 0;">
+        <label for="feedback">Feedback and suggestions for improving CMA-Flow</label>
+        <textarea id="feedback" name="feedback" rows="7" maxlength="<%= (typeof feedbackMaxLength !== 'undefined' ? feedbackMaxLength : 5000) %>" placeholder="Write your feedback here (optional)…" style="min-height: 150px;"><%= session && session.feedback ? session.feedback : '' %></textarea>
+        <p class="form-hint" style="margin: 6px 0 0;">Saved with Save Progress and included when you submit. Please don't include passwords or other personal information.</p>
+      </div>
+    </div>
+  <% } %>
+
   <div class="q-actions">
     <button type="submit" name="action" value="save" class="btn btn-outline">Save Progress</button>
     <button type="submit" name="action" value="submit" class="btn btn-accent">Submit Evaluation</button>
