@@ -8,7 +8,7 @@
       <thead>
         <tr>
           <th>Account</th>
-          <th>Affiliation</th>
+          <th>Business profile</th>
           <th>Consent</th>
           <th>Status</th>
           <th>Progress</th>
@@ -35,8 +35,8 @@
         %>
           <tr>
             <td><%= s.owner_name %> <span style="color: var(--text-muted);">(<%= s.username %>)</span></td>
-            <td><%= s.business_name %>
-              <div style="color: var(--text-muted); font-size: 12.5px;"><%= [s.business_type, s.business_sector, s.business_size].filter(Boolean).join(' · ') %></div>
+            <td><%= s.business_type || '—' %>
+              <div style="color: var(--text-muted); font-size: 12.5px;"><%= [s.business_sector, s.business_size].filter(Boolean).join(' · ') %></div>
             </td>
             <td><span class="badge <%= consentClass %>"><%= consentLabel %></span></td>
             <td><span class="badge <%= statusClass %>"><%= statusLabel %></span></td>

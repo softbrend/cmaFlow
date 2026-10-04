@@ -512,17 +512,31 @@ const SME_TAM_BUSINESS_SIZES = [
   { value: 'Medium Enterprise', label: 'Medium Enterprise (100–199 employees)' },
 ];
 
+// No free-text business/affiliation name any more (removed 4 October
+// 2026): the "Business / affiliation type" is read-only and filled in
+// from the chosen SME Business Category — the client script only mirrors
+// it for display; the server always derives it from the category manifest
+// itself (never from the submitted form), so it can't be tampered with.
 const smeTamSignupValidators = [
-  ...businessOwnerSignupValidators,
-  body('business_type')
+  body('username')
     .trim()
-    .notEmpty().withMessage('Your business / affiliation type is required (for example: Café).')
+    .matches(/^[A-Za-z0-9_-]{3,50}$/)
+    .withMessage('Username must be 3-50 characters (letters, numbers, - or _ only).'),
+  body('full_name').trim().notEmpty().withMessage('Your full name is required.'),
+  body('email').trim().isEmail().withMessage('A valid email is required.').normalizeEmail(),
+  body('business_category')
+    .trim()
+    .notEmpty().withMessage('Select your SME business category.')
     .bail()
-    .isLength({ max: 100 }).withMessage('Business / affiliation type must be 100 characters or fewer.'),
+    .custom((value) => isValidCategory(value))
+    .withMessage('Select a valid SME business category from the list.'),
   body('business_size')
     .trim()
     .custom((value) => SME_TAM_BUSINESS_SIZES.some((s) => s.value === value))
     .withMessage('Select your business size.'),
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters.'),
+  body('confirm_password').custom((value, { req }) => value === req.body.password)
+    .withMessage('Passwords do not match.'),
 ];
 
 router.post('/smeOwnerTam-signup/register', redirectIfAuthed, smeTamSignupValidators, async (req, res, next) => {
@@ -543,9 +557,15 @@ router.post('/smeOwnerTam-signup/register', redirectIfAuthed, smeTamSignupValida
   }
 
   const {
-    username, full_name, affiliation, email, business_category, password, dataset_origin,
-    business_type, business_size,
+    username, full_name, email, business_category, password, dataset_origin, business_size,
   } = req.body;
+  // Read-only "Business / affiliation type": the category's own examples
+  // line from the template manifest (e.g. "Restaurants, cafés, bakeries").
+  // business_name (NOT NULL; shown in the header and admin banners) is the
+  // category name, since the free-text business name field was removed.
+  const matchedCategory = loadCategories().find((c) => c.name === business_category);
+  const business_type = matchedCategory ? matchedCategory.examples : business_category;
+  const affiliation = business_category;
   const useBlankDataset = dataset_origin === 'blank';
 
   try {

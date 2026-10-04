@@ -1,6 +1,6 @@
 <div class="form-card wide">
   <div class="form-title"><img src="/img/cma-flow-icon.png" alt="CMA-Flow" style="width:28px; height:28px; border-radius:7px; background:#fff; padding:2px; vertical-align:-6px; margin-right:8px;" />Create your SME Owner-TAM Evaluator account</div>
-  <p class="form-hint">Information captured: username, full name, business / affiliation, business / affiliation type, email, SME business category, business size, and password. You'll download that category's CSV template (or use the one automatically assigned to you), open any of CMA-Flow's four analytics modules in whatever order you like (there is no walkthrough to follow), and complete a short evaluation whenever you are ready using the Technology Acceptance Model (TAM) questionnaire.</p>
+  <p class="form-hint">Information captured: username, full name, email, SME business category (which fills in your business / affiliation type), business size, and password. You'll download that category's CSV template (or use the one automatically assigned to you), open any of CMA-Flow's four analytics modules in whatever order you like (there is no walkthrough to follow), and complete a short evaluation whenever you are ready using the Technology Acceptance Model (TAM) questionnaire.</p>
 
   <% if (errors && errors.length) { %>
     <div class="alert-error">
@@ -22,16 +22,6 @@
     </div>
 
     <div class="field">
-      <label for="affiliation">Business / affiliation name</label>
-      <input type="text" id="affiliation" name="affiliation" value="<%= old.affiliation || '' %>" required />
-    </div>
-
-    <div class="field">
-      <label for="business_type">Business / affiliation type</label>
-      <input type="text" id="business_type" name="business_type" maxlength="100" placeholder="e.g. Café" value="<%= old.business_type || '' %>" required />
-    </div>
-
-    <div class="field">
       <label for="email">Email</label>
       <input type="email" id="email" name="email" value="<%= old.email || '' %>" required />
     </div>
@@ -41,10 +31,16 @@
       <select id="business_category" name="business_category" required>
         <option value="" disabled <%= !old.business_category ? 'selected' : '' %>>Select a business category…</option>
         <% categories.forEach(function(c) { %>
-          <option value="<%= c.name %>" <%= old.business_category === c.name ? 'selected' : '' %>><%= c.name %> — <%= c.examples %></option>
+          <option value="<%= c.name %>" data-examples="<%= c.examples %>" <%= old.business_category === c.name ? 'selected' : '' %>><%= c.name %> — <%= c.examples %></option>
         <% }); %>
       </select>
       <p class="form-hint" style="margin: 7px 0 0;">Pick the category closest to the business you're evaluating — its CSV template becomes your default dataset automatically, and you can switch to any other category's template later from Download SME Templates.</p>
+    </div>
+
+    <div class="field">
+      <label for="business_type">Business / affiliation type</label>
+      <input type="text" id="business_type" value="" placeholder="Filled in automatically when you choose a category" disabled aria-describedby="business_type_hint" />
+      <p class="form-hint" id="business_type_hint" style="margin: 7px 0 0;">Read-only — taken from the SME Business Category you select above.</p>
     </div>
 
     <div class="field">
@@ -87,3 +83,17 @@
 
   <div class="form-footer">Already have an account? <a href="/login">Sign in</a></div>
 </div>
+
+<script>
+  (function () {
+    var select = document.getElementById('business_category');
+    var typeBox = document.getElementById('business_type');
+    if (!select || !typeBox) return;
+    function sync() {
+      var opt = select.options[select.selectedIndex];
+      typeBox.value = (opt && opt.value) ? (opt.getAttribute('data-examples') || '') : '';
+    }
+    select.addEventListener('change', sync);
+    sync();
+  })();
+</script>
