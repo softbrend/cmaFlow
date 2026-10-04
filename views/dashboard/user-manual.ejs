@@ -7,7 +7,7 @@
     <a href="#before-you-begin">1. Before you begin</a> ·
     <a href="#choosing-your-dataset">2. Choosing how your dataset starts</a> ·
     <a href="#working-with-your-dataset">3. Working with your dataset</a> ·
-    <a href="#the-six-tasks">4. The six-task walkthrough</a> ·
+    <a href="#the-six-tasks">4. <%= isSmeTam ? 'How your evaluation works' : 'The six-task walkthrough' %></a> ·
     <a href="#the-four-modules">5. The four analytics modules</a> ·
     <a href="#the-questionnaire">6. The evaluation questionnaire</a> ·
     <a href="#after-you-submit">7. After you submit</a> ·
@@ -18,13 +18,17 @@
 <div class="form-card wide" id="before-you-begin" style="margin-bottom: 18px;">
   <div class="form-title" style="font-size: 18px;">1. Before you begin</div>
   <p class="form-hint">
-    When you signed up at <strong>/businessOwner-signup</strong>, you picked the business category closest to the one you're evaluating CMA-Flow for. That choice is what CMA-Flow uses to give you a ready-made dataset to start from, and it's also what frames the questions you'll answer at the end — everything in this evaluation is built around one real monetization decision for a business like yours.
+    When you signed up at <strong>/businessOwner-signup</strong>, you picked the business category closest to the one you're evaluating CMA-Flow for. That choice is what CMA-Flow uses to give you a ready-made dataset to start from<% if (isSmeTam) { %> — you can switch to another category, or start a blank copy to enter your own real records, whenever you like.<% } else { %>, and it's also what frames the questions you'll answer at the end — everything in this evaluation is built around one real monetization decision for a business like yours.<% } %>
   </p>
   <p class="form-hint">
     The first time you open any analytics page or the evaluation itself, you'll see an informed-consent screen under the Data Privacy Act (Republic Act No. 10173). It explains exactly what's recorded, and you can withdraw your consent at any time, even after starting — there's always a "Withdraw from this evaluation" link available once you've agreed. Nothing is recorded before you agree.
   </p>
   <p class="form-hint" style="margin-bottom: 0;">
+    <% if (isSmeTam) { %>
+    Everything in the navigation panel on the left is open from the start: Descriptive analytics, Diagnostic insights, Predictive analytics, Prescriptive recommendations, Upload New Dataset, Browse Dataset, Download SME Templates, this User Manual, and your SME Owner-TAM Evaluation link. There's no required order — use whatever helps you, as often as you like (section 4).
+    <% } else { %>
     Until you finish the evaluation below, the navigation panel on the left only shows what you need for it — Download SME Templates, this User Manual, and your evaluation link. The four analytics modules unlock as you reach them in the six-task walkthrough (section 4).
+    <% } %>
   </p>
 </div>
 
@@ -54,6 +58,20 @@
   </p>
 </div>
 
+<% if (isSmeTam) { %>
+<div class="form-card wide" id="the-six-tasks" style="margin-bottom: 18px;">
+  <div class="form-title" style="font-size: 18px;">4. How your evaluation works</div>
+  <p class="form-hint">
+    There is no walkthrough and no tasks to tick off. Use CMA-Flow the way you would for your own business — open the four analytics modules (section 5) in any order, add or change your own records (section 3), and come back to them as often as you like.
+  </p>
+  <p class="form-hint">
+    Once you've agreed to the informed-consent screen, CMA-Flow automatically keeps a simple log of how long you spend on each of the four analytics modules, based on when you open them. There is nothing to start, stop, or mark complete yourself, and nothing is logged before you agree.
+  </p>
+  <p class="form-hint" style="margin-bottom: 0;">
+    When you feel you've used CMA-Flow enough to give an honest opinion, open <strong>SME Owner-TAM Evaluation</strong> in the navigation panel to answer the short questionnaire (section 6). You decide when — there's no deadline and no minimum amount of use.
+  </p>
+</div>
+<% } else { %>
 <div class="form-card wide" id="the-six-tasks" style="margin-bottom: 18px;">
   <div class="form-title" style="font-size: 18px;">4. The six-task walkthrough</div>
   <p class="form-hint">
@@ -75,10 +93,16 @@
   </div>
 </div>
 
+<% } %>
+
 <div class="form-card wide" id="the-four-modules" style="margin-bottom: 18px;">
   <div class="form-title" style="font-size: 18px;">5. The four analytics modules</div>
   <p class="form-hint">
+    <% if (isSmeTam) { %>
+    These are the four modules you'll be evaluating, available any time from the navigation panel.
+    <% } else { %>
     These are the same four modules the walkthrough's tasks 3 through 6 send you through, available any time afterward from the navigation panel.
+    <% } %>
   </p>
   <p class="form-hint"><strong>Descriptive analytics</strong> — Understand what happened in your business data through automatically generated KPIs, trends, distributions, and patterns.</p>
   <p class="form-hint"><strong>Diagnostic insights</strong> — Understand why performance moved: root-cause views built from correlations, comparisons, and decompositions in your own data.</p>
@@ -89,7 +113,11 @@
 <div class="form-card wide" id="the-questionnaire" style="margin-bottom: 18px;">
   <div class="form-title" style="font-size: 18px;">6. The evaluation questionnaire</div>
   <p class="form-hint">
+    <% if (isSmeTam) { %>
+    When you're ready, you'll answer <%= isoItemCount %> short statements about your experience using CMA-Flow with your own business records. For each one, you'll rate how much you agree on a 5-point scale from Strongly Disagree (1) to Strongly Agree (5). Any rating of 3 or below needs a short remark explaining why. There's no time limit — use <strong>Save progress</strong> any time and come back to finish later.
+    <% } else { %>
     Once all six tasks are complete, you'll answer <%= isoItemCount %> short statements about the <em>monetization decision</em> you reached using CMA-Flow — not about the software in general. For each one, you'll rate how much you agree on a 5-point scale from Strongly Disagree to Strongly Agree. There's no time limit, and you can take as long as you need to answer honestly.
+    <% } %>
   </p>
   <p class="form-hint" style="margin-bottom: 0;">The statements are grouped into four areas:</p>
   <ul style="margin: 8px 0 0; padding-left: 20px; color: var(--text-muted); font-size: 14px; line-height: 1.7;">
@@ -102,7 +130,7 @@
 <div class="form-card wide" id="after-you-submit" style="margin-bottom: 18px;">
   <div class="form-title" style="font-size: 18px;">7. After you submit</div>
   <p class="form-hint" style="margin-bottom: 0;">
-    Submitting the questionnaire takes you to a completion page — a read-only record of your walkthrough and your answers. You can still sign back in any time afterward to browse your datasets or the four analytics modules; only the walkthrough and questionnaire themselves are locked once completed.
+    Submitting the questionnaire takes you to a completion page — a read-only record of <%= isSmeTam ? 'the modules you used and' : 'your walkthrough and' %> your answers. You can still sign back in any time afterward to browse your datasets or the four analytics modules; only the <%= isSmeTam ? 'questionnaire itself is' : 'walkthrough and questionnaire themselves are' %> locked once completed.
   </p>
 </div>
 
@@ -111,6 +139,10 @@
   <p class="form-hint"><strong>Can I switch to a different business category partway through?</strong> Yes. Download SME Templates and My Evaluation Dataset Copies are both always reachable from the navigation panel. Switching your current dataset never deletes your work on any other copy.</p>
   <p class="form-hint"><strong>I made a mistake on a row I started blank. Can I fix it?</strong> Yes — click any cell in that row to edit it in place, or use the Delete button to remove the row entirely. This only works on a copy you started blank; the sample 50-row copies stay locked by design, since those rows represent transactions that have already happened.</p>
   <p class="form-hint"><strong>What if I change my mind about participating?</strong> A "Withdraw from this evaluation" link is available any time after you've given consent, from the evaluation screens themselves.</p>
+  <% if (isSmeTam) { %>
+  <p class="form-hint"><strong>Do I need to finish the evaluation in one sitting?</strong> No — use CMA-Flow at your own pace over as many visits as you like. The questionnaire can be saved partway and finished later.</p>
+  <% } else { %>
   <p class="form-hint"><strong>Do I need to finish all six tasks in one sitting?</strong> No — you can sign out and come back later. Your progress through the tasks is saved, and each task you've already reached stays unlocked.</p>
+  <% } %>
   <p class="form-hint" style="margin-bottom: 0;"><strong>Who can see my answers?</strong> Your responses are analyzed and reported only in aggregate and de-identified form by the researcher conducting this evaluation — never by name or account, and never shared outside this research. Full details are on the informed-consent screen you agree to before anything is recorded.</p>
 </div>

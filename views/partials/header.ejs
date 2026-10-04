@@ -36,6 +36,7 @@
             var roleTag = currentUser.role === 'Admin' ? 'Administrator'
               : currentUser.role === 'Template Evaluator' ? 'Template Evaluator Account'
               : currentUser.role === 'Business Owner Evaluator' ? 'Business Owner Evaluator Account'
+              : currentUser.role === 'SME Owner-TAM Evaluator' ? 'SME Owner-TAM Evaluator Account'
               : 'SME Account';
           %>
           <div class="header-sme-tag"><%= roleTag %></div>

@@ -38,6 +38,14 @@ const { quantile, mean } = require('./statsUtils');
 const SME_ROLE = 'SME Owner';
 const EXPERT_ROLE = 'Template Evaluator';
 const BUSINESS_ROLE = 'Business Owner Evaluator';
+// SME Owner-TAM Evaluator (added 4 October 2026) — a FOURTH, fully separate
+// population: real SME owners (own access-code-gated /smeOwnerTam-signup)
+// who use the Business Owner Evaluator's portal features and the
+// Template-Evaluator-style DIRECT flow (no six-task walkthrough), then
+// answer a REWORDED 17-item TAM questionnaire (SME_TAM_ITEMS below)
+// persisted to its own sme_tam_evaluation_* tables, so nothing already
+// collected for the other three populations is ever touched.
+const SME_TAM_ROLE = 'SME Owner-TAM Evaluator';
 
 // The three table sets this ever resolves to — role is always either an
 // account's own sme_accounts.role or explicitly passed by a caller that
@@ -56,18 +64,37 @@ const TABLE_SETS = {
     sessions: 'expert_evaluation_sessions',
     taskLogs: 'expert_evaluation_task_logs',
     responses: 'expert_evaluation_responses',
+    visits: 'expert_evaluation_module_visits',
   },
   businessOwner: {
     sessions: 'business_owner_evaluation_sessions',
     taskLogs: 'business_owner_evaluation_task_logs',
     responses: 'business_owner_evaluation_responses',
   },
+  smeTam: {
+    sessions: 'sme_tam_evaluation_sessions',
+    taskLogs: 'sme_tam_evaluation_task_logs',
+    responses: 'sme_tam_evaluation_responses',
+    visits: 'sme_tam_evaluation_module_visits',
+  },
 };
 
 function tablesFor(role) {
   if (role === EXPERT_ROLE) return TABLE_SETS.expert;
   if (role === BUSINESS_ROLE) return TABLE_SETS.businessOwner;
+  if (role === SME_TAM_ROLE) return TABLE_SETS.smeTam;
   return TABLE_SETS.sme;
+}
+
+// Direct flow = no six-task walkthrough: a new session starts straight at
+// 'questionnaire', all four analytics modules are open immediately, and
+// time-on-module is logged automatically instead. Template Evaluator is
+// direct only when its sme_accounts.evaluation_flow says so (the 15
+// grandfathered accounts are not); SME Owner-TAM Evaluator is ALWAYS
+// direct — it has no walkthrough variant at all, so this never depends on
+// the evaluation_flow column for that role.
+function isDirectFlow(role, evaluationFlow) {
+  return (role === EXPERT_ROLE && evaluationFlow === 'direct') || role === SME_TAM_ROLE;
 }
 
 // ------------------------------------------------------------------
@@ -161,6 +188,42 @@ const TAM_ITEMS_BY_CODE = new Map(TAM_ITEMS.map((item) => [item.code, item]));
 const TAM_DOMAIN_CODES = ['PU', 'PEOU', 'BI'];
 
 // ------------------------------------------------------------------
+// Reworded 17-item TAM questionnaire for the SME Owner-TAM Evaluator role
+// (added 4 October 2026, per Brenda's explicit choice to reword rather
+// than reuse the original items). Same structure as TAM_ITEMS above — the
+// same item codes and the same three domains (PU 7 / PEOU 7 / BI 3) — so
+// scoring/reporting code is shared, but the WORDING is adapted for real
+// business owners using their own records in the direct flow: no
+// reference to "the six tasks in the walkthrough" (this role has none),
+// "business data"/"data file" becomes "business records", and the
+// recommend-to item says "another business owner". Because the wording
+// differs, these responses are stored separately
+// (sme_tam_evaluation_responses) and must not be pooled with the original
+// TAM_ITEMS responses without an explicit equivalence argument.
+// ------------------------------------------------------------------
+const SME_TAM_ITEMS = [
+  { code: 'PU-01', domain: 'PU', text: 'Using CMA-Flow with my own business records helped me understand how my business is currently making money.' },
+  { code: 'PU-02', domain: 'PU', text: 'CMA-Flow helped me understand why my sales or customer activity changed from one period to the next.' },
+  { code: 'PU-03', domain: 'PU', text: 'CMA-Flow helped me anticipate changes in my sales or customers before they happen.' },
+  { code: 'PU-04', domain: 'PU', text: 'CMA-Flow helped me decide which pricing or monetization approach to try next in my business.' },
+  { code: 'PU-05', domain: 'PU', text: 'Using CMA-Flow improved my ability to make decisions about how my business earns money, compared with how I review my own records today.' },
+  { code: 'PU-06', domain: 'PU', text: 'Overall, I find CMA-Flow useful for running my business.' },
+  { code: 'PU-07', domain: 'PU', text: 'CMA-Flow’s automatic recognition of what each column in my records means (for example, sales amount, customer, or product) saved me time compared with labeling it myself.' },
+  { code: 'PEOU-01', domain: 'PEOU', text: 'Loading or entering my own business records into CMA-Flow was easy for me.' },
+  { code: 'PEOU-02', domain: 'PEOU', text: 'Learning to move between CMA-Flow’s Descriptive, Diagnostic, Predictive, and Prescriptive screens was easy for me.' },
+  { code: 'PEOU-03', domain: 'PEOU', text: 'It was easy for me to find the specific information I was looking for on each analytics screen.' },
+  { code: 'PEOU-04', domain: 'PEOU', text: 'When a result was not available (for example, "not enough data yet"), CMA-Flow’s explanation of why was clear to me.' },
+  { code: 'PEOU-05', domain: 'PEOU', text: 'I did not need help from anyone else to use CMA-Flow’s analytics screens.' },
+  { code: 'PEOU-06', domain: 'PEOU', text: 'Overall, I found CMA-Flow easy to use.' },
+  { code: 'PEOU-07', domain: 'PEOU', text: 'When CMA-Flow asked me to confirm or correct what a column in my records meant, it was easy for me to understand what it was asking and to answer it.' },
+  { code: 'BI-01', domain: 'BI', text: 'If CMA-Flow were available to me, I intend to use it regularly to monitor my business.' },
+  { code: 'BI-02', domain: 'BI', text: 'I would use CMA-Flow again the next time I have new business records to review.' },
+  { code: 'BI-03', domain: 'BI', text: 'I would recommend CMA-Flow to another business owner.' },
+];
+
+const SME_TAM_ITEMS_BY_CODE = new Map(SME_TAM_ITEMS.map((item) => [item.code, item]));
+
+// ------------------------------------------------------------------
 // ISO/IEC 25010 Quality-in-Use instrument — added 2 October 2026 in
 // response to the editorial decision letter's core complaint: TAM
 // measures acceptance (would a respondent adopt the tool), not
@@ -238,11 +301,17 @@ const ISO25010_ITEMS_BY_CODE = new Map(ISO25010_ITEMS.map((item) => [item.code, 
 // instrument, unchanged.
 // ------------------------------------------------------------------
 function itemsFor(role) {
-  return role === BUSINESS_ROLE ? ISO25010_ITEMS : TAM_ITEMS;
+  if (role === BUSINESS_ROLE) return ISO25010_ITEMS;
+  if (role === SME_TAM_ROLE) return SME_TAM_ITEMS;
+  return TAM_ITEMS;
 }
 function itemsByCodeFor(role) {
-  return role === BUSINESS_ROLE ? ISO25010_ITEMS_BY_CODE : TAM_ITEMS_BY_CODE;
+  if (role === BUSINESS_ROLE) return ISO25010_ITEMS_BY_CODE;
+  if (role === SME_TAM_ROLE) return SME_TAM_ITEMS_BY_CODE;
+  return TAM_ITEMS_BY_CODE;
 }
+// SME_TAM_ROLE shares the TAM domain codes/labels (PU/PEOU/BI) — only its
+// item WORDING differs — so it falls through to the TAM defaults here.
 function domainCodesFor(role) {
   return role === BUSINESS_ROLE ? ISO_DOMAIN_CODES : TAM_DOMAIN_CODES;
 }
@@ -285,7 +354,7 @@ function groupItemsByDomain(role) {
 // happens to be — starts the session correctly).
 async function getOrCreateSession(accountId, role, evaluationFlow) {
   const t = tablesFor(role);
-  const startsDirect = role === EXPERT_ROLE && evaluationFlow === 'direct';
+  const startsDirect = isDirectFlow(role, evaluationFlow);
   await pool.query(
     `INSERT INTO ${t.sessions} (account_id, status) VALUES ($1, $2)
      ON CONFLICT (account_id) DO NOTHING`,
@@ -570,6 +639,29 @@ async function listAllBusinessOwnerEvaluationStatuses() {
   return rows;
 }
 
+// Same shape again, for SME Owner-TAM Evaluator accounts (added 4 October
+// 2026) against the separate sme_tam_evaluation_* tables. Direct flow only,
+// so it reports modules_opened (distinct modules visited) instead of
+// walkthrough tasks_done, like listAllExpertEvaluationStatuses() does for
+// its direct-flow accounts.
+async function listAllSmeTamEvaluationStatuses() {
+  const { rows } = await pool.query(
+    `SELECT a.id AS account_id, a.username, a.owner_name, a.business_name,
+            s.status, s.current_task, s.started_at,
+            s.consent_status, s.consent_decided_at,
+            s.walkthrough_completed_at, s.completed_at,
+            (SELECT COUNT(*)::int FROM sme_tam_evaluation_module_visits mv
+              WHERE mv.session_id = s.id) AS modules_opened,
+            (SELECT COUNT(*)::int FROM sme_tam_evaluation_responses r
+              WHERE r.session_id = s.id AND r.rating IS NOT NULL) AS items_answered
+       FROM sme_accounts a
+       LEFT JOIN sme_tam_evaluation_sessions s ON s.account_id = a.id
+      WHERE a.role = 'SME Owner-TAM Evaluator'
+      ORDER BY a.created_at DESC`
+  );
+  return rows;
+}
+
 // Cross-respondent descriptive summary of the 17-item questionnaire —
 // the instrument's own Section 6 scoring/analysis plan (median/IQR per
 // item and domain, %agree; see claude/tam-instrument-end-user-evaluation.md
@@ -674,6 +766,15 @@ async function getCompletedBusinessOwnerResponseSummary() {
   return summarizeCompletedResponses('business_owner_evaluation_responses', 'business_owner_evaluation_sessions', undefined, BUSINESS_ROLE);
 }
 
+// Single summary (this role has one flow) for SME Owner-TAM Evaluator
+// accounts, scored against the reworded 17-item TAM set (SME_TAM_ITEMS) via
+// sme_tam_evaluation_responses/_sessions. Never combined with
+// getCompletedResponseSummary()/getCompletedExpertResponseSummary(): the
+// wording differs, so the three TAM-family result sets stay separate.
+async function getCompletedSmeTamResponseSummary() {
+  return summarizeCompletedResponses('sme_tam_evaluation_responses', 'sme_tam_evaluation_sessions', undefined, SME_TAM_ROLE);
+}
+
 // ------------------------------------------------------------------
 // Direct-flow time-on-module logging (expert_evaluation_module_visits —
 // see its header comment in db/schema.sql). Only ever meaningful for a
@@ -683,14 +784,15 @@ async function getCompletedBusinessOwnerResponseSummary() {
 // ------------------------------------------------------------------
 const MODULE_VISIT_MAX_GAP_SECONDS = 30 * 60; // an idle tab left open overnight shouldn't inflate time-on-module
 
-async function recordModuleVisit(accountId, moduleSlug) {
+async function recordModuleVisit(accountId, moduleSlug, role = EXPERT_ROLE) {
+  const t = tablesFor(role);
   // getOrCreateSession(..., 'direct') is safe to call even if this
   // account's session already exists at 'questionnaire' from an earlier
   // /evaluation visit, or doesn't exist yet because this is literally the
   // first page this account ever opened after signing up — either way
   // ON CONFLICT DO NOTHING means the existing row (whatever its actual
   // status) is simply returned untouched.
-  const session = await getOrCreateSession(accountId, EXPERT_ROLE, 'direct');
+  const session = await getOrCreateSession(accountId, role, 'direct');
 
   // RA 10173 — no data collection before the respondent has affirmatively
   // agreed to take part. Browsing the analytics pages themselves is never
@@ -706,7 +808,7 @@ async function recordModuleVisit(accountId, moduleSlug) {
   // the cap is treated as "came back after being away" and credits
   // nothing, rather than crediting a huge, meaningless idle duration.
   const { rows: lastRows } = await pool.query(
-    `SELECT module_slug, last_opened_at FROM expert_evaluation_module_visits
+    `SELECT module_slug, last_opened_at FROM ${t.visits}
       WHERE session_id = $1 ORDER BY last_opened_at DESC LIMIT 1`,
     [session.id]
   );
@@ -715,7 +817,7 @@ async function recordModuleVisit(accountId, moduleSlug) {
     const gapSeconds = Math.max(0, (Date.now() - new Date(last.last_opened_at).getTime()) / 1000);
     if (gapSeconds > 0 && gapSeconds <= MODULE_VISIT_MAX_GAP_SECONDS) {
       await pool.query(
-        `UPDATE expert_evaluation_module_visits
+        `UPDATE ${t.visits}
             SET total_seconds = total_seconds + $3
           WHERE session_id = $1 AND module_slug = $2`,
         [session.id, last.module_slug, Math.round(gapSeconds)]
@@ -724,11 +826,11 @@ async function recordModuleVisit(accountId, moduleSlug) {
   }
 
   await pool.query(
-    `INSERT INTO expert_evaluation_module_visits (session_id, account_id, module_slug)
+    `INSERT INTO ${t.visits} (session_id, account_id, module_slug)
      VALUES ($1, $2, $3)
      ON CONFLICT (session_id, module_slug) DO UPDATE
         SET last_opened_at = now(),
-            open_count = expert_evaluation_module_visits.open_count + 1`,
+            open_count = ${t.visits}.open_count + 1`,
     [session.id, accountId, moduleSlug]
   );
 }
@@ -742,9 +844,9 @@ const MODULE_VISIT_SLUG_ORDER = [
   'descriptive-analytics', 'diagnostic-insights', 'predictive-analytics', 'prescriptive-recommendations',
 ];
 
-async function getModuleVisits(sessionId) {
+async function getModuleVisits(sessionId, role = EXPERT_ROLE) {
   const { rows } = await pool.query(
-    `SELECT * FROM expert_evaluation_module_visits WHERE session_id = $1`,
+    `SELECT * FROM ${tablesFor(role).visits} WHERE session_id = $1`,
     [sessionId]
   );
   const bySlug = new Map(rows.map((r) => [r.module_slug, r]));
@@ -755,8 +857,11 @@ module.exports = {
   SME_ROLE,
   EXPERT_ROLE,
   BUSINESS_ROLE,
+  SME_TAM_ROLE,
+  isDirectFlow,
   WALKTHROUGH_TASKS,
   TAM_ITEMS,
+  SME_TAM_ITEMS,
   DOMAIN_LABELS,
   ISO25010_ITEMS,
   ISO_DOMAIN_LABELS,
@@ -777,9 +882,11 @@ module.exports = {
   listAllEvaluationStatuses,
   listAllExpertEvaluationStatuses,
   listAllBusinessOwnerEvaluationStatuses,
+  listAllSmeTamEvaluationStatuses,
   getCompletedResponseSummary,
   getCompletedExpertResponseSummary,
   getCompletedBusinessOwnerResponseSummary,
+  getCompletedSmeTamResponseSummary,
   recordModuleVisit,
   getModuleVisits,
   MODULE_VISIT_SLUG_ORDER,

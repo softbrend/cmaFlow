@@ -35,14 +35,15 @@ const { body, validationResult } = require('express-validator');
 const pool = require('../db/pool');
 const { requireAdmin } = require('../middleware/auth');
 const {
-  listAccounts, listExpertAccounts, listBusinessOwnerAccounts, getAccountById, resetPassword, countAdmins,
+  listAccounts, listExpertAccounts, listBusinessOwnerAccounts, listSmeTamAccounts, getAccountById, resetPassword, countAdmins,
   createAdminAccount, promoteToAdmin, demoteToOwner, setCohort, COHORT_LABELS,
 } = require('../services/adminAccounts');
 const {
-  WALKTHROUGH_TASKS, groupItemsByDomain, EXPERT_ROLE, BUSINESS_ROLE, SME_ROLE, itemsFor,
+  WALKTHROUGH_TASKS, groupItemsByDomain, EXPERT_ROLE, BUSINESS_ROLE, SME_TAM_ROLE, SME_ROLE, itemsFor,
   getEvaluationStateReadOnly, listAllEvaluationStatuses, getCompletedResponseSummary,
   listAllExpertEvaluationStatuses, getCompletedExpertResponseSummary,
   listAllBusinessOwnerEvaluationStatuses, getCompletedBusinessOwnerResponseSummary, getModuleVisits,
+  listAllSmeTamEvaluationStatuses, getCompletedSmeTamResponseSummary,
 } = require('../services/tamEvaluation');
 const { listAllDatasets, getDatasetForAdmin, deleteDataset } = require('../services/adminDatasets');
 const {
@@ -62,7 +63,7 @@ router.use(requireAdmin);
 // ------------------------------------------------------------------
 router.get('/admin', async (req, res, next) => {
   try {
-    const [{ rows: countRows }, statuses, expertStatuses, businessOwnerStatuses, allDatasets] = await Promise.all([
+    const [{ rows: countRows }, statuses, expertStatuses, businessOwnerStatuses, smeTamStatuses, allDatasets] = await Promise.all([
       // Explicit role = equality for each count, not "!= 'Admin'" — now
       // that a third and fourth role (Template Evaluator, Business Owner
       // Evaluator) exist, "!= 'Admin'" would silently fold them into
@@ -74,12 +75,14 @@ router.get('/admin', async (req, res, next) => {
         `SELECT COUNT(*) FILTER (WHERE role = 'SME Owner')::int AS sme_count,
                 COUNT(*) FILTER (WHERE role = 'Admin')::int AS admin_count,
                 COUNT(*) FILTER (WHERE role = 'Template Evaluator')::int AS expert_count,
-                COUNT(*) FILTER (WHERE role = 'Business Owner Evaluator')::int AS business_owner_count
+                COUNT(*) FILTER (WHERE role = 'Business Owner Evaluator')::int AS business_owner_count,
+                COUNT(*) FILTER (WHERE role = 'SME Owner-TAM Evaluator')::int AS sme_tam_count
            FROM sme_accounts`
       ),
       listAllEvaluationStatuses(),
       listAllExpertEvaluationStatuses(),
       listAllBusinessOwnerEvaluationStatuses(),
+      listAllSmeTamEvaluationStatuses(),
       listAllDatasets(),
     ]);
     const counts = countRows[0];
@@ -92,6 +95,9 @@ router.get('/admin', async (req, res, next) => {
     const businessOwnerCompleted = businessOwnerStatuses.filter((s) => s.status === 'completed').length;
     const businessOwnerInProgress = businessOwnerStatuses.filter((s) => s.status === 'walkthrough' || s.status === 'questionnaire').length;
     const businessOwnerNotStarted = businessOwnerStatuses.filter((s) => !s.status).length;
+    const smeTamCompleted = smeTamStatuses.filter((s) => s.status === 'completed').length;
+    const smeTamInProgress = smeTamStatuses.filter((s) => s.status === 'walkthrough' || s.status === 'questionnaire').length;
+    const smeTamNotStarted = smeTamStatuses.filter((s) => !s.status).length;
 
     res.render('dashboard/admin-home', {
       title: 'Admin',
@@ -101,6 +107,7 @@ router.get('/admin', async (req, res, next) => {
       adminCount: counts.admin_count,
       expertCount: counts.expert_count,
       businessOwnerCount: counts.business_owner_count,
+      smeTamCount: counts.sme_tam_count,
       datasetCount: allDatasets.length,
       completed,
       inProgress,
@@ -111,6 +118,9 @@ router.get('/admin', async (req, res, next) => {
       businessOwnerCompleted,
       businessOwnerInProgress,
       businessOwnerNotStarted,
+      smeTamCompleted,
+      smeTamInProgress,
+      smeTamNotStarted,
     });
   } catch (err) {
     next(err);
@@ -184,6 +194,28 @@ router.get('/admin/business-owner-accounts', async (req, res, next) => {
       title: 'Manage Business Owner Evaluators',
       active: 'admin',
       adminSection: 'business-owner-accounts',
+      accounts,
+      q: req.query.q || '',
+      passwordReset: req.query.passwordReset || null,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
+// GET /admin/sme-tam-accounts — same search-list-and-"Change password"
+// page again, for role = 'SME Owner-TAM Evaluator' accounts only (added
+// 4 October 2026, registered through the separate access-code signup at
+// /smeOwnerTam-signup). Never listed alongside any other population.
+// ------------------------------------------------------------------
+router.get('/admin/sme-tam-accounts', async (req, res, next) => {
+  try {
+    const accounts = await listSmeTamAccounts(req.query.q);
+    res.render('dashboard/admin-sme-tam-accounts', {
+      title: 'Manage SME Owner-TAM Evaluators',
+      active: 'admin',
+      adminSection: 'sme-tam-accounts',
       accounts,
       q: req.query.q || '',
       passwordReset: req.query.passwordReset || null,
@@ -365,6 +397,7 @@ router.post('/admin/accounts/:id/remove-admin', async (req, res, next) => {
 function accountsSectionFor(role) {
   if (role === EXPERT_ROLE) return { adminSection: 'expert-accounts', listPath: '/admin/expert-accounts' };
   if (role === BUSINESS_ROLE) return { adminSection: 'business-owner-accounts', listPath: '/admin/business-owner-accounts' };
+  if (role === SME_TAM_ROLE) return { adminSection: 'sme-tam-accounts', listPath: '/admin/sme-tam-accounts' };
   return { adminSection: 'accounts', listPath: '/admin/accounts' };
 }
 
@@ -618,6 +651,61 @@ router.get('/admin/business-owner-evaluations/:accountId', async (req, res, next
 });
 
 // ------------------------------------------------------------------
+// GET /admin/sme-tam-evaluations — same shape as the other three
+// evaluation-report pages, for SME Owner-TAM Evaluator accounts against
+// the separate sme_tam_evaluation_* tables (added 4 October 2026) — the
+// population that answers the REWORDED 17-item TAM questionnaire. Its own
+// distinct page: never computed from, or shown alongside, any other
+// population's summary, since the wording differs from the original TAM.
+// ------------------------------------------------------------------
+router.get('/admin/sme-tam-evaluations', async (req, res, next) => {
+  try {
+    const [statuses, summary] = await Promise.all([
+      listAllSmeTamEvaluationStatuses(),
+      getCompletedSmeTamResponseSummary(),
+    ]);
+    res.render('dashboard/admin-sme-tam-evaluations', {
+      title: 'View SME Owner-TAM Evaluation Report',
+      active: 'admin',
+      adminSection: 'sme-tam-evaluations',
+      statuses,
+      summary,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /admin/sme-tam-evaluations/:accountId — one SME Owner-TAM
+// Evaluator account's full evaluation detail, read from
+// sme_tam_evaluation_* via getEvaluationStateReadOnly(id, SME_TAM_ROLE).
+// Always direct-flow, so module visits are always read.
+router.get('/admin/sme-tam-evaluations/:accountId', async (req, res, next) => {
+  try {
+    const account = await getAccountById(req.params.accountId);
+    if (!account || account.role !== SME_TAM_ROLE) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
+
+    const { session, taskLogs, responses } = await getEvaluationStateReadOnly(account.id, SME_TAM_ROLE);
+    const moduleVisits = session ? await getModuleVisits(session.id, SME_TAM_ROLE) : null;
+    res.render('dashboard/admin-sme-tam-evaluation-detail', {
+      title: `SME Owner-TAM Evaluation — ${account.username}`,
+      active: 'admin',
+      adminSection: 'sme-tam-evaluations',
+      account,
+      session,
+      tasks: WALKTHROUGH_TASKS,
+      taskLogs,
+      moduleVisits,
+      isDirectFlow: true,
+      domains: groupItemsByDomain(SME_TAM_ROLE),
+      responses,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
 // GET /admin/datasets — every dataset uploaded by every SME owner
 // account, with file/row counts and a Delete action per row. Grouped by
 // owner (alphabetical) with each owner's own datasets most-recently-
@@ -698,6 +786,31 @@ router.get('/admin/business-owner-datasets', async (req, res, next) => {
 });
 
 // ------------------------------------------------------------------
+// GET /admin/sme-tam-datasets — same page again, for SME Owner-TAM
+// Evaluator datasets only (listAllDatasets(q, 'smeTam'), added 4 October
+// 2026), so this role's datasets are never browsed in another
+// population's list.
+// ------------------------------------------------------------------
+router.get('/admin/sme-tam-datasets', async (req, res, next) => {
+  try {
+    const q = req.query.q || '';
+    const datasets = await listAllDatasets(q, 'smeTam');
+    res.render('dashboard/admin-datasets', {
+      title: 'SME Owner-TAM Evaluator Datasets',
+      active: 'admin',
+      adminSection: 'sme-tam-datasets',
+      datasets,
+      q,
+      deleted: req.query.deleted || null,
+      basePath: '/admin/sme-tam-datasets',
+      ownerLabel: 'SME Owner-TAM Evaluator',
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
 // GET /admin/datasets/:id/view — enters read-only "viewing as admin"
 // mode for this dataset's account, then sends the admin to Descriptive
 // analytics with that dataset selected. routes/dashboard.js's
@@ -726,6 +839,7 @@ router.get('/admin/datasets/:id/view', async (req, res, next) => {
 function datasetsSectionFor(role) {
   if (role === EXPERT_ROLE) return { adminSection: 'expert-datasets', listPath: '/admin/expert-datasets', label: '← Template Evaluator Datasets' };
   if (role === BUSINESS_ROLE) return { adminSection: 'business-owner-datasets', listPath: '/admin/business-owner-datasets', label: '← Business Owner Evaluator Datasets' };
+  if (role === SME_TAM_ROLE) return { adminSection: 'sme-tam-datasets', listPath: '/admin/sme-tam-datasets', label: '← SME Owner-TAM Evaluator Datasets' };
   return { adminSection: 'datasets', listPath: '/admin/datasets', label: '← Manage Datasets' };
 }
 

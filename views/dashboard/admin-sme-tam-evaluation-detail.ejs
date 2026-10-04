@@ -1,0 +1,93 @@
+<div class="page-title">🧪 <span class="page-title-text">SME Owner-TAM Evaluation — <%= account.owner_name %></span></div>
+<p class="page-subtitle"><%= account.username %> · <%= account.business_name %></p>
+
+<p style="margin-bottom: 18px;"><a href="/admin/sme-tam-evaluations">← Back to SME Owner-TAM evaluations</a></p>
+
+<% if (!session) { %>
+  <div class="placeholder-card">
+    <div class="emoji">🧭</div>
+    <p>This account hasn't started the evaluation yet — nothing to show.</p>
+  </div>
+<% } else { %>
+
+  <div class="ok-box">
+    Consent (RA 10173): <strong>
+      <% if (session.consent_status === 'given') { %>Given
+      <% } else if (session.consent_status === 'declined') { %>Declined
+      <% } else { %>Pending — not yet decided
+      <% } %>
+    </strong>
+    <% if (session.consent_decided_at) { %>
+      <span style="color: var(--text-muted); font-weight: 400;">(<%= new Date(session.consent_decided_at).toLocaleString() %>)</span>
+    <% } %>
+  </div>
+
+  <% if (session.consent_status === 'given') { %>
+  <div class="ok-box" style="margin-top: 10px;">
+    Status: <strong>
+      <% if (session.status === 'completed') { %>Completed <%= session.completed_at ? new Date(session.completed_at).toLocaleString() : '' %>
+      <% } else { %>Questionnaire in progress
+      <% } %>
+    </strong>
+  </div>
+  <% } else { %>
+  <div class="placeholder-card" style="margin-top: 10px;">
+    <div class="emoji">🧭</div>
+    <p>
+      <% if (session.consent_status === 'declined') { %>
+        This respondent has not agreed to participate, so no module-usage or questionnaire data is collected.
+      <% } else { %>
+        This respondent has not yet decided whether to participate.
+      <% } %>
+    </p>
+  </div>
+  <% } %>
+
+  <div class="form-card wide" style="margin-bottom: 22px;">
+    <div class="form-title" style="font-size: 18px;">Modules used</div>
+    <p class="form-hint" style="margin: 0 0 10px;">No walkthrough tasks for this role; time is logged automatically from page visits, once consent is given.</p>
+    <table class="table-simple">
+      <thead><tr><th>Module</th><th>Opened</th><th>Time spent</th></tr></thead>
+      <tbody>
+        <% var moduleLabels = {
+             'descriptive-analytics': 'Descriptive analytics', 'diagnostic-insights': 'Diagnostic insights',
+             'predictive-analytics': 'Predictive analytics', 'prescriptive-recommendations': 'Prescriptive recommendations',
+           };
+           var moduleSlugs = ['descriptive-analytics', 'diagnostic-insights', 'predictive-analytics', 'prescriptive-recommendations'];
+           moduleSlugs.forEach(function(slug, i) {
+             var v = moduleVisits ? moduleVisits[i] : null;
+             var secs = v ? (v.total_seconds || 0) : 0;
+             var mins = Math.floor(secs / 60); %>
+          <tr>
+            <td><%= moduleLabels[slug] %></td>
+            <td><%= v ? v.open_count + (v.open_count === 1 ? ' time' : ' times') : 'Not opened yet' %></td>
+            <td><%= v ? mins + 'm ' + (secs % 60) + 's' : '—' %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+
+  <% { %>
+    <% domains.forEach(function(d) { %>
+      <div class="form-card wide" style="margin-bottom: 22px;">
+        <div class="form-title" style="font-size: 18px;"><%= d.label %> (<%= d.domain %>)</div>
+        <table class="table-simple">
+          <thead><tr><th>Item</th><th>Statement</th><th>Rating</th><th>Remark</th></tr></thead>
+          <tbody>
+            <% d.items.forEach(function(item) {
+                 var r = responses.get(item.code); %>
+              <tr>
+                <td><%= item.code %></td>
+                <td><%= item.text %></td>
+                <td><%= r && r.rating ? r.rating + ' / 5' : 'Not yet answered' %></td>
+                <td><%= r && r.remark ? r.remark : '' %></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% }); %>
+  <% } %>
+
+<% } %>

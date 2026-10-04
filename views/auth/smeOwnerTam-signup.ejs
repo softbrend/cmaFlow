@@ -1,0 +1,74 @@
+<div class="form-card wide">
+  <div class="form-title"><img src="/img/cma-flow-icon.png" alt="CMA-Flow" style="width:28px; height:28px; border-radius:7px; background:#fff; padding:2px; vertical-align:-6px; margin-right:8px;" />Create your SME Owner-TAM Evaluator account</div>
+  <p class="form-hint">Information captured: username, full name, business / affiliation, email, the business category you'll evaluate, and password. You'll download that category's CSV template (or use the one automatically assigned to you), open any of CMA-Flow's four analytics modules in whatever order you like (there is no walkthrough to follow), and complete a short evaluation whenever you are ready using the Technology Acceptance Model (TAM) questionnaire.</p>
+
+  <% if (errors && errors.length) { %>
+    <div class="alert-error">
+      <ul>
+        <% errors.forEach(function(e) { %><li><%= e.msg %></li><% }); %>
+      </ul>
+    </div>
+  <% } %>
+
+  <form method="POST" action="/smeOwnerTam-signup/register" autocomplete="off">
+    <div class="field">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" value="<%= old.username || '' %>" required />
+    </div>
+
+    <div class="field">
+      <label for="full_name">Full name</label>
+      <input type="text" id="full_name" name="full_name" value="<%= old.full_name || '' %>" required />
+    </div>
+
+    <div class="field">
+      <label for="affiliation">Business / affiliation name</label>
+      <input type="text" id="affiliation" name="affiliation" value="<%= old.affiliation || '' %>" required />
+    </div>
+
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" value="<%= old.email || '' %>" required />
+    </div>
+
+    <div class="field">
+      <label for="business_category">Business category you will evaluate</label>
+      <select id="business_category" name="business_category" required>
+        <option value="" disabled <%= !old.business_category ? 'selected' : '' %>>Select a business category…</option>
+        <% categories.forEach(function(c) { %>
+          <option value="<%= c.name %>" <%= old.business_category === c.name ? 'selected' : '' %>><%= c.name %> — <%= c.examples %></option>
+        <% }); %>
+      </select>
+      <p class="form-hint" style="margin: 7px 0 0;">Pick the category closest to the business you're evaluating — its CSV template becomes your default dataset automatically, and you can switch to any other category's template later from Download SME Templates.</p>
+    </div>
+
+    <div class="field">
+      <label>Starting dataset</label>
+      <div style="display:flex; flex-direction:column; gap:10px; margin-top:4px;">
+        <label style="display:flex; align-items:flex-start; gap:8px; font-weight:400; cursor:pointer;">
+          <input type="radio" name="dataset_origin" value="prefilled" style="margin-top:3px;" <%= (old.dataset_origin || 'prefilled') === 'prefilled' ? 'checked' : '' %> />
+          <span>Use the category's 50 sample rows <span class="form-hint" style="display:block; margin:2px 0 0;">Synthetic, ready-made data — add new rows as you go, but the existing rows stay locked.</span></span>
+        </label>
+        <label style="display:flex; align-items:flex-start; gap:8px; font-weight:400; cursor:pointer;">
+          <input type="radio" name="dataset_origin" value="blank" style="margin-top:3px;" <%= old.dataset_origin === 'blank' ? 'checked' : '' %> />
+          <span>Start blank and enter my own real records <span class="form-hint" style="display:block; margin:2px 0 0;">Same columns, zero pre-filled rows — full add / edit / delete, since every row is real data you type in yourself.</span></span>
+        </label>
+      </div>
+      <p class="form-hint" style="margin: 7px 0 0;">You can add other categories, or start a blank copy of this one, later from Download SME Templates — whichever you choose here isn't final.</p>
+    </div>
+
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" minlength="8" required />
+    </div>
+
+    <div class="field">
+      <label for="confirm_password">Confirm password</label>
+      <input type="password" id="confirm_password" name="confirm_password" minlength="8" required />
+    </div>
+
+    <button type="submit" class="btn btn-accent btn-block">Create account</button>
+  </form>
+
+  <div class="form-footer">Already have an account? <a href="/login">Sign in</a></div>
+</div>

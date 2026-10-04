@@ -444,6 +444,135 @@ router.post('/businessOwner-signup/register', redirectIfAuthed, businessOwnerSig
 });
 
 // ------------------------------------------------------------------
+// SME Owner-TAM Evaluator signup (added 4 October 2026) — a FOURTH,
+// access-code-gated population, per Brenda's request for a new "SME Owner-
+// TAM evaluator" link: real SME owners who use the same portal the
+// Business Owner Evaluator does (business-category template or blank
+// dataset, Excel-style CRUD, User Manual, the four analytics modules) but
+// in the Template-Evaluator-style DIRECT flow (no six-task walkthrough),
+// and answer a REWORDED 17-item TAM questionnaire instead of ISO/IEC
+// 25010. Its responses go to its own sme_tam_evaluation_* tables, so the
+// results already collected for SME Owner, Template Evaluator and Business
+// Owner Evaluator are never touched. Signup mirrors /businessOwner-signup
+// exactly (same fields, same blank-vs-prefilled starting-dataset choice,
+// same auto-default template ingest) — only the role string, the access
+// code, and evaluation_flow = 'direct' differ. evaluation_flow is set to
+// 'direct' for consistency with Template Evaluator, but nothing depends on
+// it: isDirectFlow() (services/tamEvaluation.js) treats this role as
+// direct unconditionally.
+//
+// GET  /smeOwnerTam-signup            -> the access-code form
+// POST /smeOwnerTam-signup            -> verifies the code, flags the session
+// GET  /smeOwnerTam-signup/register   -> the actual signup form (code-gated)
+// POST /smeOwnerTam-signup/register   -> creates the role='SME Owner-TAM Evaluator' account
+// ------------------------------------------------------------------
+const SME_TAM_SIGNUP_CODE = process.env.SME_TAM_SIGNUP_CODE || 'cmaflow-smetam-2026';
+
+router.get('/smeOwnerTam-signup', redirectIfAuthed, (req, res) => {
+  res.render('auth/smeOwnerTam-signup-code', {
+    title: 'SME Owner-TAM Evaluator Access',
+    layout: 'layout-auth',
+    error: null,
+  });
+});
+
+router.post('/smeOwnerTam-signup', redirectIfAuthed, (req, res) => {
+  const submitted = (req.body.access_code || '').trim();
+  if (!submitted || submitted !== SME_TAM_SIGNUP_CODE) {
+    return res.status(400).render('auth/smeOwnerTam-signup-code', {
+      title: 'SME Owner-TAM Evaluator Access',
+      layout: 'layout-auth',
+      error: 'That access code is not correct.',
+    });
+  }
+  req.session.smeTamCodeVerified = true;
+  return res.redirect('/smeOwnerTam-signup/register');
+});
+
+router.get('/smeOwnerTam-signup/register', redirectIfAuthed, (req, res) => {
+  if (!req.session.smeTamCodeVerified) {
+    return res.redirect('/smeOwnerTam-signup');
+  }
+  res.render('auth/smeOwnerTam-signup', {
+    title: 'Create your SME Owner-TAM Evaluator account',
+    layout: 'layout-auth',
+    errors: [],
+    old: {},
+    categories: loadCategories(),
+  });
+});
+
+// Identical field set/validation to businessOwnerSignupValidators above —
+// reused directly rather than copied, so the two signup forms can never
+// drift apart on what they require.
+router.post('/smeOwnerTam-signup/register', redirectIfAuthed, businessOwnerSignupValidators, async (req, res, next) => {
+  if (!req.session.smeTamCodeVerified) {
+    return res.redirect('/smeOwnerTam-signup');
+  }
+
+  const result = validationResult(req);
+  if (!result.isEmpty()) {
+    return res.status(400).render('auth/smeOwnerTam-signup', {
+      title: 'Create your SME Owner-TAM Evaluator account',
+      layout: 'layout-auth',
+      errors: result.array(),
+      old: req.body,
+      categories: loadCategories(),
+    });
+  }
+
+  const {
+    username, full_name, affiliation, email, business_category, password, dataset_origin,
+  } = req.body;
+  const useBlankDataset = dataset_origin === 'blank';
+
+  try {
+    const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
+    const { rows } = await pool.query(
+      `INSERT INTO sme_accounts
+         (username, owner_name, business_name, email, business_sector, password_hash, role, evaluation_flow)
+       VALUES ($1, $2, $3, $4, $5, $6, 'SME Owner-TAM Evaluator', 'direct')
+       RETURNING id, username, owner_name, business_name, email, role, business_sector, assigned_dataset, evaluation_flow`,
+      [username, full_name, affiliation, email, business_category, password_hash]
+    );
+
+    const account = rows[0];
+    delete req.session.smeTamCodeVerified; // one-time: re-entering the code is required for the next account
+
+    // Same auto-default as /businessOwner-signup/register: the declared
+    // category's template (or a blank copy of it, per the radio choice)
+    // becomes this account's default dataset immediately. Non-fatal.
+    try {
+      const ingested = useBlankDataset
+        ? await ingestDefaultBlankTemplateForCategory(account.id, business_category)
+        : await ingestDefaultTemplateForCategory(account.id, business_category);
+      if (ingested) {
+        await pool.query('UPDATE sme_accounts SET evaluation_template_file = $1 WHERE id = $2', [ingested.templateFile, account.id]);
+        account.evaluation_template_file = ingested.templateFile;
+        account.default_dataset_id = ingested.datasetRowId;
+      }
+    } catch (ingestErr) {
+      console.error('[smeOwnerTam-signup] auto-default template ingest failed:', ingestErr.message);
+    }
+
+    req.session.userId = account.id;
+    req.session.user = account;
+    return res.redirect('/');
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(400).render('auth/smeOwnerTam-signup', {
+        title: 'Create your SME Owner-TAM Evaluator account',
+        layout: 'layout-auth',
+        errors: [{ msg: 'That username or email is already registered.' }],
+        old: req.body,
+        categories: loadCategories(),
+      });
+    }
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
 // GET /login
 // ------------------------------------------------------------------
 router.get('/login', redirectIfAuthed, (req, res) => {

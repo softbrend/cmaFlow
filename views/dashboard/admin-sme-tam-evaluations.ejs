@@ -1,0 +1,63 @@
+<div class="page-title">📝 <span class="page-title-text">View SME Owner-TAM Evaluation Report</span></div>
+<p class="page-subtitle">Every SME Owner-TAM Evaluator account's evaluation progress, and a cross-respondent summary of the reworded 17-item TAM questionnaire. Kept separate from the SME owner, Template Evaluator and Business Owner Evaluator reports — the wording differs from the original TAM items, so these results must not be pooled with <a href="/admin/evaluations">View Evaluation Report</a> or <a href="/admin/expert-evaluations">View Template Evaluation Report</a>.</p>
+
+<div class="form-card wide" style="max-width: none; margin-bottom: 26px;">
+  <div class="form-title" style="font-size: 18px;">Respondents</div>
+  <div class="table-scroll">
+    <table class="table-simple">
+      <thead>
+        <tr>
+          <th>Account</th>
+          <th>Affiliation</th>
+          <th>Consent</th>
+          <th>Status</th>
+          <th>Progress</th>
+          <th>Items answered</th>
+          <th>Completed</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (statuses.length === 0) { %>
+          <tr><td colspan="8" style="color: var(--text-muted);">No SME Owner-TAM Evaluator accounts yet.</td></tr>
+        <% } %>
+        <% statuses.forEach(function(s) {
+             var statusLabel, statusClass;
+             if (s.status === 'completed') { statusLabel = 'Completed'; statusClass = 'badge-active'; }
+             else if (s.status === 'questionnaire') { statusLabel = 'Questionnaire open'; statusClass = 'badge-risk-medium'; }
+             else { statusLabel = 'Not started'; statusClass = 'badge-inactive'; }
+
+             var consentLabel, consentClass;
+             if (s.consent_status === 'given') { consentLabel = 'Given'; consentClass = 'badge-active'; }
+             else if (s.consent_status === 'declined') { consentLabel = 'Declined'; consentClass = 'badge-risk-high'; }
+             else if (s.consent_status === 'pending') { consentLabel = 'Pending'; consentClass = 'badge-inactive'; }
+             else { consentLabel = '—'; consentClass = 'badge-inactive'; }
+        %>
+          <tr>
+            <td><%= s.owner_name %> <span style="color: var(--text-muted);">(<%= s.username %>)</span></td>
+            <td><%= s.business_name %></td>
+            <td><span class="badge <%= consentClass %>"><%= consentLabel %></span></td>
+            <td><span class="badge <%= statusClass %>"><%= statusLabel %></span></td>
+            <td><%= (s.modules_opened || 0) %> / 4 modules opened</td>
+            <td><%= s.items_answered || 0 %> / 17</td>
+            <td><%= s.completed_at ? new Date(s.completed_at).toLocaleDateString() : '—' %></td>
+            <td style="text-align: right;">
+              <% if (s.status) { %>
+                <a class="btn btn-ghost btn-sm" href="/admin/sme-tam-evaluations/<%= s.account_id %>">View</a>
+              <% } else { %>
+                <span style="color: var(--text-muted); font-size: 12.5px;">—</span>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%# One summary block — this role has a single (direct) flow, so there is
+    no walkthrough/direct split to keep apart. The partial is the same
+    generic 17-item TAM summary the Template Evaluator report uses; it
+    reads item text and domains from the summary object itself, so it
+    shows the REWORDED SME_TAM_ITEMS wording here. %>
+<%- include('_expert-summary-block', { label: 'SME Owner-TAM', s: summary }) %>

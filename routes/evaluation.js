@@ -12,7 +12,8 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const {
-  WALKTHROUGH_TASKS, itemsFor, groupItemsByDomain, EXPERT_ROLE, BUSINESS_ROLE,
+  WALKTHROUGH_TASKS, itemsFor, groupItemsByDomain, EXPERT_ROLE, BUSINESS_ROLE, SME_TAM_ROLE,
+  isDirectFlow: isDirectFlowFor,
   getEvaluationState, recordConsent, startTaskIfNeeded, completeTask,
   saveResponses, validateQuestionnaire, markCompleted, getModuleVisits,
 } = require('../services/tamEvaluation');
@@ -41,6 +42,10 @@ const CONSENT_DECISIONS = { agree: 'given', decline: 'declined', reconsider: 'pe
 function evalRoleLabelFor(role) {
   if (role === EXPERT_ROLE) return 'Template Evaluator Evaluation';
   if (role === BUSINESS_ROLE) return 'Business Owner Evaluator Evaluation';
+  // SME Owner-TAM Evaluator (added 4 October 2026) — always direct flow
+  // (see isDirectFlowFor() in services/tamEvaluation.js), so it never
+  // reaches the walkthrough screen; only this label is new.
+  if (role === SME_TAM_ROLE) return 'SME Owner-TAM Evaluation';
   return 'End-User Evaluation';
 }
 
@@ -60,7 +65,9 @@ router.get('/evaluation', async (req, res, next) => {
     // evaluation_flow column exists but is always 'walkthrough' (nothing
     // ever sets it otherwise), so this check is effectively isExpert-only
     // in practice, written out in full for clarity.
-    const isDirectFlow = isExpert && req.session.user.evaluation_flow === 'direct';
+    // isDirectFlowFor(): Template Evaluator on the 'direct' flow, OR any
+    // SME Owner-TAM Evaluator (always direct — no walkthrough variant).
+    const isDirectFlow = isDirectFlowFor(role, req.session.user && req.session.user.evaluation_flow);
     const evalRoleLabel = evalRoleLabelFor(role);
     // Either template-system role (Template Evaluator or Business Owner
     // Evaluator) gets a default dataset ingested automatically at signup
@@ -167,7 +174,7 @@ router.get('/evaluation', async (req, res, next) => {
     }
 
     // completed
-    const moduleVisits = isDirectFlow ? await getModuleVisits(session.id) : null;
+    const moduleVisits = isDirectFlow ? await getModuleVisits(session.id, role) : null;
     return res.render('dashboard/evaluation-complete', {
       title: 'End-User Evaluation — Complete',
       active: 'evaluation',
@@ -253,7 +260,7 @@ router.post('/evaluation/questionnaire', async (req, res, next) => {
     const accountId = req.session.userId;
     const role = req.session.user && req.session.user.role;
     const isExpert = role === EXPERT_ROLE;
-    const isDirectFlow = isExpert && req.session.user.evaluation_flow === 'direct';
+    const isDirectFlow = isDirectFlowFor(role, req.session.user && req.session.user.evaluation_flow);
     const evalRoleLabel = evalRoleLabelFor(role);
     const { session } = await getEvaluationState(accountId, role, req.session.user && req.session.user.evaluation_flow);
     if (session.consent_status !== 'given' || session.status !== 'questionnaire') {

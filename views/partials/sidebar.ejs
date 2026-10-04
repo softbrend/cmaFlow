@@ -10,12 +10,16 @@
       // CSV for evaluation" system (routes/templates.js's
       // usesTemplateSystem()), so both get "Download SME Templates" in
       // place of "Monetization discovery"/the plain Upload-only nav below.
-      var isExpertEvaluator = currentUser && (currentUser.role === 'Template Evaluator' || currentUser.role === 'Business Owner Evaluator');
+      // SME Owner-TAM Evaluator (added 4 October 2026) uses the same
+      // /sme-templates system, so it is covered here too.
+      var isExpertEvaluator = currentUser && (currentUser.role === 'Template Evaluator' || currentUser.role === 'Business Owner Evaluator' || currentUser.role === 'SME Owner-TAM Evaluator');
+      var hasUserManual = currentUser && (currentUser.role === 'Business Owner Evaluator' || currentUser.role === 'SME Owner-TAM Evaluator');
       // Nav-link text for the evaluation link itself still needs its own
       // three-way label, since the two template-system roles don't share
       // a page title.
       var evalRoleLabel = currentUser && currentUser.role === 'Template Evaluator' ? 'Template Evaluator Evaluation'
         : currentUser && currentUser.role === 'Business Owner Evaluator' ? 'Business Owner Evaluator Evaluation'
+        : currentUser && currentUser.role === 'SME Owner-TAM Evaluator' ? 'SME Owner-TAM Evaluation'
         : 'End-User Evaluation';
     %>
     <% if (currentUser && currentUser.role === 'Admin') { %>
@@ -45,6 +49,12 @@
       <li><a href="/admin/business-owner-evaluations" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'business-owner-evaluations') ? 'active' : '' %>"><span class="nav-dot"></span>View Business Owner Evaluation Report</a></li>
       <li><a href="/admin/business-owner-accounts" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'business-owner-accounts') ? 'active' : '' %>"><span class="nav-dot"></span>Manage Business Owner Evaluators</a></li>
       <li><a href="/admin/business-owner-datasets" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'business-owner-datasets') ? 'active' : '' %>"><span class="nav-dot"></span>Business Owner Evaluator Datasets</a></li>
+      <%# SME Owner-TAM Evaluator (added 4 October 2026) — its own three
+          admin pages, same "never listed alongside another population"
+          discipline as the sets above. %>
+      <li><a href="/admin/sme-tam-evaluations" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'sme-tam-evaluations') ? 'active' : '' %>"><span class="nav-dot"></span>View SME Owner-TAM Evaluation Report</a></li>
+      <li><a href="/admin/sme-tam-accounts" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'sme-tam-accounts') ? 'active' : '' %>"><span class="nav-dot"></span>Manage SME Owner-TAM Evaluators</a></li>
+      <li><a href="/admin/sme-tam-datasets" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'sme-tam-datasets') ? 'active' : '' %>"><span class="nav-dot"></span>SME Owner-TAM Evaluator Datasets</a></li>
       <li><a href="/admin/gating-comparison" class="<%= (typeof adminSection !== 'undefined' && adminSection === 'gating-comparison') ? 'active' : '' %>"><span class="nav-dot"></span>Gating Comparison</a></li>
     <% } else if (typeof evaluationLocked !== 'undefined' && evaluationLocked) { %>
       <%# New (or not-yet-completed) SME owner, Template Evaluator, OR
@@ -81,7 +91,7 @@
           ALWAYS_ALLOWED_PREFIXES), same as the evaluation link above it —
           this branch is for a still-locked account, exactly who most
           needs it. %>
-      <% if (currentUser && currentUser.role === 'Business Owner Evaluator') { %>
+      <% if (hasUserManual) { %>
         <li><a href="/user-manual" class="<%= active === 'user-manual' ? 'active' : '' %>"><span class="nav-dot"></span>User Manual</a></li>
       <% } %>
     <% } else { %>
@@ -105,7 +115,7 @@
       <% } %>
       <li><a href="/evaluation" class="<%= (active === 'evaluation' || active === 'evaluation-questionnaire') ? 'active' : '' %>"><span class="nav-dot"></span><%= evalRoleLabel %></a></li>
       <%# User Manual — same placement/scoping as the locked branch above. %>
-      <% if (currentUser && currentUser.role === 'Business Owner Evaluator') { %>
+      <% if (hasUserManual) { %>
         <li><a href="/user-manual" class="<%= active === 'user-manual' ? 'active' : '' %>"><span class="nav-dot"></span>User Manual</a></li>
       <% } %>
     <% } %>

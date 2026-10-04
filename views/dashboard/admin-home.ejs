@@ -66,6 +66,25 @@
   </div>
 </div>
 
+<div class="kpi-row" style="margin-top: 14px;">
+  <div class="stat-tile">
+    <div class="stat-label">SME Owner-TAM Evaluator accounts</div>
+    <div class="stat-value"><%= smeTamCount %></div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-label">Evaluations completed (SME Owner-TAM)</div>
+    <div class="stat-value"><%= smeTamCompleted %></div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-label">Evaluations in progress (SME Owner-TAM)</div>
+    <div class="stat-value"><%= smeTamInProgress %></div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-label">Not started yet (SME Owner-TAM)</div>
+    <div class="stat-value"><%= smeTamNotStarted %></div>
+  </div>
+</div>
+
 <div class="form-card wide">
   <div class="form-title" style="font-size: 18px;">Quick links</div>
   <table class="table-simple">
@@ -105,6 +124,18 @@
       <tr>
         <td><strong>View Business Owner Evaluation Report</strong><br /><span style="color: var(--text-muted); font-size: 13px;">Browse each Business Owner Evaluator's task-walkthrough log and 15-item ISO/IEC 25010 questionnaire, plus their own cross-respondent summary.</span></td>
         <td style="text-align: right;"><a class="btn btn-ghost" href="/admin/business-owner-evaluations">Open</a></td>
+      </tr>
+      <tr>
+        <td><strong>Manage SME Owner-TAM Evaluators</strong><br /><span style="color: var(--text-muted); font-size: 13px;">Look up an SME Owner-TAM Evaluator account and change its password. Never listed alongside any other population.</span></td>
+        <td style="text-align: right;"><a class="btn btn-ghost" href="/admin/sme-tam-accounts">Open</a></td>
+      </tr>
+      <tr>
+        <td><strong>SME Owner-TAM Evaluator Datasets</strong><br /><span style="color: var(--text-muted); font-size: 13px;">Every dataset copy an SME Owner-TAM Evaluator holds — view its analytics read-only, or delete it.</span></td>
+        <td style="text-align: right;"><a class="btn btn-ghost" href="/admin/sme-tam-datasets">Open</a></td>
+      </tr>
+      <tr>
+        <td><strong>View SME Owner-TAM Evaluation Report</strong><br /><span style="color: var(--text-muted); font-size: 13px;">Browse each SME Owner-TAM Evaluator's module usage and reworded 17-item TAM answers, plus their own cross-respondent summary — kept separate from every other TAM result.</span></td>
+        <td style="text-align: right;"><a class="btn btn-ghost" href="/admin/sme-tam-evaluations">Open</a></td>
       </tr>
       <tr>
         <td><strong>Gating Comparison</strong><br /><span style="color: var(--text-muted); font-size: 13px;">Run Predictive/Prescriptive with CAAGA's eligibility gate on vs. off against the same dataset, and compare unsupported outputs and trust ratings.</span></td>

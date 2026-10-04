@@ -48,7 +48,9 @@
 // Task 1's upload) is always allowed for the same reason /evaluation
 // itself is — it has to be reachable before Task 1 is done.
 const pool = require('../db/pool');
-const { WALKTHROUGH_TASKS, EXPERT_ROLE, BUSINESS_ROLE } = require('../services/tamEvaluation');
+const {
+  WALKTHROUGH_TASKS, EXPERT_ROLE, BUSINESS_ROLE, SME_TAM_ROLE, isDirectFlow,
+} = require('../services/tamEvaluation');
 
 const SESSIONS_TABLE = {
   [EXPERT_ROLE]: 'expert_evaluation_sessions',
@@ -57,6 +59,11 @@ const SESSIONS_TABLE = {
   // only ever needs this table-name mapping and none of the
   // EXPERT_ROLE-specific direct-flow bypass below.
   [BUSINESS_ROLE]: 'business_owner_evaluation_sessions',
+  // SME Owner-TAM Evaluator (added 4 October 2026) — never actually
+  // queried here, since it is always direct-flow and bypassed below before
+  // any session lookup; listed so sessionsTableFor() stays correct if that
+  // ever changes.
+  [SME_TAM_ROLE]: 'sme_tam_evaluation_sessions',
 };
 function sessionsTableFor(role) {
   return SESSIONS_TABLE[role] || 'evaluation_sessions';
@@ -105,7 +112,12 @@ async function evaluationGate(req, res, next) {
   // would otherwise lock a direct-flow account out of everything from
   // the very first page it ever loads, before it even had a chance to
   // pick a dataset.
-  if (user.role === EXPERT_ROLE && user.evaluation_flow === 'direct') {
+  // isDirectFlow() also covers SME Owner-TAM Evaluator (added 4 October
+  // 2026) — always direct, with no evaluation_flow dependency: all four
+  // modules and the templates/editor open from the first page, and
+  // /evaluation (consent -> questionnaire) is reachable whenever it
+  // wants, exactly like a direct-flow Template Evaluator.
+  if (isDirectFlow(user.role, user.evaluation_flow)) {
     res.locals.evaluationLocked = false;
     return next();
   }

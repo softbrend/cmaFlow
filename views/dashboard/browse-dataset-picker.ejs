@@ -17,7 +17,7 @@
   // Business Owner Evaluator's own non-template upload — has no matching
   // editor at all, so the button is simply omitted for those, same as
   // every other role.
-  var isBusinessOwner = typeof currentUser !== 'undefined' && currentUser && currentUser.role === 'Business Owner Evaluator';
+  var isBusinessOwner = typeof currentUser !== 'undefined' && currentUser && (currentUser.role === 'Business Owner Evaluator' || currentUser.role === 'SME Owner-TAM Evaluator');
 %>
 <% if (!datasets || datasets.length === 0) { %>
   <div class="placeholder-card">

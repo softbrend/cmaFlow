@@ -45,7 +45,8 @@ async function listAllDatasets(search, roleMode) {
   const roleClause = roleMode === 'all' ? 'TRUE'
     : roleMode === 'expert' ? `a.role = 'Template Evaluator'`
     : roleMode === 'businessOwner' ? `a.role = 'Business Owner Evaluator'`
-    : `a.role NOT IN ('Template Evaluator', 'Business Owner Evaluator')`;
+    : roleMode === 'smeTam' ? `a.role = 'SME Owner-TAM Evaluator'`
+    : `a.role NOT IN ('Template Evaluator', 'Business Owner Evaluator', 'SME Owner-TAM Evaluator')`;
   const params = [];
   let searchClause = '';
   if (trimmed) {

@@ -52,7 +52,7 @@ const {
 } = require('../services/fullDescriptiveAnalytics');
 const { buildErdDefinition } = require('../services/erdDiagram');
 const { ensureDefaultDataset, setDefaultDataset } = require('../services/accountDatasets');
-const { recordModuleVisit } = require('../services/tamEvaluation');
+const { recordModuleVisit, SME_TAM_ROLE, isDirectFlow: isDirectFlowFor } = require('../services/tamEvaluation');
 const { getOrCompute: getOrComputeAnalyticsCache, getOrComputeInProcess: getOrComputeAnalyticsCacheInProcess } = require('../services/analyticsCache');
 const { ROLE_ONTOLOGY } = require('../services/semanticFieldOntology'); // Round 22 — role dropdown options for GET/POST /dataset/:id/review-fields
 // Only ACTUAL_DATE_NAME_RE is needed here (to pick the "delivered/actual"
@@ -326,9 +326,11 @@ async function attachAdminViewingBanner(req, res, next) {
 function trackDirectFlowModuleVisit(moduleSlug) {
   return async (req, res, next) => {
     const user = req.session && req.session.user;
-    if (user && user.role === 'Template Evaluator' && user.evaluation_flow === 'direct') {
+    // isDirectFlowFor() also covers SME Owner-TAM Evaluator (added 4 October
+    // 2026); recordModuleVisit() picks that role's own visits table.
+    if (user && isDirectFlowFor(user.role, user.evaluation_flow)) {
       try {
-        await recordModuleVisit(req.session.userId, moduleSlug);
+        await recordModuleVisit(req.session.userId, moduleSlug, user.role);
       } catch (e) {
         console.error('[trackDirectFlowModuleVisit] failed:', e.message);
       }
@@ -380,7 +382,12 @@ router.get('/', async (req, res, next) => {
     // res.locals.navSections) rather than relying on the sidebar alone.
     const user = req.session.user;
     const isExpertEvaluator = !!(user && user.role === 'Template Evaluator');
-    const isDirectFlowEvaluator = isExpertEvaluator && user.evaluation_flow === 'direct';
+    // isDirectFlowFor() also covers SME Owner-TAM Evaluator (added 4 October
+    // 2026): it lands on the same direct-flow home page — four module
+    // buttons plus the questionnaire pointer — as a direct-flow Template
+    // Evaluator, just labeled with its own evaluation link below.
+    const isDirectFlowEvaluator = !!(user && isDirectFlowFor(user.role, user.evaluation_flow));
+    const evalNavLabel = isExpertEvaluator ? 'Template Evaluator Evaluation' : 'SME Owner-TAM Evaluation';
     // Portal title only (added 2 October 2026 for Business Owner Evaluator)
     // — kept separate from isExpertEvaluator above, which still decides
     // the Template-Evaluator-specific upload-or-pick-a-template/direct-
@@ -390,6 +397,7 @@ router.get('/', async (req, res, next) => {
     // needs a third label.
     const portalTitle = isExpertEvaluator ? 'Template Evaluator Portal'
       : (user && user.role === 'Business Owner Evaluator') ? 'Business Owner Evaluator Portal'
+      : (user && user.role === SME_TAM_ROLE) ? 'SME Owner-TAM Evaluator Portal'
       : 'SME Owner Portal';
 
     res.render('dashboard/index', {
@@ -400,6 +408,7 @@ router.get('/', async (req, res, next) => {
       configs,
       isExpertEvaluator,
       isDirectFlowEvaluator,
+      evalNavLabel,
       portalTitle,
     });
   } catch (err) {

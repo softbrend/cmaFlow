@@ -99,7 +99,7 @@ DO $$
 BEGIN
   ALTER TABLE sme_accounts DROP CONSTRAINT IF EXISTS sme_accounts_role_check;
   ALTER TABLE sme_accounts
-      ADD CONSTRAINT sme_accounts_role_check CHECK (role IN ('SME Owner', 'Admin', 'Template Evaluator', 'Business Owner Evaluator')) NOT VALID;
+      ADD CONSTRAINT sme_accounts_role_check CHECK (role IN ('SME Owner', 'Admin', 'Template Evaluator', 'Business Owner Evaluator', 'SME Owner-TAM Evaluator')) NOT VALID;
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
@@ -1014,6 +1014,122 @@ CREATE INDEX IF NOT EXISTS idx_expert_evaluation_module_visits_session
 
 CREATE INDEX IF NOT EXISTS idx_expert_evaluation_module_visits_account
     ON expert_evaluation_module_visits(account_id);
+
+-- ---------------------------------------------------------------------
+-- SME Owner-TAM Evaluator accounts (added 4 October 2026) — a FOURTH,
+-- fully separate population: real SME owners recruited through their own
+-- access-code-gated /smeOwnerTam-signup flow (routes/auth.js). They use
+-- the same portal the Business Owner Evaluator does (business-category
+-- template or blank dataset, Excel-style CRUD, User Manual, the four
+-- analytics modules) and the same DIRECT flow the post-2-October-2026
+-- Template Evaluator accounts use (no six-task walkthrough — all four
+-- modules open immediately, time-on-module logged automatically), but
+-- then answer a REWORDED 17-item TAM questionnaire (PU 7 / PEOU 7 / BI 3,
+-- services/tamEvaluation.js's SME_TAM_ITEMS, wording adapted for real
+-- owners using their own data) rather than ISO/IEC 25010.
+--
+-- Persisted to these four tables ONLY — never evaluation_*,
+-- expert_evaluation_* or business_owner_evaluation_* — per Brenda's
+-- explicit instruction that this new direction "will not touch the
+-- previous results": the SME Owner TAM data already reported in the
+-- manuscript, the Template Evaluator round, and the Business Owner
+-- Evaluator ISO/IEC 25010 round are all left exactly as collected. Because
+-- the wording differs from the original TAM items, these responses must
+-- also never be pooled with the SME Owner / Template Evaluator TAM
+-- responses in any analysis without an explicit equivalence argument.
+-- Column shapes mirror expert_evaluation_* exactly so
+-- services/tamEvaluation.js can pick the table set per call from the
+-- account's role (tablesFor()) instead of forking its logic. This role is
+-- always direct-flow, so sessions are created at status = 'questionnaire'
+-- and sme_tam_evaluation_task_logs stays permanently empty — it exists
+-- only so the shared getTaskLogs()/getEvaluationState() code path needs no
+-- special case.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS sme_tam_evaluation_sessions (
+    id                        SERIAL PRIMARY KEY,
+    account_id                INTEGER     NOT NULL REFERENCES sme_accounts(id) ON DELETE CASCADE,
+    status                    VARCHAR(20) NOT NULL DEFAULT 'questionnaire' CHECK (status IN (
+                                  'walkthrough', 'questionnaire', 'completed'
+                              )),
+    current_task              SMALLINT    NOT NULL DEFAULT 1 CHECK (current_task BETWEEN 1 AND 6),
+    started_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
+    walkthrough_completed_at  TIMESTAMPTZ,
+    completed_at              TIMESTAMPTZ,
+    consent_status            VARCHAR(20) NOT NULL DEFAULT 'pending',
+    consent_decided_at        TIMESTAMPTZ,
+    UNIQUE (account_id)
+);
+
+DO $$
+BEGIN
+  ALTER TABLE sme_tam_evaluation_sessions
+      ADD CONSTRAINT sme_tam_evaluation_sessions_consent_status_check
+      CHECK (consent_status IN ('pending', 'given', 'declined'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE TABLE IF NOT EXISTS sme_tam_evaluation_task_logs (
+    id                    SERIAL PRIMARY KEY,
+    session_id            INTEGER     NOT NULL REFERENCES sme_tam_evaluation_sessions(id) ON DELETE CASCADE,
+    account_id            INTEGER     NOT NULL REFERENCES sme_accounts(id) ON DELETE CASCADE,
+    task_number           SMALLINT    NOT NULL CHECK (task_number BETWEEN 1 AND 6),
+    module_slug           VARCHAR(60) NOT NULL,
+    started_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+    completed_at          TIMESTAMPTZ,
+    time_on_task_seconds  INTEGER,
+    needed_assistance     BOOLEAN     NOT NULL DEFAULT false,
+    had_error             BOOLEAN     NOT NULL DEFAULT false,
+    notes                 TEXT,
+    UNIQUE (session_id, task_number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sme_tam_evaluation_task_logs_session
+    ON sme_tam_evaluation_task_logs(session_id);
+
+CREATE INDEX IF NOT EXISTS idx_sme_tam_evaluation_task_logs_account
+    ON sme_tam_evaluation_task_logs(account_id);
+
+CREATE TABLE IF NOT EXISTS sme_tam_evaluation_responses (
+    id            SERIAL PRIMARY KEY,
+    session_id    INTEGER     NOT NULL REFERENCES sme_tam_evaluation_sessions(id) ON DELETE CASCADE,
+    account_id    INTEGER     NOT NULL REFERENCES sme_accounts(id) ON DELETE CASCADE,
+    item_code     VARCHAR(10) NOT NULL,
+    domain        VARCHAR(10) NOT NULL CHECK (domain IN ('PU', 'PEOU', 'BI')),
+    rating        SMALLINT    CHECK (rating BETWEEN 1 AND 5),
+    remark        TEXT,
+    answered_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (session_id, item_code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sme_tam_evaluation_responses_session
+    ON sme_tam_evaluation_responses(session_id);
+
+CREATE INDEX IF NOT EXISTS idx_sme_tam_evaluation_responses_account
+    ON sme_tam_evaluation_responses(account_id);
+
+-- Automatic time-on-module logging for this role's direct flow — same
+-- shape and same single writer (services/tamEvaluation.js's
+-- recordModuleVisit(), now role-aware) as expert_evaluation_module_visits
+-- above, including the consent-first rule (nothing is logged until
+-- consent_status = 'given', RA 10173) and the 30-minute idle cap.
+CREATE TABLE IF NOT EXISTS sme_tam_evaluation_module_visits (
+    id              SERIAL      PRIMARY KEY,
+    session_id      INTEGER     NOT NULL REFERENCES sme_tam_evaluation_sessions(id) ON DELETE CASCADE,
+    account_id      INTEGER     NOT NULL REFERENCES sme_accounts(id) ON DELETE CASCADE,
+    module_slug     VARCHAR(60) NOT NULL,
+    first_opened_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_opened_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    open_count      INTEGER     NOT NULL DEFAULT 1,
+    total_seconds   INTEGER     NOT NULL DEFAULT 0,
+    UNIQUE (session_id, module_slug)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sme_tam_evaluation_module_visits_session
+    ON sme_tam_evaluation_module_visits(session_id);
+
+CREATE INDEX IF NOT EXISTS idx_sme_tam_evaluation_module_visits_account
+    ON sme_tam_evaluation_module_visits(account_id);
 
 -- ---------------------------------------------------------------------
 -- Per-Template-Evaluator "default CSV for evaluation" — which of the 20

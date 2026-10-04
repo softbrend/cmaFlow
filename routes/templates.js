@@ -41,6 +41,9 @@ const { setDefaultDataset } = require('../services/accountDatasets');
 // sync with the actual instrument if either is ever revised.
 const {
   WALKTHROUGH_TASKS, ISO_DOMAIN_LABELS, ISO25010_ITEMS,
+  // SME Owner-TAM Evaluator (added 4 October 2026) — same portal features
+  // as Business Owner Evaluator, direct flow, reworded 17-item TAM.
+  SME_TAM_ROLE, SME_TAM_ITEMS, DOMAIN_LABELS, isDirectFlow: isDirectFlowFor,
 } = require('../services/tamEvaluation');
 
 const router = express.Router();
@@ -57,8 +60,18 @@ const EXPERT_ROLE = 'Template Evaluator';
 // services/tamEvaluation.js, never here.
 const BUSINESS_ROLE = 'Business Owner Evaluator';
 
+// SME Owner-TAM Evaluator (added 4 October 2026) gets the same template
+// system and the same editable-copy (blank/prefilled, CRUD) experience as
+// Business Owner Evaluator — see hasEditableCopies() below.
 function usesTemplateSystem(role) {
-  return role === EXPERT_ROLE || role === BUSINESS_ROLE;
+  return role === EXPERT_ROLE || role === BUSINESS_ROLE || role === SME_TAM_ROLE;
+}
+
+// The two roles that hold their OWN editable evaluation-dataset copies
+// (blank track + prefilled track, Excel-style CRUD). Template Evaluator is
+// deliberately excluded — see requireBusinessOwner()'s comment.
+function hasEditableCopies(role) {
+  return role === BUSINESS_ROLE || role === SME_TAM_ROLE;
 }
 
 // Same shape as requireAdmin in middleware/auth.js — a signed-in account
@@ -92,7 +105,10 @@ function requireBusinessOwner(req, res, next) {
     req.session.flashError = 'Please sign in to continue.';
     return res.redirect('/login');
   }
-  if (req.session.user && req.session.user.role === BUSINESS_ROLE) {
+  // Name kept (it gates every editable-copy route below) even though, as of
+  // 4 October 2026, it also admits SME Owner-TAM Evaluator via
+  // hasEditableCopies() — still never Template Evaluator.
+  if (req.session.user && hasEditableCopies(req.session.user.role)) {
     return next();
   }
   return res.status(403).render('errors/403', { title: 'Not authorized', layout: false });
@@ -265,7 +281,7 @@ router.get('/sme-templates', requireAuth, async (req, res, next) => {
     // has no direct-flow variant (always walkthrough-gated, see
     // middleware/evaluationGate.js), so evaluation_flow is never 'direct'
     // for that role and this stays false there regardless.
-    const isDirectFlow = isExpertEvaluator && user.evaluation_flow === 'direct';
+    const isDirectFlow = !!(user && isDirectFlowFor(user.role, user.evaluation_flow));
     const evaluationTemplateFile = (isExpertEvaluator && user.evaluation_template_file) || null;
     // Decides which of the two "view your records" destinations this
     // view links to below — added 2 October 2026 alongside the
@@ -274,7 +290,7 @@ router.get('/sme-templates', requireAuth, async (req, res, next) => {
     // Owner Evaluator links to the new editable evaluation-dataset-editor
     // instead. See requireBusinessOwner() above for why this is scoped
     // more narrowly than isExpertEvaluator.
-    const isBusinessOwner = !!(user && user.role === BUSINESS_ROLE);
+    const isBusinessOwner = !!(user && hasEditableCopies(user.role));
     // One row per category this Business Owner Evaluator already holds a
     // copy of (added 3 October 2026, alongside the multi-copy model —
     // see services/templateEvaluationIngest.js's module header), keyed by
@@ -516,17 +532,26 @@ router.get('/sme-templates/reference/:file', requireAuth, (req, res) => {
 // silently drift out of sync with the actual instrument if either is
 // revised later.
 router.get('/user-manual', requireAuth, (req, res) => {
+  // SME Owner-TAM Evaluator (added 4 October 2026) gets the same manual
+  // with two sections swapped for its own direct-flow/TAM process — see
+  // views/dashboard/user-manual.ejs's isSmeTam branches. Its questionnaire
+  // summary reads the live SME_TAM_ITEMS/DOMAIN_LABELS the same way the
+  // Business Owner branch reads ISO25010_ITEMS/ISO_DOMAIN_LABELS, so
+  // neither can drift from its real instrument.
+  const isSmeTam = !!(req.session.user && req.session.user.role === SME_TAM_ROLE);
+  const items = isSmeTam ? SME_TAM_ITEMS : ISO25010_ITEMS;
   const isoDomainCounts = {};
-  ISO25010_ITEMS.forEach((item) => {
+  items.forEach((item) => {
     isoDomainCounts[item.domain] = (isoDomainCounts[item.domain] || 0) + 1;
   });
   res.render('dashboard/user-manual', {
     title: 'User Manual',
     active: 'user-manual',
+    isSmeTam,
     tasks: WALKTHROUGH_TASKS,
-    isoDomainLabels: ISO_DOMAIN_LABELS,
+    isoDomainLabels: isSmeTam ? DOMAIN_LABELS : ISO_DOMAIN_LABELS,
     isoDomainCounts,
-    isoItemCount: ISO25010_ITEMS.length,
+    isoItemCount: items.length,
   });
 });
 

@@ -30,7 +30,7 @@ async function listAccounts(search) {
     const { rows } = await pool.query(
       `SELECT id, username, owner_name, business_name, email, role, cohort, created_at
          FROM sme_accounts
-        WHERE role NOT IN ('Template Evaluator', 'Business Owner Evaluator')
+        WHERE role NOT IN ('Template Evaluator', 'Business Owner Evaluator', 'SME Owner-TAM Evaluator')
           AND (username ILIKE $1 OR owner_name ILIKE $1 OR business_name ILIKE $1 OR email ILIKE $1)
         ORDER BY created_at DESC`,
       [like]
@@ -40,7 +40,7 @@ async function listAccounts(search) {
   const { rows } = await pool.query(
     `SELECT id, username, owner_name, business_name, email, role, cohort, created_at
        FROM sme_accounts
-      WHERE role NOT IN ('Template Evaluator', 'Business Owner Evaluator')
+      WHERE role NOT IN ('Template Evaluator', 'Business Owner Evaluator', 'SME Owner-TAM Evaluator')
       ORDER BY created_at DESC`
   );
   return rows;
@@ -101,6 +101,35 @@ async function listBusinessOwnerAccounts(search) {
     `SELECT id, username, owner_name, business_name, email, business_sector, role, created_at
        FROM sme_accounts
       WHERE role = 'Business Owner Evaluator'
+      ORDER BY created_at DESC`
+  );
+  return rows;
+}
+
+// Same shape and search behavior again, filtered to
+// role = 'SME Owner-TAM Evaluator' only (added 4 October 2026) — backs the
+// separate "Manage SME Owner-TAM Evaluators" admin page. business_sector
+// holds the business category declared at signup (same reuse of that
+// column as Template Evaluator/Business Owner Evaluator). Never listed
+// alongside any other population.
+async function listSmeTamAccounts(search) {
+  const trimmed = (search || '').trim();
+  if (trimmed) {
+    const like = `%${trimmed}%`;
+    const { rows } = await pool.query(
+      `SELECT id, username, owner_name, business_name, email, business_sector, role, created_at
+         FROM sme_accounts
+        WHERE role = 'SME Owner-TAM Evaluator'
+          AND (username ILIKE $1 OR owner_name ILIKE $1 OR business_name ILIKE $1 OR email ILIKE $1)
+        ORDER BY created_at DESC`,
+      [like]
+    );
+    return rows;
+  }
+  const { rows } = await pool.query(
+    `SELECT id, username, owner_name, business_name, email, business_sector, role, created_at
+       FROM sme_accounts
+      WHERE role = 'SME Owner-TAM Evaluator'
       ORDER BY created_at DESC`
   );
   return rows;
@@ -205,6 +234,6 @@ async function demoteToOwner(accountId) {
 }
 
 module.exports = {
-  listAccounts, listExpertAccounts, listBusinessOwnerAccounts, getAccountById, resetPassword, countAdmins,
+  listAccounts, listExpertAccounts, listBusinessOwnerAccounts, listSmeTamAccounts, getAccountById, resetPassword, countAdmins,
   createAdminAccount, promoteToAdmin, demoteToOwner, setCohort, COHORT_LABELS,
 };
