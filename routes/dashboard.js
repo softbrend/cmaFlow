@@ -53,6 +53,8 @@ const {
 const { buildErdDefinition } = require('../services/erdDiagram');
 const { ensureDefaultDataset, setDefaultDataset } = require('../services/accountDatasets');
 const { recordModuleVisit, SME_TAM_ROLE, isDirectFlow: isDirectFlowFor } = require('../services/tamEvaluation');
+const { logEvent: logSmeTamEvent, matchUploadToTemplate } = require('../services/smeTamActivity');
+const { parse: parseCsvSync } = require('csv-parse/sync');
 const { getOrCompute: getOrComputeAnalyticsCache, getOrComputeInProcess: getOrComputeAnalyticsCacheInProcess } = require('../services/analyticsCache');
 const { ROLE_ONTOLOGY } = require('../services/semanticFieldOntology'); // Round 22 — role dropdown options for GET/POST /dataset/:id/review-fields
 // Only ACTUAL_DATE_NAME_RE is needed here (to pick the "delivered/actual"
@@ -3600,9 +3602,51 @@ router.post('/upload-dataset', (req, res, next) => {
       // case something throws before that job even reaches its own
       // try/catch (e.g. a bad argument), so a bug there can never surface
       // as an unhandled promise rejection that crashes the whole server.
+      // SME Owner-TAM Evaluator only: compare each uploaded file's column
+      // header with the 20 templates NOW (the temp files are still there),
+      // then log the outcome once the job has resolved. Counts only — no
+      // file names or contents. logSmeTamEvent() is a no-op for any other
+      // role and for anyone who hasn't consented.
+      let tamMatch = null;
+      const isTamOwner = req.session.user && req.session.user.role === SME_TAM_ROLE;
+      if (isTamOwner) {
+        try {
+          const manifest = parseCsvSync(fs.readFileSync(path.join(__dirname, '..', 'data', 'sme-templates', '00_CMAFlow_SME_Template_Manifest.csv'), 'utf-8'),
+            { columns: true, skip_empty_lines: true });
+          const root = path.join(__dirname, '..', 'data', 'sme-templates');
+          pairedFiles.forEach((pf) => {
+            const m = matchUploadToTemplate(pf.file.path, manifest, root);
+            if (m && (!tamMatch || m.matchPct > tamMatch.matchPct)) tamMatch = m;
+          });
+        } catch (e) { console.error('[upload-dataset] template match failed:', e.message); }
+      }
+      const tamUser = isTamOwner ? { id: accountId, role: SME_TAM_ROLE } : null;
+
       runDatasetIngestJob(jobId, {
         accountId, datasetId, datasetName, domain, byType,
         uploadTmpToken: req._uploadTmpToken, pairedFiles,
+      }).then(async () => {
+        if (!tamUser) return;
+        const job = await getUploadJobForAccount(jobId, accountId);
+        if (!job) return;
+        if (job.status === 'completed') {
+          const { rows: rc } = await pool.query(
+            'SELECT COALESCE(SUM(row_count), 0)::int AS n FROM dataset_files WHERE dataset_id = $1', [job.dataset_row_id]);
+          await logSmeTamEvent(tamUser, 'upload_completed', {
+            category: tamMatch ? tamMatch.category : null,
+            rowCount: rc[0].n,
+            templateMatch: !!(tamMatch && tamMatch.exact),
+            matchPct: tamMatch ? tamMatch.matchPct : 0,
+            detail: { file_count: pairedFiles.length },
+          });
+        } else if (job.status === 'failed') {
+          await logSmeTamEvent(tamUser, 'upload_failed', {
+            category: tamMatch ? tamMatch.category : null,
+            templateMatch: !!(tamMatch && tamMatch.exact),
+            matchPct: tamMatch ? tamMatch.matchPct : 0,
+            detail: { file_count: pairedFiles.length },
+          });
+        }
       }).catch((e) => console.error(`[upload-dataset] job ${jobId} threw outside its own handling:`, e));
 
       return res.redirect(`/upload-dataset/jobs/${jobId}`);

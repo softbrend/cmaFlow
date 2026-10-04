@@ -24,6 +24,7 @@ const path = require('path');
 const { parse } = require('csv-parse/sync');
 const { requireAuth } = require('../middleware/auth');
 const pool = require('../db/pool');
+const { logEvent } = require('../services/smeTamActivity');
 const {
   ingestTemplateForEvaluation, EVAL_FILE_TYPE,
   findEvaluationCopyByCategory, listEvaluationDatasetCopies, getEvaluationDatasetById,
@@ -343,7 +344,30 @@ router.get('/sme-templates/download/:file', requireAuth, (req, res) => {
   if (!resolved) {
     return res.status(404).render('errors/404', { title: 'Not found', layout: false });
   }
+  // SME Owner-TAM Evaluator only: count (consent-gated, counts only) that
+  // the 50-row sample template was downloaded. No-op for every other role.
+  logEvent(req.session.user, 'sample_template_downloaded', { category: resolved.row.sme_business_category });
   res.download(resolved.fullPath, resolved.row.template_file);
+});
+
+// GET /sme-templates/download-blank/:file — a headers-only copy of the same
+// template (added 4 October 2026): the exact column set CMA-Flow expects
+// for that category, zero data rows, for an owner to fill in with their own
+// records offline and upload back at Upload Dataset. Built from the first
+// line of the manifest-listed template file only (same path-traversal
+// protection as /download), so it can never drift from the real template.
+router.get('/sme-templates/download-blank/:file', requireAuth, (req, res) => {
+  const resolved = resolveTemplateFile(req.params.file);
+  if (!resolved) {
+    return res.status(404).render('errors/404', { title: 'Not found', layout: false });
+  }
+  const raw = fs.readFileSync(resolved.fullPath, 'utf-8').replace(/^\uFEFF/, '');
+  const headerLine = raw.split(/\r?\n/)[0];
+  logEvent(req.session.user, 'blank_template_downloaded', { category: resolved.row.sme_business_category });
+  const outName = resolved.row.template_file.replace(/_template\.csv$/i, '') + '_blank_template.csv';
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${outName}"`);
+  res.send(headerLine + '\r\n');
 });
 
 // POST /sme-templates/set-evaluation-default — a Template Evaluator's or
@@ -382,6 +406,7 @@ router.post('/sme-templates/set-evaluation-default', requireTemplateEligible, as
     const category = resolved.row.sme_business_category;
 
     let datasetRowId = await findEvaluationCopyByCategory(accountId, category);
+    const reusedCopy = !!datasetRowId;
     if (datasetRowId) {
       await setDefaultDataset(accountId, datasetRowId);
     } else {
@@ -389,6 +414,9 @@ router.post('/sme-templates/set-evaluation-default', requireTemplateEligible, as
       const records = parse(raw, { columns: true, skip_empty_lines: true });
       ({ datasetRowId } = await ingestTemplateForEvaluation(accountId, resolved, records));
     }
+    await logEvent(req.session.user, 'prefilled_template_used', {
+      category, datasetOrigin: 'prefilled', detail: { action: reusedCopy ? 'switched' : 'started' },
+    });
 
     await pool.query(
       'UPDATE sme_accounts SET evaluation_template_file = $1 WHERE id = $2',
@@ -432,11 +460,15 @@ router.post('/sme-templates/start-blank', requireBusinessOwner, async (req, res,
     const category = resolved.row.sme_business_category;
 
     let datasetRowId = await findBlankCopyByCategory(accountId, category);
+    const reusedBlank = !!datasetRowId;
     if (datasetRowId) {
       await setDefaultDataset(accountId, datasetRowId);
     } else {
       ({ datasetRowId } = await ingestBlankTemplateForEvaluation(accountId, resolved));
     }
+    await logEvent(req.session.user, 'blank_started', {
+      category, datasetOrigin: 'blank', detail: { action: reusedBlank ? 'switched' : 'started' },
+    });
 
     await pool.query(
       'UPDATE sme_accounts SET evaluation_template_file = $1 WHERE id = $2',
@@ -747,6 +779,10 @@ router.post('/sme-templates/evaluation-dataset/:datasetRowId/rows', requireBusin
     );
 
     await touchEvaluationDataset(evalData.datasetRowId, accountId);
+    await logEvent(req.session.user, 'row_added', {
+      category: evalData.categoryLabel,
+      datasetOrigin: evalData.isBlankOrigin ? 'blank' : 'prefilled',
+    });
     res.json({ ok: true, row: inserted[0], columns });
   } catch (err) {
     next(err);

@@ -26,6 +26,11 @@
     <% if (isDirectFlow) { %>
     <li>An automatic log of how much time you spend on each of the four analytics modules, based on when you
       open and move between their pages — there are no manual "start task" or "mark complete" steps to take.</li>
+    <% if (typeof isSmeTam !== 'undefined' && isSmeTam) { %>
+    <li>A simple count of how you use the provided templates — for example whether you downloaded a template
+      (sample or blank), added rows, or uploaded a file — with the date and time. Only the counts are kept: your
+      actual business records, file names and cell values are never copied into this log.</li>
+    <% } %>
     <% } else { %>
     <li>A log of the six walkthrough tasks: whether each was completed, time spent, whether you needed
       assistance, whether you hit an error, and any optional notes you choose to add.</li>

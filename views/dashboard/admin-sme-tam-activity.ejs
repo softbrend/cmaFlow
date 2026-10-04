@@ -1,0 +1,81 @@
+<div class="page-title">📊 <span class="page-title-text">SME Owner-TAM Template Activity</span></div>
+<p class="page-subtitle">How the SME Owner-TAM Evaluators actually used the provided templates, alongside their TAM ratings. Counts and timestamps only — never dataset contents or file names. Only respondents who gave consent are counted<% if (totals.notConsenting > 0) { %> (<%= totals.notConsenting %> registered account<%= totals.notConsenting === 1 ? '' : 's' %> excluded: consent pending or declined)<% } %>. Activity is logged only after consent, so anything a respondent did before agreeing is not counted.</p>
+
+<div class="form-card wide" style="max-width: none; margin-bottom: 22px;">
+  <div class="form-title" style="font-size: 18px;">Totals (<%= totals.consenting %> consenting of <%= totals.registered %> registered)</div>
+  <div class="table-scroll">
+    <table class="table-simple">
+      <thead><tr><th>Measure</th><th>Owners</th><th>Of consenting</th><th>Notes</th></tr></thead>
+      <tbody>
+        <%
+          function pct(n) { return totals.consenting > 0 ? Math.round((n / totals.consenting) * 100) + '%' : '—'; }
+          var lines = [
+            ['Used a prefilled (sample) template', totals.usedPrefilled, ''],
+            ['Downloaded the sample CSV (50 rows)', totals.downloadedSample, ''],
+            ['Downloaded the blank template', totals.downloadedBlank, 'Headers-only CSV.'],
+            ['Started a blank copy in the app', totals.startedBlank, 'Typing their own rows in the editor.'],
+            ['Added at least one new row', totals.addedRows, totals.rowsAdded + ' rows added in total.'],
+            ['Uploaded a dataset', totals.uploaded, totals.uploadRows + ' rows uploaded in total.'],
+            ['Uploaded a file matching a template (all template columns present)', totals.uploadedTemplateMatch, 'Closest measure of "uploaded back a self-filled template".'],
+            ['…and had downloaded the blank template for that category first', totals.uploadedAfterBlank, 'Strongest evidence of the full blank → filled → uploaded path.']
+          ];
+        %>
+        <% lines.forEach(function (l) { %>
+          <tr><td><%= l[0] %></td><td><strong><%= l[1] %></strong></td><td><%= pct(l[1]) %></td><td style="color: var(--text-muted); font-size: 13px;"><%= l[2] %></td></tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <p class="form-hint" style="margin: 12px 0 0;">
+    <strong>Real-data semantic-role check (from field-role confirmations on uploaded data):</strong>
+    <% if (totals.rolesConfirmed > 0) { %>
+      <%= totals.ownersWithRoleFeedback %> owner<%= totals.ownersWithRoleFeedback === 1 ? '' : 's' %> reviewed <%= totals.rolesConfirmed %> column<%= totals.rolesConfirmed === 1 ? '' : 's' %>; <%= totals.rolesCorrected %> needed correcting — the engine's suggestion was accepted unchanged for <strong><%= totals.roleAgreementPct %>%</strong> of columns.
+    <% } else { %>
+      No field-role confirmations on uploaded data yet.
+    <% } %>
+  </p>
+  <p style="margin-top: 12px;"><a class="btn btn-accent btn-sm" href="/admin/sme-tam-activity.csv">Download CSV</a></p>
+</div>
+
+<div class="form-card wide" style="max-width: none; margin-bottom: 26px;">
+  <div class="form-title" style="font-size: 18px;">Per owner</div>
+  <div class="table-scroll">
+    <table class="table-simple">
+      <thead>
+        <tr>
+          <th>Owner</th>
+          <th>Prefilled used</th>
+          <th>Blank downloads</th>
+          <th>Blank started</th>
+          <th>Rows added</th>
+          <th>Uploads</th>
+          <th>Matching template</th>
+          <th>After blank download</th>
+          <th>Roles confirmed / corrected</th>
+          <th>Last activity</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (rows.length === 0) { %>
+          <tr><td colspan="10" style="color: var(--text-muted);">No consenting SME Owner-TAM Evaluators yet.</td></tr>
+        <% } %>
+        <% rows.forEach(function (r) { %>
+          <tr>
+            <td><a href="/admin/sme-tam-evaluations/<%= r.account_id %>"><%= r.owner_name || r.username %></a>
+              <div style="color: var(--text-muted); font-size: 12.5px;"><%= [r.business_sector, r.business_size].filter(Boolean).join(' · ') %></div></td>
+            <td><%= r.prefilled_template_used %></td>
+            <td><%= r.blank_template_downloaded %></td>
+            <td><%= r.blank_started %></td>
+            <td><%= r.rows_added %><% if (r.rows_added > 0) { %> <span style="color: var(--text-muted); font-size: 12.5px;">(<%= r.rows_added_prefilled %> prefilled, <%= r.rows_added_blank %> blank)</span><% } %></td>
+            <td><%= r.uploads %><% if (r.upload_rows > 0) { %> <span style="color: var(--text-muted); font-size: 12.5px;">(<%= r.upload_rows %> rows)</span><% } %></td>
+            <td><%= r.uploads_template_match %></td>
+            <td><%= r.uploads_after_blank %></td>
+            <td><%= r.roles_confirmed %> / <%= r.roles_corrected %></td>
+            <td style="color: var(--text-muted); font-size: 13px;"><%= r.last_event_at ? new Date(r.last_event_at).toLocaleString() : '—' %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <p class="form-hint" style="margin: 12px 0 0;">Two things this log cannot show: it records <em>use</em>, not whether a decision improved (that needs the decision-follow-up question or interviews), and a "matching" upload shows the columns fit a template — not that the data inside is accurate.</p>
+</div>

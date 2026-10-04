@@ -1244,3 +1244,34 @@ CREATE TABLE IF NOT EXISTS gating_comparison_trust_ratings (
 
 CREATE INDEX IF NOT EXISTS idx_gating_comparison_trust_ratings_run
     ON gating_comparison_trust_ratings(run_id);
+
+-- ---------------------------------------------------------------------
+-- SME Owner-TAM Evaluator activity log (added 4 October 2026).
+-- Counts-and-timestamps only — never dataset contents, file names, or
+-- cell values. One row per event: template use, blank-template download,
+-- row added, upload (with a template-match flag). Written by the single
+-- helper services/smeTamActivity.js, which applies the consent-first rule
+-- (RA 10173): nothing is logged until the respondent's evaluation session
+-- has consent_status = 'given'. Read only by the admin activity page and
+-- its CSV export. Other evaluator populations are never logged here.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS sme_tam_activity_events (
+    id               SERIAL      PRIMARY KEY,
+    account_id       INTEGER     NOT NULL REFERENCES sme_accounts(id) ON DELETE CASCADE,
+    session_id       INTEGER     REFERENCES sme_tam_evaluation_sessions(id) ON DELETE SET NULL,
+    event_type       VARCHAR(40) NOT NULL CHECK (event_type IN (
+                         'prefilled_template_used', 'blank_started',
+                         'blank_template_downloaded', 'sample_template_downloaded',
+                         'row_added', 'upload_completed', 'upload_failed'
+                     )),
+    category         VARCHAR(100),
+    dataset_origin   VARCHAR(10) CHECK (dataset_origin IN ('prefilled', 'blank')),
+    row_count        INTEGER,
+    template_match   BOOLEAN,
+    match_pct        SMALLINT,
+    detail           JSONB,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_sme_tam_activity_events_account
+    ON sme_tam_activity_events(account_id, event_type);

@@ -6,6 +6,11 @@
 <% } %>
 
 <div class="form-card wide" style="margin-bottom: 22px;">
+  <div class="form-title" style="font-size: 15px;">Two kinds of template download</div>
+  <p class="form-hint" style="margin-bottom: 0;"><strong>Download CSV</strong> gives you the template with 50 sample rows already filled in, so you can see how it should look. <strong>Download blank CSV</strong> gives you the same columns with no rows — fill it in with your own business records, then upload it back at <a href="/upload-dataset">Upload Dataset</a>.</p>
+</div>
+
+<div class="form-card wide" style="margin-bottom: 22px;">
   <div class="form-title" style="font-size: 15px;">Reference materials</div>
   <p class="form-hint" style="margin-bottom: 10px;">Common fields are intentionally repeated across categories to support CMA-Flow's schema profiling and semantic-role detection. See the full field dictionary for every column's suggested data type and which analytics stage(s) it feeds.</p>
   <a class="btn btn-ghost btn-sm" href="/sme-templates/reference/field-data-dictionary">Download full field data dictionary</a>
@@ -54,8 +59,9 @@
             <td style="color: var(--text-muted); font-size: 13px;"><%= row.examples %></td>
             <td><%= row.field_count %></td>
             <td style="color: var(--text-muted); font-size: 13px;"><%= row.analytics_supported %></td>
-            <td style="text-align: right;">
+            <td style="text-align: right; white-space: nowrap;">
               <a class="btn btn-accent btn-sm" href="/sme-templates/download/<%= row.template_file %>">Download CSV</a>
+              <a class="btn btn-ghost btn-sm" href="/sme-templates/download-blank/<%= row.template_file %>" title="Headers only — no sample rows. Fill it with your own records, then upload it back at Upload Dataset.">Download blank CSV</a>
             </td>
             <% if (isExpertEvaluator) { %>
               <%

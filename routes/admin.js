@@ -46,6 +46,7 @@ const {
   listAllSmeTamEvaluationStatuses, getCompletedSmeTamResponseSummary,
 } = require('../services/tamEvaluation');
 const { listAllDatasets, getDatasetForAdmin, deleteDataset } = require('../services/adminDatasets');
+const { getActivityReport, buildCsv } = require('../services/smeTamActivity');
 const {
   startRun, logTrustRating, getDatasetComparisonSummary,
 } = require('../services/gatingComparison');
@@ -671,6 +672,39 @@ router.get('/admin/sme-tam-evaluations', async (req, res, next) => {
       statuses,
       summary,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /admin/sme-tam-activity — how the SME Owner-TAM Evaluators actually
+// used the provided templates (added 4 October 2026): prefilled-template
+// use, blank-template downloads, rows added, uploads (and whether the
+// upload matched a template), plus real-data semantic-role confirmation
+// and correction rates from field_role_feedback. Consenting respondents
+// only. /admin/sme-tam-activity.csv is the same table as a download.
+router.get('/admin/sme-tam-activity', async (req, res, next) => {
+  try {
+    const report = await getActivityReport();
+    res.render('dashboard/admin-sme-tam-activity', {
+      title: 'SME Owner-TAM Template Activity',
+      active: 'admin',
+      adminSection: 'sme-tam-activity',
+      rows: report.consenting,
+      totals: report.totals,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/admin/sme-tam-activity.csv', async (req, res, next) => {
+  try {
+    const report = await getActivityReport();
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="sme_tam_template_activity_${stamp}.csv"`);
+    res.send('\uFEFF' + buildCsv(report.consenting));
   } catch (err) {
     next(err);
   }

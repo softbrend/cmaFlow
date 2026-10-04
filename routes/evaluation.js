@@ -113,6 +113,7 @@ router.get('/evaluation', async (req, res, next) => {
         session,
         isExpert,
         isDirectFlow,
+        isSmeTam: role === SME_TAM_ROLE,
         evalRoleLabel,
         questionnaireItemCount: itemsFor(role).length,
       });
