@@ -30,6 +30,9 @@
     <li>A simple count of how you use the provided templates — for example whether you downloaded a template
       (sample or blank), added rows, or uploaded a file — with the date and time. Only the counts are kept: your
       actual business records, file names and cell values are never copied into this log.</li>
+    <li>Your optional answers on a Prescriptive recommendation (what you will do with it, how confident you are,
+      what you would change, and what happened), and, for each file you upload, whether you say it is real or
+      sample data plus a few counts about it (such as the share of empty cells) — never its contents.</li>
     <% } %>
     <% } else { %>
     <li>A log of the six walkthrough tasks: whether each was completed, time spent, whether you needed
@@ -40,8 +43,14 @@
       researcher to review evaluation progress — never published or shared outside this research.</li>
   </ul>
   <p class="form-hint" style="margin-bottom: 0;">
-    No new personal information is requested beyond what your CMA-Flow account already has. This evaluation
-    does not touch your uploaded datasets or monetization configurations.
+    No new personal information is requested beyond what your CMA-Flow account already has.
+    <% if (typeof isSmeTam !== 'undefined' && isSmeTam) { %>
+      The records you upload or type in are stored in your account so the analytics can work; the researcher's
+      administrator account can open them to check that CMA-Flow works correctly, but their contents are never
+      published or reported.
+    <% } else { %>
+      This evaluation does not touch your uploaded datasets or monetization configurations.
+    <% } %>
   </p>
 
   <div class="form-title" style="font-size: 15px; margin-top: 18px;">How it would be used</div>

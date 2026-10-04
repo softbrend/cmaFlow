@@ -1,6 +1,6 @@
 <div class="form-card wide">
   <div class="form-title"><img src="/img/cma-flow-icon.png" alt="CMA-Flow" style="width:28px; height:28px; border-radius:7px; background:#fff; padding:2px; vertical-align:-6px; margin-right:8px;" />Create your SME Owner-TAM Evaluator account</div>
-  <p class="form-hint">Information captured: username, full name, email, SME business category (which fills in your business / affiliation type), business size, and password. You'll download that category's CSV template (or use the one automatically assigned to you), open any of CMA-Flow's four analytics modules in whatever order you like (there is no walkthrough to follow), and complete a short evaluation whenever you are ready using the Technology Acceptance Model (TAM) questionnaire.</p>
+  <p class="form-hint">Information captured: username, full name, email, SME business category (which fills in your business / affiliation type), business size, and password — see the informed-consent information just above the Create account button for everything the evaluation records. You'll download that category's CSV template (or use the one automatically assigned to you), open any of CMA-Flow's four analytics modules in whatever order you like (there is no walkthrough to follow), and complete a short evaluation whenever you are ready using the Technology Acceptance Model (TAM) questionnaire.</p>
 
   <% if (errors && errors.length) { %>
     <div class="alert-error">
@@ -56,14 +56,14 @@
     <div class="field">
       <label>Starting dataset</label>
       <div style="display:flex; flex-direction:column; gap:10px; margin-top:4px;">
-        <label style="display:flex; align-items:flex-start; gap:8px; font-weight:400; cursor:pointer;">
-          <input type="radio" name="dataset_origin" value="prefilled" style="margin-top:3px;" <%= (old.dataset_origin || 'prefilled') === 'prefilled' ? 'checked' : '' %> />
-          <span>Use the category's 50 sample rows <span class="form-hint" style="display:block; margin:2px 0 0;">Synthetic, ready-made data — add new rows as you go, but the existing rows stay locked.</span></span>
-        </label>
-        <label style="display:flex; align-items:flex-start; gap:8px; font-weight:400; cursor:pointer;">
-          <input type="radio" name="dataset_origin" value="blank" style="margin-top:3px;" <%= old.dataset_origin === 'blank' ? 'checked' : '' %> />
-          <span>Start blank and enter my own real records <span class="form-hint" style="display:block; margin:2px 0 0;">Same columns, zero pre-filled rows — full add / edit / delete, since every row is real data you type in yourself.</span></span>
-        </label>
+        <div style="display:flex; align-items:flex-start; gap:10px;">
+          <input type="radio" id="origin_prefilled" name="dataset_origin" value="prefilled" style="width:18px; height:18px; flex:0 0 18px; margin:2px 0 0;" <%= (old.dataset_origin || 'prefilled') === 'prefilled' ? 'checked' : '' %> />
+          <label for="origin_prefilled" style="margin:0; font-weight:400; cursor:pointer;">Use the category's 50 sample rows <span class="form-hint" style="display:block; margin:2px 0 0;">Synthetic, ready-made data — add new rows as you go, but the existing rows stay locked.</span></label>
+        </div>
+        <div style="display:flex; align-items:flex-start; gap:10px;">
+          <input type="radio" id="origin_blank" name="dataset_origin" value="blank" style="width:18px; height:18px; flex:0 0 18px; margin:2px 0 0;" <%= old.dataset_origin === 'blank' ? 'checked' : '' %> />
+          <label for="origin_blank" style="margin:0; font-weight:400; cursor:pointer;">Start blank and enter my own real records <span class="form-hint" style="display:block; margin:2px 0 0;">Same columns, zero pre-filled rows — full add / edit / delete, since every row is real data you type in yourself.</span></label>
+        </div>
       </div>
       <p class="form-hint" style="margin: 7px 0 0;">You can add other categories, or start a blank copy of this one, later from Download SME Templates — whichever you choose here isn't final.</p>
     </div>
@@ -76,6 +76,32 @@
     <div class="field">
       <label for="confirm_password">Confirm password</label>
       <input type="password" id="confirm_password" name="confirm_password" minlength="8" required />
+    </div>
+
+    <div class="field" style="margin-top: 18px;">
+      <div style="border: 1px solid rgba(255,255,255,0.22); border-radius: 10px; padding: 14px 16px; background: rgba(0,0,0,0.20);">
+        <div style="font-weight: 700; font-size: 15px; margin-bottom: 8px; color: #fff;">Informed consent — please read before creating your account</div>
+        <p class="form-hint" style="margin: 0 0 8px;">This account takes part in a research evaluation of CMA-Flow, a doctoral study (Doctor of Information Technology, AMA University) by Brenda M. Balala of Notre Dame of Marbel University. Taking part is voluntary.</p>
+        <p style="margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: #fff;">What is recorded</p>
+        <ul style="margin: 0 0 8px; padding-left: 20px; font-size: 13.5px; color: rgba(255,255,255,0.88);">
+          <li>Your account details: username, full name, email, business category and size.</li>
+          <li>Your ratings and optional remarks on the 17-item questionnaire about your experience, and any optional feedback you choose to write.</li>
+          <li>An automatic log of how much time you spend on each of the four analytics modules.</li>
+          <li>Simple counts of how you use the templates — whether you downloaded one (sample or blank), added rows, or uploaded a file — with the date and time.</li>
+          <li>Your optional answers on a recommendation: what you will do with it, how confident you are, what you would change, and what happened.</li>
+          <li>For each file you upload: whether you say it is real business data or sample/test data, and a few counts about it (for example the share of empty cells or repeated rows). The contents of your records, file names and cell values are never copied into the research results.</li>
+        </ul>
+        <p style="margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: #fff;">About your datasets</p>
+        <p class="form-hint" style="margin: 0 0 8px;">The records you upload or type in are stored in your account so the analytics can work. The researcher's administrator account can open them to check that CMA-Flow works correctly, but their contents are not published or reported.</p>
+        <p style="margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: #fff;">How it is used</p>
+        <p class="form-hint" style="margin: 0 0 8px;">Results are analyzed and reported only in aggregate, de-identified form (for example, average ratings across all participants) in the researcher's dissertation and any related academic publication. Nothing is shared outside this research, and responses are kept only for the duration of the research and its reporting.</p>
+        <p style="margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: #fff;">Your rights under the Data Privacy Act (Republic Act No. 10173)</p>
+        <p class="form-hint" style="margin: 0 0 8px;">You may decline — simply do not create this account, and nothing is collected. After signing up you may withdraw at any time using the "Withdraw from this evaluation" link, with no penalty. You may also ask to be informed of, access, correct or erase your information, object to further processing, and lodge a complaint with the National Privacy Commission. To exercise any of these rights, or to ask a question, contact the researcher at <a href="mailto:bmbalala@ndmu.edu.ph">bmbalala@ndmu.edu.ph</a>.</p>
+        <div style="display:flex; align-items:flex-start; gap:10px; margin-top: 12px;">
+          <input type="checkbox" id="consent_agree" name="consent_agree" value="on" required style="width:18px; height:18px; flex:0 0 18px; margin:2px 0 0;" />
+          <label for="consent_agree" style="margin:0; font-weight:700; font-size:14px; line-height:1.4; cursor:pointer; color:#fff;">I have read and understood the information above, and I voluntarily agree to take part in this evaluation.</label>
+        </div>
+      </div>
     </div>
 
     <button type="submit" class="btn btn-accent btn-block">Create account</button>

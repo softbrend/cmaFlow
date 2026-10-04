@@ -6,6 +6,8 @@ const { redirectIfAuthed } = require('../middleware/auth');
 const { ensureDefaultDataset } = require('../services/accountDatasets');
 const { loadCategories, isValidCategory } = require('../services/smeCategories');
 const { ingestDefaultTemplateForCategory, ingestDefaultBlankTemplateForCategory } = require('../services/templateEvaluationIngest');
+const { getOrCreateSession, recordConsent, SME_TAM_ROLE: SME_TAM_ROLE_NAME } = require('../services/tamEvaluation');
+const { logEvent: logSmeTamEvent } = require('../services/smeTamActivity');
 
 const router = express.Router();
 const SALT_ROUNDS = 12;
@@ -513,6 +515,12 @@ const smeTamSignupValidators = [
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters.'),
   body('confirm_password').custom((value, { req }) => value === req.body.password)
     .withMessage('Passwords do not match.'),
+  // Informed consent (RA 10173) is given on this form itself — the text the
+  // respondent reads sits right above this checkbox on the signup page. No
+  // account is created, and nothing is collected, without it.
+  body('consent_agree')
+    .custom((value) => value === 'on' || value === '1' || value === 'yes')
+    .withMessage('Please read the informed-consent information and tick the box to agree before creating your account.'),
 ];
 
 router.post('/smeOwnerTam-signup/register', redirectIfAuthed, smeTamSignupValidators, async (req, res, next) => {
@@ -552,6 +560,20 @@ router.post('/smeOwnerTam-signup/register', redirectIfAuthed, smeTamSignupValida
 
     const account = rows[0];
 
+    // Consent was given on the signup form (checkbox above the Create
+    // account button), so it is recorded right now — BEFORE anything else
+    // happens for this account. That is what lets the starting-dataset
+    // choice below, and everything the owner does afterwards, be logged
+    // from the very first action instead of only after a later consent
+    // screen. Non-fatal for sign-up itself: if this write fails, the
+    // regular consent screen at /evaluation still appears and asks again.
+    try {
+      const tamSession = await getOrCreateSession(account.id, SME_TAM_ROLE_NAME, 'direct');
+      await recordConsent(tamSession, 'given', SME_TAM_ROLE_NAME);
+    } catch (consentErr) {
+      console.error('[smeOwnerTam-signup] could not record signup consent:', consentErr.message);
+    }
+
     // Same auto-default as /businessOwner-signup/register: the declared
     // category's template (or a blank copy of it, per the radio choice)
     // becomes this account's default dataset immediately. Non-fatal.
@@ -563,6 +585,10 @@ router.post('/smeOwnerTam-signup/register', redirectIfAuthed, smeTamSignupValida
         await pool.query('UPDATE sme_accounts SET evaluation_template_file = $1 WHERE id = $2', [ingested.templateFile, account.id]);
         account.evaluation_template_file = ingested.templateFile;
         account.default_dataset_id = ingested.datasetRowId;
+        await logSmeTamEvent(account, 'signup_dataset_chosen', {
+          category: business_category,
+          datasetOrigin: useBlankDataset ? 'blank' : 'prefilled',
+        });
       }
     } catch (ingestErr) {
       console.error('[smeOwnerTam-signup] auto-default template ingest failed:', ingestErr.message);

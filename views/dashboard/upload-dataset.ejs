@@ -30,6 +30,23 @@
       <input type="text" id="domain" name="domain" placeholder="e.g. Retail, Food service, Logistics" />
     </div>
 
+    <% if (typeof askRealRecords !== 'undefined' && askRealRecords) { %>
+    <div class="field">
+      <label>Are these your actual business records?</label>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:4px;">
+        <label style="display:flex; align-items:flex-start; gap:8px; font-weight:400; cursor:pointer;">
+          <input type="radio" name="real_records" value="real" style="margin-top:3px;" required />
+          <span>Yes — these are my real business records</span>
+        </label>
+        <label style="display:flex; align-items:flex-start; gap:8px; font-weight:400; cursor:pointer;">
+          <input type="radio" name="real_records" value="sample" style="margin-top:3px;" />
+          <span>No — this is sample, practice or test data</span>
+        </label>
+      </div>
+      <p class="form-hint" style="margin: 7px 0 0;">Required for the evaluation. Either answer is fine — it only helps the study tell real use from practice. Only your answer and a few counts about the file (for example how many cells are empty) are recorded, never the contents.</p>
+    </div>
+    <% } %>
+
     <div class="field">
       <label>Dataset files</label>
       <p class="form-hint" style="margin-top:-4px;">Select several CSVs at once from the file dialog (ctrl/shift-click, or drag a selection) to add them all in one go — each gets its own row with a short label describing what it contains, e.g. "Accounts", "Subscriptions", "Feature Usage", "Churn Events", "Support Tickets". The label defaults to the file's own name and is editable; it becomes that file's type in Browse Dataset and Map &amp; Transform.</p>

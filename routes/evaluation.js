@@ -24,6 +24,7 @@ const {
 // into its human-readable category name, the same one routes/templates.js
 // and views/dashboard/sme-templates.ejs already show.
 const { labelForTemplateFile } = require('../services/smeCategories');
+const { saveDecisionFollowup } = require('../services/smeTamDecisions');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -213,6 +214,35 @@ router.post('/evaluation/consent', async (req, res, next) => {
       await recordConsent(session, nextStatus, role);
     }
     return res.redirect('/evaluation');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /evaluation/decision-followup — SME Owner-TAM Evaluator only. Saves
+// (upserts) the owner's own answer on one Prescriptive recommendation:
+// what they will do with it, their confidence (1-5), what they would
+// change, and — when they come back later — what happened. return_to is
+// limited to the Prescriptive page so it can't be used as an open redirect.
+router.post('/evaluation/decision-followup', async (req, res, next) => {
+  try {
+    const user = req.session.user;
+    if (!user || user.role !== SME_TAM_ROLE) return res.status(403).render('errors/404', { title: 'Not found', layout: false });
+    const b = req.body || {};
+    const back = (typeof b.return_to === 'string' && b.return_to.startsWith('/prescriptive-recommendations'))
+      ? b.return_to.split('#')[0] : '/prescriptive-recommendations';
+    const sep = back.includes('?') ? '&' : '?';
+    const result = await saveDecisionFollowup(user, {
+      recommendationKey: b.output_key,
+      recommendationLabel: b.label,
+      actionStatus: b.action_status,
+      confidence: b.confidence,
+      intendedChange: b.intended_change,
+      outcomeText: b.outcome_text,
+    });
+    if (!result.ok && result.reason === 'consent') return res.redirect('/evaluation');
+    const anchor = '#dec-' + encodeURIComponent(String(b.output_key || '')).replace(/%/g, '_');
+    return res.redirect(`${back}${sep}decision=${result.ok ? 'saved' : 'incomplete'}${anchor}`);
   } catch (err) {
     next(err);
   }

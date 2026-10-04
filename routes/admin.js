@@ -47,6 +47,7 @@ const {
 } = require('../services/tamEvaluation');
 const { listAllDatasets, getDatasetForAdmin, deleteDataset } = require('../services/adminDatasets');
 const { getActivityReport, buildCsv } = require('../services/smeTamActivity');
+const { listAllDecisionFollowups, buildDecisionsCsv } = require('../services/smeTamDecisions');
 const {
   startRun, logTrustRating, getDatasetComparisonSummary,
 } = require('../services/gatingComparison');
@@ -685,14 +686,27 @@ router.get('/admin/sme-tam-evaluations', async (req, res, next) => {
 // only. /admin/sme-tam-activity.csv is the same table as a download.
 router.get('/admin/sme-tam-activity', async (req, res, next) => {
   try {
-    const report = await getActivityReport();
+    const [report, decisions] = await Promise.all([getActivityReport(), listAllDecisionFollowups()]);
     res.render('dashboard/admin-sme-tam-activity', {
       title: 'SME Owner-TAM Template Activity',
       active: 'admin',
       adminSection: 'sme-tam-activity',
       rows: report.consenting,
       totals: report.totals,
+      decisions,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/admin/sme-tam-decisions.csv', async (req, res, next) => {
+  try {
+    const rows = await listAllDecisionFollowups();
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="sme_tam_decision_followups_${stamp}.csv"`);
+    res.send('\uFEFF' + buildDecisionsCsv(rows));
   } catch (err) {
     next(err);
   }

@@ -94,6 +94,48 @@
               <div style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color: var(--text-muted);">Expected KPI</div>
               <p style="margin:4px 0 0; font-size:13.5px; line-height:1.6;"><%= r.expectedKpi %></p>
             </div>
+
+            <% if (typeof decisionFollowups !== 'undefined' && decisionFollowups) {
+                 var dec = decisionFollowups[r.outputKey] || null;
+                 var decAnchor = 'dec-' + encodeURIComponent(r.outputKey).replace(/%/g, '_'); %>
+              <div id="<%= decAnchor %>" style="margin-top:16px; padding-top:14px; border-top:1px dashed var(--border, #d9dee7);">
+                <div style="font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color: var(--text-muted);">Your decision <span style="font-weight:400; text-transform:none; letter-spacing:0;">(optional — helps the study learn whether CMA-Flow supports real decisions)</span></div>
+                <% if (typeof decisionFlash !== 'undefined' && decisionFlash === 'saved' && dec) { %>
+                  <p class="form-hint" style="margin:6px 0 0; color: var(--success, #1b7f3b);">Saved<%= dec.updated_at ? ' ' + new Date(dec.updated_at).toLocaleString() : '' %>. You can come back and update it — including what actually happened — at any time.</p>
+                <% } %>
+                <form method="POST" action="/evaluation/decision-followup" style="margin-top:8px;">
+                  <input type="hidden" name="output_key" value="<%= r.outputKey %>" />
+                  <input type="hidden" name="label" value="<%= r.decisionArea %>" />
+                  <input type="hidden" name="return_to" value="/prescriptive-recommendations?dataset=<%= selectedDataset.id %>&view=<%= activeView %>&source=<%= dataSource %>" />
+                  <div style="font-size:13.5px; font-weight:600; margin-bottom:4px;">What will you do with this recommendation?</div>
+                  <div style="display:flex; flex-wrap:wrap; gap:6px 18px; margin-bottom:10px;">
+                    <% decisionStatuses.forEach(function(st) { %>
+                      <label style="font-weight:400; font-size:13.5px; cursor:pointer;"><input type="radio" name="action_status" value="<%= st.value %>" <%= dec && dec.action_status === st.value ? 'checked' : '' %> required /> <%= st.label %></label>
+                    <% }); %>
+                  </div>
+                  <div style="margin-bottom:10px; font-size:13.5px;">
+                    <label for="conf-<%= decAnchor %>" style="font-weight:600;">How confident are you in that decision?</label>
+                    <select id="conf-<%= decAnchor %>" name="confidence" required style="margin-left:6px; padding:3px 6px; border-radius:6px;">
+                      <option value="" disabled <%= dec ? '' : 'selected' %>>Select…</option>
+                      <% [[1,'1 — not at all'],[2,'2'],[3,'3 — somewhat'],[4,'4'],[5,'5 — very confident']].forEach(function(o) { %>
+                        <option value="<%= o[0] %>" <%= dec && dec.confidence === o[0] ? 'selected' : '' %>><%= o[1] %></option>
+                      <% }); %>
+                    </select>
+                  </div>
+                  <div style="margin-bottom:10px;">
+                    <label for="chg-<%= decAnchor %>" style="display:block; font-size:13.5px; font-weight:600; margin-bottom:4px;">What would you change in your business as a result? <span style="font-weight:400; color: var(--text-muted);">(optional)</span></label>
+                    <textarea id="chg-<%= decAnchor %>" name="intended_change" rows="2" maxlength="2000" style="width:100%;"><%= dec && dec.intended_change ? dec.intended_change : '' %></textarea>
+                  </div>
+                  <% if (dec) { %>
+                    <div style="margin-bottom:10px;">
+                      <label for="out-<%= decAnchor %>" style="display:block; font-size:13.5px; font-weight:600; margin-bottom:4px;">What actually happened? <span style="font-weight:400; color: var(--text-muted);">(optional — add this after you have tried it)</span></label>
+                      <textarea id="out-<%= decAnchor %>" name="outcome_text" rows="2" maxlength="2000" style="width:100%;"><%= dec.outcome_text ? dec.outcome_text : '' %></textarea>
+                    </div>
+                  <% } %>
+                  <button type="submit" class="btn btn-ghost btn-sm"><%= dec ? 'Update my decision' : 'Save my decision' %></button>
+                </form>
+              </div>
+            <% } %>
           </div>
         <% }); %>
       <% } %>

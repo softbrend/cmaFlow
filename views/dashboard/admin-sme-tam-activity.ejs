@@ -16,8 +16,10 @@
             ['Started a blank copy in the app', totals.startedBlank, 'Typing their own rows in the editor.'],
             ['Added at least one new row', totals.addedRows, totals.rowsAdded + ' rows added in total.'],
             ['Uploaded a dataset', totals.uploaded, totals.uploadRows + ' rows uploaded in total.'],
+            ['Declared an upload to be their real business records', totals.uploadedReal, totals.uploadsReal + ' real upload(s), ' + totals.uploadsSample + ' sample/test upload(s) declared.'],
             ['Uploaded a file matching a template (all template columns present)', totals.uploadedTemplateMatch, 'Closest measure of "uploaded back a self-filled template".'],
-            ['…and had downloaded the blank template for that category first', totals.uploadedAfterBlank, 'Strongest evidence of the full blank → filled → uploaded path.']
+            ['…and had downloaded the blank template for that category first', totals.uploadedAfterBlank, 'Strongest evidence of the full blank → filled → uploaded path.'],
+            ['Recorded a decision on at least one recommendation', totals.ownersWithDecision, totals.decisions + ' decision(s): ' + totals.decisionsActed + ' already acted, ' + totals.decisionsPlanned + ' plan to act, ' + totals.decisionsDeclined + ' will not act. ' + totals.decisionsWithOutcome + ' with an outcome written down.']
           ];
         %>
         <% lines.forEach(function (l) { %>
@@ -27,6 +29,22 @@
     </table>
   </div>
   <p class="form-hint" style="margin: 12px 0 0;">
+    <strong>Decision support (owner-reported):</strong>
+    <% if (totals.decisions > 0) { %>
+      <%= totals.decisions %> decision(s) from <%= totals.ownersWithDecision %> owner<%= totals.ownersWithDecision === 1 ? '' : 's' %>; mean confidence in the decision <strong><%= totals.avgDecisionConfidence %></strong> / 5; <%= totals.decisionsActed + totals.decisionsPlanned %> of <%= totals.decisions %> (<%= Math.round(100 * (totals.decisionsActed + totals.decisionsPlanned) / totals.decisions) %>%) already acted on or planned.
+    <% } else { %>
+      No decisions recorded yet.
+    <% } %>
+  </p>
+  <p class="form-hint" style="margin: 12px 0 0;">
+    <strong>Data quality of uploads the owner declared real (counts only, mean across owners):</strong>
+    <% if (totals.uploadsReal > 0) { %>
+      <%= totals.avgCompletenessReal === null ? '—' : totals.avgCompletenessReal + '%' %> of cells filled in, <%= totals.avgDuplicateReal === null ? '—' : totals.avgDuplicateReal + '%' %> repeated rows, <%= totals.avgDateParseReal === null ? 'no date columns' : totals.avgDateParseReal + '% of date values readable' %>.
+    <% } else { %>
+      No uploads declared as real records yet.
+    <% } %>
+  </p>
+  <p class="form-hint" style="margin: 12px 0 0;">
     <strong>Real-data semantic-role check (from field-role confirmations on uploaded data):</strong>
     <% if (totals.rolesConfirmed > 0) { %>
       <%= totals.ownersWithRoleFeedback %> owner<%= totals.ownersWithRoleFeedback === 1 ? '' : 's' %> reviewed <%= totals.rolesConfirmed %> column<%= totals.rolesConfirmed === 1 ? '' : 's' %>; <%= totals.rolesCorrected %> needed correcting — the engine's suggestion was accepted unchanged for <strong><%= totals.roleAgreementPct %>%</strong> of columns.
@@ -34,7 +52,7 @@
       No field-role confirmations on uploaded data yet.
     <% } %>
   </p>
-  <p style="margin-top: 12px;"><a class="btn btn-accent btn-sm" href="/admin/sme-tam-activity.csv">Download CSV</a></p>
+  <p style="margin-top: 12px;"><a class="btn btn-accent btn-sm" href="/admin/sme-tam-activity.csv">Download per-owner CSV</a> <a class="btn btn-ghost btn-sm" href="/admin/sme-tam-decisions.csv">Download decision entries CSV</a></p>
 </div>
 
 <div class="form-card wide" style="max-width: none; margin-bottom: 26px;">
@@ -51,13 +69,15 @@
           <th>Uploads</th>
           <th>Matching template</th>
           <th>After blank download</th>
+          <th>Uploads real / sample</th>
+          <th>Decisions (mean conf.)</th>
           <th>Roles confirmed / corrected</th>
           <th>Last activity</th>
         </tr>
       </thead>
       <tbody>
         <% if (rows.length === 0) { %>
-          <tr><td colspan="10" style="color: var(--text-muted);">No consenting SME Owner-TAM Evaluators yet.</td></tr>
+          <tr><td colspan="12" style="color: var(--text-muted);">No consenting SME Owner-TAM Evaluators yet.</td></tr>
         <% } %>
         <% rows.forEach(function (r) { %>
           <tr>
@@ -70,6 +90,8 @@
             <td><%= r.uploads %><% if (r.upload_rows > 0) { %> <span style="color: var(--text-muted); font-size: 12.5px;">(<%= r.upload_rows %> rows)</span><% } %></td>
             <td><%= r.uploads_template_match %></td>
             <td><%= r.uploads_after_blank %></td>
+            <td><%= r.uploads_real %> / <%= r.uploads_sample %></td>
+            <td><%= r.decisions %><% if (r.decisions > 0) { %> <span style="color: var(--text-muted); font-size: 12.5px;">(<%= r.avg_confidence %>)</span><% } %></td>
             <td><%= r.roles_confirmed %> / <%= r.roles_corrected %></td>
             <td style="color: var(--text-muted); font-size: 13px;"><%= r.last_event_at ? new Date(r.last_event_at).toLocaleString() : '—' %></td>
           </tr>
@@ -77,5 +99,34 @@
       </tbody>
     </table>
   </div>
-  <p class="form-hint" style="margin: 12px 0 0;">Two things this log cannot show: it records <em>use</em>, not whether a decision improved (that needs the decision-follow-up question or interviews), and a "matching" upload shows the columns fit a template — not that the data inside is accurate.</p>
+  <p class="form-hint" style="margin: 12px 0 0;">What this cannot show: decision entries are owner-reported intent and confidence (not measured business results), and "real" is the owner's own declaration — the quality counts show the data is plausible, not that it is accurate. Pair both with a short follow-up interview.</p>
+</div>
+
+<div class="form-card wide" style="max-width: none; margin-bottom: 26px;">
+  <div class="form-title" style="font-size: 18px;">Decision entries</div>
+  <p class="form-hint" style="margin-bottom: 10px;">What owners said they would do with each Prescriptive recommendation, their confidence, and — where they came back — what happened. Owner-written text can identify a business; quote it in the paper only de-identified.</p>
+  <div class="table-scroll">
+    <table class="table-simple">
+      <thead>
+        <tr><th>Owner</th><th>Recommendation</th><th>Decision</th><th>Confidence</th><th>Would change</th><th>What happened</th><th>Updated</th></tr>
+      </thead>
+      <tbody>
+        <% if (!decisions || decisions.length === 0) { %>
+          <tr><td colspan="7" style="color: var(--text-muted);">No decision entries yet.</td></tr>
+        <% } %>
+        <% var statusText = { already_acted: 'Already acted', plan_to_act: 'Plans to act', will_not_act: 'Will not act', not_sure: 'Not sure yet' };
+           (decisions || []).forEach(function (d) { %>
+          <tr>
+            <td><%= d.owner_name || d.username %></td>
+            <td><%= d.recommendation_label || d.recommendation_key %></td>
+            <td><%= statusText[d.action_status] || d.action_status %></td>
+            <td><%= d.confidence %> / 5</td>
+            <td style="font-size: 13px;"><%= d.intended_change || '—' %></td>
+            <td style="font-size: 13px;"><%= d.outcome_text || '—' %></td>
+            <td style="color: var(--text-muted); font-size: 13px;"><%= new Date(d.updated_at).toLocaleString() %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
 </div>

@@ -1262,7 +1262,8 @@ CREATE TABLE IF NOT EXISTS sme_tam_activity_events (
     event_type       VARCHAR(40) NOT NULL CHECK (event_type IN (
                          'prefilled_template_used', 'blank_started',
                          'blank_template_downloaded', 'sample_template_downloaded',
-                         'row_added', 'upload_completed', 'upload_failed'
+                         'row_added', 'upload_completed', 'upload_failed',
+                         'signup_dataset_chosen'
                      )),
     category         VARCHAR(100),
     dataset_origin   VARCHAR(10) CHECK (dataset_origin IN ('prefilled', 'blank')),
@@ -1275,3 +1276,57 @@ CREATE TABLE IF NOT EXISTS sme_tam_activity_events (
 
 CREATE INDEX IF NOT EXISTS idx_sme_tam_activity_events_account
     ON sme_tam_activity_events(account_id, event_type);
+
+-- Later additions to the activity log (still 4 October 2026):
+--  * 'signup_dataset_chosen' — the starting dataset picked on the signup form
+--    (consent is now given on that same form, so it can be logged).
+--  * real_records — the owner's own answer, at upload, to "Are these your
+--    actual business records?" ('real' | 'sample').
+--  * quality — counts-only data-quality summary computed after an upload
+--    (completeness, duplicates, numeric/date column checks). Never contents.
+DO $$
+BEGIN
+  ALTER TABLE sme_tam_activity_events DROP CONSTRAINT IF EXISTS sme_tam_activity_events_event_type_check;
+  ALTER TABLE sme_tam_activity_events ADD CONSTRAINT sme_tam_activity_events_event_type_check CHECK (event_type IN (
+      'prefilled_template_used', 'blank_started',
+      'blank_template_downloaded', 'sample_template_downloaded',
+      'row_added', 'upload_completed', 'upload_failed',
+      'signup_dataset_chosen'
+  ));
+END $$;
+
+ALTER TABLE sme_tam_activity_events ADD COLUMN IF NOT EXISTS real_records VARCHAR(10);
+ALTER TABLE sme_tam_activity_events ADD COLUMN IF NOT EXISTS quality JSONB;
+DO $$
+BEGIN
+  ALTER TABLE sme_tam_activity_events DROP CONSTRAINT IF EXISTS sme_tam_activity_events_real_records_check;
+  ALTER TABLE sme_tam_activity_events ADD CONSTRAINT sme_tam_activity_events_real_records_check CHECK (real_records IS NULL OR real_records IN ('real', 'sample'));
+END $$;
+
+-- ---------------------------------------------------------------------
+-- SME Owner-TAM Evaluator decision follow-up (added 4 October 2026) —
+-- evidence for decision-support effectiveness, which the usage log alone
+-- can't show. On each Prescriptive recommendation the owner can say what
+-- they will do with it (already acted / plan to / will not / not sure),
+-- how confident they are in that decision (1-5), what they would change,
+-- and — coming back later — what actually happened. One row per owner per
+-- recommendation (upserted). Only written after consent (RA 10173).
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS sme_tam_decision_followups (
+    id                  SERIAL      PRIMARY KEY,
+    account_id          INTEGER     NOT NULL REFERENCES sme_accounts(id) ON DELETE CASCADE,
+    session_id          INTEGER     REFERENCES sme_tam_evaluation_sessions(id) ON DELETE SET NULL,
+    recommendation_key  VARCHAR(150) NOT NULL,
+    recommendation_label VARCHAR(200),
+    action_status       VARCHAR(20) NOT NULL CHECK (action_status IN ('already_acted', 'plan_to_act', 'will_not_act', 'not_sure')),
+    confidence          SMALLINT    NOT NULL CHECK (confidence BETWEEN 1 AND 5),
+    intended_change     TEXT,
+    outcome_text        TEXT,
+    outcome_updated_at  TIMESTAMPTZ,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (account_id, recommendation_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sme_tam_decision_followups_account
+    ON sme_tam_decision_followups(account_id);

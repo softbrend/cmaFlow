@@ -21,7 +21,11 @@
     When you signed up at <strong>/businessOwner-signup</strong>, you picked the business category closest to the one you're evaluating CMA-Flow for. That choice is what CMA-Flow uses to give you a ready-made dataset to start from<% if (isSmeTam) { %> — you can switch to another category, or start a blank copy to enter your own real records, whenever you like.<% } else { %>, and it's also what frames the questions you'll answer at the end — everything in this evaluation is built around one real monetization decision for a business like yours.<% } %>
   </p>
   <p class="form-hint">
+    <% if (isSmeTam) { %>
+    You agreed to the informed-consent information (Data Privacy Act, Republic Act No. 10173) on the sign-up form, and nothing was recorded before that. It explains exactly what's recorded, and you can withdraw your consent at any time — there's always a "Withdraw from this evaluation" link on the evaluation questionnaire page.
+    <% } else { %>
     The first time you open any analytics page or the evaluation itself, you'll see an informed-consent screen under the Data Privacy Act (Republic Act No. 10173). It explains exactly what's recorded, and you can withdraw your consent at any time, even after starting — there's always a "Withdraw from this evaluation" link available once you've agreed. Nothing is recorded before you agree.
+    <% } %>
   </p>
   <p class="form-hint" style="margin-bottom: 0;">
     <% if (isSmeTam) { %>
@@ -65,7 +69,10 @@
     There is no walkthrough and no tasks to tick off. Use CMA-Flow the way you would for your own business — open the four analytics modules (section 5) in any order, add or change your own records (section 3), and come back to them as often as you like.
   </p>
   <p class="form-hint">
-    Once you've agreed to the informed-consent screen, CMA-Flow automatically keeps a simple log of how long you spend on each of the four analytics modules, based on when you open them. There is nothing to start, stop, or mark complete yourself, and nothing is logged before you agree.
+    Since you agreed on the sign-up form, CMA-Flow automatically keeps a simple log of how long you spend on each of the four analytics modules, based on when you open them, and simple counts of how you use the templates (downloads, rows added, uploads). There is nothing to start, stop, or mark complete yourself. When you upload a file you'll be asked whether it is your real business records or sample/test data.
+  </p>
+  <p class="form-hint">
+    Under each recommendation on <strong>Prescriptive recommendations</strong> there is an optional <strong>Your decision</strong> box: say what you will do with it, how confident you are, and what you would change. If you try the recommendation, come back and write what actually happened — that is the most useful thing you can tell the study.
   </p>
   <p class="form-hint" style="margin-bottom: 0;">
     When you feel you've used CMA-Flow enough to give an honest opinion, open <strong>SME Owner-TAM Evaluation</strong> in the navigation panel to answer the short questionnaire (section 6). You decide when — there's no deadline and no minimum amount of use.

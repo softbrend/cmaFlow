@@ -53,8 +53,9 @@ const {
 const { buildErdDefinition } = require('../services/erdDiagram');
 const { ensureDefaultDataset, setDefaultDataset } = require('../services/accountDatasets');
 const { recordModuleVisit, SME_TAM_ROLE, isDirectFlow: isDirectFlowFor } = require('../services/tamEvaluation');
-const { logEvent: logSmeTamEvent, matchUploadToTemplate } = require('../services/smeTamActivity');
+const { logEvent: logSmeTamEvent, matchUploadToTemplate, computeUploadQuality } = require('../services/smeTamActivity');
 const { parse: parseCsvSync } = require('csv-parse/sync');
+const { getDecisionFollowupsByKey, ACTION_STATUSES: DECISION_STATUSES } = require('../services/smeTamDecisions');
 const { getOrCompute: getOrComputeAnalyticsCache, getOrComputeInProcess: getOrComputeAnalyticsCacheInProcess } = require('../services/analyticsCache');
 const { ROLE_ONTOLOGY } = require('../services/semanticFieldOntology'); // Round 22 — role dropdown options for GET/POST /dataset/:id/review-fields
 // Only ACTUAL_DATE_NAME_RE is needed here (to pick the "delivered/actual"
@@ -3011,6 +3012,14 @@ router.get('/prescriptive-recommendations', trackDirectFlowModuleVisit('prescrip
       })) : [];
       cards.dataReadiness = presc.applicable ? presc.dataReadiness : [];
 
+      // SME Owner-TAM Evaluator only: the owner's own saved "what I'll do
+      // with this" answers, keyed by recommendation, for the decision
+      // follow-up block under each recommendation card.
+      let decisionFollowups = null;
+      if (req.session.user && req.session.user.role === SME_TAM_ROLE) {
+        decisionFollowups = await getDecisionFollowupsByKey(req.session.userId);
+      }
+
       return res.render('dashboard/prescriptive-recommendations', {
         title: 'Prescriptive recommendations',
         active: 'prescriptive-recommendations',
@@ -3022,6 +3031,9 @@ router.get('/prescriptive-recommendations', trackDirectFlowModuleVisit('prescrip
         hasAnyData: true,
         dataSource,
         rawInfo: null,
+        decisionFollowups,
+        decisionStatuses: DECISION_STATUSES,
+        decisionFlash: ['saved', 'incomplete'].includes(req.query.decision) ? req.query.decision : null,
       });
     }
 
@@ -3464,6 +3476,7 @@ async function renderUploadForm(req, res, next, { status = 200, errors = [], suc
       humanizeFileType,
       errors,
       success,
+      askRealRecords: !!(req.session.user && req.session.user.role === SME_TAM_ROLE),
     });
   } catch (err) {
     next(err);
@@ -3575,6 +3588,14 @@ router.post('/upload-dataset', (req, res, next) => {
     }
     if (!datasetName) fieldErrors.push('Dataset name is required.');
     if (pairedFiles.length === 0) fieldErrors.push('Attach at least one CSV file.');
+    // SME Owner-TAM Evaluator only: the owner says whether this file is
+    // their actual business data or sample/test data, so the study can
+    // separate real uploads from practice ones. Required for this role.
+    const isTamUploader = !!(req.session.user && req.session.user.role === SME_TAM_ROLE);
+    const realRecords = req.body.real_records === 'real' || req.body.real_records === 'sample' ? req.body.real_records : null;
+    if (isTamUploader && !realRecords) {
+      fieldErrors.push('Please say whether these are your actual business records or sample/test data.');
+    }
 
     if (fieldErrors.length > 0) {
       discardDatasetUpload(req);
@@ -3638,6 +3659,11 @@ router.post('/upload-dataset', (req, res, next) => {
             templateMatch: !!(tamMatch && tamMatch.exact),
             matchPct: tamMatch ? tamMatch.matchPct : 0,
             detail: { file_count: pairedFiles.length },
+            realRecords,
+            quality: await computeUploadQuality(job.dataset_row_id).catch((e) => {
+              console.error('[upload-dataset] quality summary failed:', e.message);
+              return null;
+            }),
           });
         } else if (job.status === 'failed') {
           await logSmeTamEvent(tamUser, 'upload_failed', {
@@ -3645,6 +3671,7 @@ router.post('/upload-dataset', (req, res, next) => {
             templateMatch: !!(tamMatch && tamMatch.exact),
             matchPct: tamMatch ? tamMatch.matchPct : 0,
             detail: { file_count: pairedFiles.length },
+            realRecords,
           });
         }
       }).catch((e) => console.error(`[upload-dataset] job ${jobId} threw outside its own handling:`, e));
