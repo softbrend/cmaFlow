@@ -187,6 +187,27 @@ function weightedConfidence(rows) {
   return n > 0 ? Math.round((t / n) * 100) / 100 : null;
 }
 
+
+// ---- sorting by surname -----------------------------------------------
+// Owner names are free text ("Andrae John V. Almodiente", "Luis Morillo").
+// The surname is taken as the last word, after dropping a trailing suffix
+// (Jr., Sr., II, III, IV) and keeping common surname particles attached
+// (dela Cruz, de la Cruz, del Rosario, San Juan, van Dyke).
+const NAME_SUFFIXES = new Set(['jr', 'sr', 'ii', 'iii', 'iv', 'v']);
+const SURNAME_PARTICLES = new Set(['de', 'del', 'dela', 'delos', 'de la', 'la', 'san', 'santa', 'van', 'von', 'mac', 'mc']);
+function surnameOf(fullName) {
+  const words = String(fullName || '').trim().split(/\s+/).filter(Boolean);
+  const clean = (w) => w.replace(/[.,]/g, '').toLowerCase();
+  while (words.length > 1 && NAME_SUFFIXES.has(clean(words[words.length - 1]))) words.pop();
+  if (words.length === 0) return '';
+  let i = words.length - 1;
+  while (i > 0 && SURNAME_PARTICLES.has(clean(words[i - 1]))) i -= 1;
+  return words.slice(i).join(' ').replace(/[.,]$/, '');
+}
+function sortKey(r) {
+  return `${surnameOf(r.owner_name || r.username).toLowerCase()}\u0000${String(r.owner_name || r.username).toLowerCase()}`;
+}
+
 async function getActivityReport() {
   const { rows } = await pool.query(`
     SELECT a.id AS account_id, a.username, a.owner_name, a.business_type, a.business_sector, a.business_size,
@@ -286,6 +307,8 @@ async function getActivityReport() {
      WHERE a.role = $1
      ORDER BY a.id`, [SME_TAM_ROLE]);
 
+  rows.forEach((r) => { r.surname = surnameOf(r.owner_name || r.username); r.sort_name = sortKey(r); });
+  rows.sort((a, b) => (a.sort_name < b.sort_name ? -1 : a.sort_name > b.sort_name ? 1 : a.account_id - b.account_id));
   const consenting = rows.filter((r) => r.consent_status === 'given');
   const sum = (k) => consenting.reduce((t, r) => t + Number(r[k] || 0), 0);
   const nWith = (k) => consenting.filter((r) => Number(r[k]) > 0).length;
@@ -364,4 +387,4 @@ function buildCsv(consentingRows) {
   return lines.join('\r\n') + '\r\n';
 }
 
-module.exports = { logEvent, matchUploadToTemplate, computeUploadQuality, getActivityReport, buildCsv, EVENT_TYPES };
+module.exports = { logEvent, matchUploadToTemplate, computeUploadQuality, getActivityReport, buildCsv, surnameOf, EVENT_TYPES };

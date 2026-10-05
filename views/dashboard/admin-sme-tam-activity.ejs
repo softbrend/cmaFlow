@@ -60,24 +60,25 @@
 
 <div class="form-card wide" style="max-width: none; margin-bottom: 26px;">
   <div class="form-title" style="font-size: 18px;">Per owner</div>
+  <p class="form-hint" style="margin: 0 0 8px;">Sorted by surname. Click any column heading to re-sort by it (click again to reverse).</p>
   <div class="table-scroll">
-    <table class="table-simple">
+    <table class="table-simple" id="owner-activity-table">
       <thead>
         <tr>
-          <th>Owner</th>
-          <th>Started with</th>
-          <th>Copies held (sample / blank)</th>
-          <th>Prefilled used</th>
-          <th>Blank downloads</th>
-          <th>Blank started</th>
-          <th>Rows added</th>
-          <th>Uploads</th>
-          <th>Matching template</th>
-          <th>After blank download</th>
-          <th>Uploads real / sample</th>
-          <th>Decisions (mean conf.)</th>
-          <th>Roles confirmed / corrected</th>
-          <th>Last activity</th>
+          <th data-sortable>Owner (surname)</th>
+          <th data-sortable>Started with</th>
+          <th data-sortable>Copies held (sample / blank)</th>
+          <th data-sortable>Prefilled used</th>
+          <th data-sortable>Blank downloads</th>
+          <th data-sortable>Blank started</th>
+          <th data-sortable>Rows added</th>
+          <th data-sortable>Uploads</th>
+          <th data-sortable>Matching template</th>
+          <th data-sortable>After blank download</th>
+          <th data-sortable>Uploads real / sample</th>
+          <th data-sortable>Decisions (mean conf.)</th>
+          <th data-sortable>Roles confirmed / corrected</th>
+          <th data-sortable>Last activity</th>
         </tr>
       </thead>
       <tbody>
@@ -86,21 +87,21 @@
         <% } %>
         <% rows.forEach(function (r) { %>
           <tr>
-            <td><a href="/admin/sme-tam-evaluations/<%= r.account_id %>"><%= r.owner_name || r.username %></a>
+            <td data-sort="<%= r.sort_name %>"><a href="/admin/sme-tam-evaluations/<%= r.account_id %>"><%= r.owner_name || r.username %></a>
               <div style="color: var(--text-muted); font-size: 12.5px;"><%= [r.business_sector, r.business_size].filter(Boolean).join(' · ') %></div></td>
-            <td><%= r.started_with === 'blank' ? 'Blank' : (r.started_with === 'prefilled' ? '50-row sample' : '—') %></td>
-            <td><%= r.prefilled_copies %> / <%= r.blank_copies %></td>
-            <td><%= r.prefilled_template_used %></td>
-            <td><%= r.blank_template_downloaded %></td>
-            <td><%= r.blank_started %></td>
-            <td><%= r.rows_added %><% if (r.rows_added > 0) { %> <span style="color: var(--text-muted); font-size: 12.5px;">(<%= r.rows_added_prefilled %> prefilled, <%= r.rows_added_blank %> blank)</span><% } %></td>
-            <td><%= r.uploads %><% if (r.upload_rows > 0) { %> <span style="color: var(--text-muted); font-size: 12.5px;">(<%= r.upload_rows %> rows)</span><% } %></td>
-            <td><%= r.uploads_template_match %></td>
-            <td><%= r.uploads_after_blank %></td>
-            <td><%= r.uploads_real %> / <%= r.uploads_sample %></td>
-            <td><%= r.decisions %><% if (r.decisions > 0) { %> <span style="color: var(--text-muted); font-size: 12.5px;">(<%= r.avg_confidence %>)</span><% } %></td>
-            <td><%= r.roles_confirmed %> / <%= r.roles_corrected %></td>
-            <td style="color: var(--text-muted); font-size: 13px;"><%= r.last_event_at ? new Date(r.last_event_at).toLocaleString() : '—' %></td>
+            <td data-sort="<%= r.started_with === 'blank' ? 'blank' : (r.started_with === 'prefilled' ? 'sample' : 'zzz') %>"><%= r.started_with === 'blank' ? 'Blank' : (r.started_with === 'prefilled' ? '50-row sample' : '—') %></td>
+            <td data-sort="<%= r.prefilled_copies * 1000 + r.blank_copies %>"><%= r.prefilled_copies %> / <%= r.blank_copies %></td>
+            <td data-sort="<%= r.prefilled_template_used %>"><%= r.prefilled_template_used %></td>
+            <td data-sort="<%= r.blank_template_downloaded %>"><%= r.blank_template_downloaded %></td>
+            <td data-sort="<%= r.blank_started %>"><%= r.blank_started %></td>
+            <td data-sort="<%= r.rows_added %>"><%= r.rows_added %><% if (r.rows_added > 0) { %> <span style="color: var(--text-muted); font-size: 12.5px;">(<%= r.rows_added_prefilled %> prefilled, <%= r.rows_added_blank %> blank)</span><% } %></td>
+            <td data-sort="<%= r.uploads %>"><%= r.uploads %><% if (r.upload_rows > 0) { %> <span style="color: var(--text-muted); font-size: 12.5px;">(<%= r.upload_rows %> rows)</span><% } %></td>
+            <td data-sort="<%= r.uploads_template_match %>"><%= r.uploads_template_match %></td>
+            <td data-sort="<%= r.uploads_after_blank %>"><%= r.uploads_after_blank %></td>
+            <td data-sort="<%= r.uploads_real * 1000 + r.uploads_sample %>"><%= r.uploads_real %> / <%= r.uploads_sample %></td>
+            <td data-sort="<%= r.decisions %>"><%= r.decisions %><% if (r.decisions > 0) { %> <span style="color: var(--text-muted); font-size: 12.5px;">(<%= r.avg_confidence %>)</span><% } %></td>
+            <td data-sort="<%= r.roles_confirmed * 1000 + r.roles_corrected %>"><%= r.roles_confirmed %> / <%= r.roles_corrected %></td>
+            <td data-sort="<%= r.last_event_at ? new Date(r.last_event_at).getTime() : 0 %>" style="color: var(--text-muted); font-size: 13px;"><%= r.last_event_at ? new Date(r.last_event_at).toLocaleString() : '—' %></td>
           </tr>
         <% }); %>
       </tbody>
@@ -137,3 +138,43 @@
     </table>
   </div>
 </div>
+
+<script>
+  (function () {
+    var table = document.getElementById('owner-activity-table');
+    if (!table) return;
+    var heads = table.querySelectorAll('th[data-sortable]');
+    var tbody = table.tBodies[0];
+    function value(td) {
+      var v = td.getAttribute('data-sort');
+      if (v === null) v = td.textContent.trim();
+      var n = Number(v);
+      return (v !== '' && !isNaN(n)) ? n : String(v).toLowerCase();
+    }
+    function sortBy(idx, dir) {
+      var rows = Array.prototype.slice.call(tbody.rows).filter(function (r) { return r.cells.length > idx; });
+      var decorated = rows.map(function (r, i) { return { r: r, i: i, v: value(r.cells[idx]) }; });
+      decorated.sort(function (a, b) {
+        var c = (typeof a.v === 'number' && typeof b.v === 'number') ? a.v - b.v : (a.v < b.v ? -1 : a.v > b.v ? 1 : 0);
+        return c !== 0 ? c * dir : a.i - b.i;
+      });
+      decorated.forEach(function (d) { tbody.appendChild(d.r); });
+    }
+    heads.forEach(function (th, idx) {
+      th.style.cursor = 'pointer';
+      th.setAttribute('tabindex', '0');
+      th.setAttribute('role', 'button');
+      th.title = 'Click to sort by this column';
+      function activate() {
+        var dir = th.getAttribute('data-dir') === 'asc' ? -1 : 1;
+        heads.forEach(function (h) { h.removeAttribute('data-dir'); h.removeAttribute('aria-sort'); h.textContent = h.textContent.replace(/\s[▲▼]$/, ''); });
+        th.setAttribute('data-dir', dir === 1 ? 'asc' : 'desc');
+        th.setAttribute('aria-sort', dir === 1 ? 'ascending' : 'descending');
+        th.textContent = th.textContent + (dir === 1 ? ' ▲' : ' ▼');
+        sortBy(idx, dir);
+      }
+      th.addEventListener('click', activate);
+      th.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); } });
+    });
+  })();
+</script>
