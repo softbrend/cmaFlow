@@ -196,6 +196,12 @@ function weightedConfidence(rows) {
 const NAME_SUFFIXES = new Set(['jr', 'sr', 'ii', 'iii', 'iv', 'v']);
 const SURNAME_PARTICLES = new Set(['de', 'del', 'dela', 'delos', 'de la', 'la', 'san', 'santa', 'van', 'von', 'mac', 'mc']);
 function surnameOf(fullName) {
+  // "Surname, Given names" format: the part before the first comma is the surname.
+  const raw = String(fullName || '').trim();
+  const comma = raw.indexOf(',');
+  if (comma > 0 && !NAME_SUFFIXES.has(raw.slice(comma + 1).replace(/[.\s]/g, '').toLowerCase())) {
+    return raw.slice(0, comma).trim();
+  }
   const words = String(fullName || '').trim().split(/\s+/).filter(Boolean);
   const clean = (w) => w.replace(/[.,]/g, '').toLowerCase();
   while (words.length > 1 && NAME_SUFFIXES.has(clean(words[words.length - 1]))) words.pop();
@@ -205,7 +211,7 @@ function surnameOf(fullName) {
   return words.slice(i).join(' ').replace(/[.,]$/, '');
 }
 function sortKey(r) {
-  return `${surnameOf(r.owner_name || r.username).toLowerCase()}\u0000${String(r.owner_name || r.username).toLowerCase()}`;
+  return `${surnameOf(r.owner_name || r.username).toLowerCase()}\u0001${String(r.owner_name || r.username).toLowerCase()}`;
 }
 
 async function getActivityReport() {
