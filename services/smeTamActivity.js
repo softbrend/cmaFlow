@@ -203,6 +203,11 @@ async function getActivityReport() {
            COALESCE(ev.uploads_after_blank, 0)       AS uploads_after_blank,
            COALESCE(ev.upload_rows, 0)               AS upload_rows,
            ev.last_event_at,
+           COALESCE(
+             (SELECT e0.dataset_origin FROM sme_tam_activity_events e0
+               WHERE e0.account_id = a.id AND e0.event_type = 'signup_dataset_chosen'
+               ORDER BY e0.id LIMIT 1),
+             st.start_origin)                        AS started_with,
            COALESCE(cp.prefilled_copies, 0)          AS prefilled_copies,
            COALESCE(cp.blank_copies, 0)              AS blank_copies,
            COALESCE(cp.blank_rows_now, 0)            AS blank_rows_now,
@@ -244,6 +249,17 @@ async function getActivityReport() {
         FROM sme_tam_activity_events e WHERE e.account_id = a.id
       ) ev ON true
       LEFT JOIN LATERAL (
+        -- The starting dataset chosen at sign-up = the account's first template
+        -- copy (created at sign-up). Works for accounts that signed up before
+        -- the 'signup_dataset_chosen' event existed.
+        SELECT CASE WHEN d.dataset_id LIKE 'EVALBLANK\\_%' THEN 'blank' ELSE 'prefilled' END AS start_origin
+          FROM uploaded_datasets d
+         WHERE d.account_id = a.id
+           AND (d.dataset_id LIKE 'EVALCOPY\\_%' OR d.dataset_id LIKE 'EVALBLANK\\_%' OR d.dataset_id = 'EVALUATION_DEFAULT')
+         ORDER BY d.created_at, d.id
+         LIMIT 1
+      ) st ON true
+      LEFT JOIN LATERAL (
         SELECT COUNT(*) FILTER (WHERE d.dataset_id NOT LIKE 'EVALBLANK\\_%')::int AS prefilled_copies,
                COUNT(*) FILTER (WHERE d.dataset_id LIKE 'EVALBLANK\\_%')::int     AS blank_copies,
                COALESCE(SUM((SELECT COUNT(*) FROM dataset_records r WHERE r.dataset_id = d.id)
@@ -279,6 +295,11 @@ async function getActivityReport() {
     registered: rows.length,
     consenting: consenting.length,
     notConsenting: rows.length - consenting.length,
+    startedSample: consenting.filter((r) => r.started_with === 'prefilled').length,
+    startedBlankAtSignup: consenting.filter((r) => r.started_with === 'blank').length,
+    startedUnknown: consenting.filter((r) => !r.started_with).length,
+    holdBlankCopy: nWith('blank_copies'),
+    holdSampleCopy: nWith('prefilled_copies'),
     usedPrefilled: nWith('prefilled_template_used'),
     startedBlank: nWith('blank_started'),
     downloadedBlank: nWith('blank_template_downloaded'),
@@ -324,6 +345,7 @@ const CSV_COLUMNS = [
   ['rows_added', 'rows_added'], ['rows_added_to_prefilled', 'rows_added_prefilled'], ['rows_added_to_blank', 'rows_added_blank'],
   ['uploads', 'uploads'], ['uploads_matching_template', 'uploads_template_match'],
   ['uploads_matching_after_blank_download', 'uploads_after_blank'], ['uploaded_rows', 'upload_rows'],
+  ['signup_starting_dataset', 'started_with'],
   ['prefilled_copies_held', 'prefilled_copies'], ['blank_copies_held', 'blank_copies'], ['rows_now_in_blank_copies', 'blank_rows_now'],
   ['uploads_declared_real_records', 'uploads_real'], ['uploads_declared_sample_or_test', 'uploads_sample'],
   ['real_uploads_avg_completeness_pct', 'avg_completeness_real'], ['real_uploads_avg_duplicate_row_pct', 'avg_duplicate_real'],

@@ -10,6 +10,9 @@
         <%
           function pct(n) { return totals.consenting > 0 ? Math.round((n / totals.consenting) * 100) + '%' : '—'; }
           var lines = [
+            ['Started with the 50-row sample dataset (chosen at sign-up)', totals.startedSample, ''],
+            ['Started with a blank dataset (chosen at sign-up)', totals.startedBlankAtSignup, totals.startedUnknown > 0 ? totals.startedUnknown + ' owner(s) have no starting dataset recorded.' : ''],
+            ['Hold a blank copy now / hold a sample copy now', totals.holdBlankCopy + ' / ' + totals.holdSampleCopy, 'Counts owners, not copies; an owner can hold both.'],
             ['Used a prefilled (sample) template', totals.usedPrefilled, ''],
             ['Downloaded the sample CSV (50 rows)', totals.downloadedSample, ''],
             ['Downloaded the blank template', totals.downloadedBlank, 'Headers-only CSV.'],
@@ -23,7 +26,7 @@
           ];
         %>
         <% lines.forEach(function (l) { %>
-          <tr><td><%= l[0] %></td><td><strong><%= l[1] %></strong></td><td><%= pct(l[1]) %></td><td style="color: var(--text-muted); font-size: 13px;"><%= l[2] %></td></tr>
+          <tr><td><%= l[0] %></td><td><strong><%= l[1] %></strong></td><td><%= typeof l[1] === 'number' ? pct(l[1]) : '' %></td><td style="color: var(--text-muted); font-size: 13px;"><%= l[2] %></td></tr>
         <% }); %>
       </tbody>
     </table>
@@ -62,6 +65,8 @@
       <thead>
         <tr>
           <th>Owner</th>
+          <th>Started with</th>
+          <th>Copies held (sample / blank)</th>
           <th>Prefilled used</th>
           <th>Blank downloads</th>
           <th>Blank started</th>
@@ -77,12 +82,14 @@
       </thead>
       <tbody>
         <% if (rows.length === 0) { %>
-          <tr><td colspan="12" style="color: var(--text-muted);">No consenting SME Owner-TAM Evaluators yet.</td></tr>
+          <tr><td colspan="14" style="color: var(--text-muted);">No consenting SME Owner-TAM Evaluators yet.</td></tr>
         <% } %>
         <% rows.forEach(function (r) { %>
           <tr>
             <td><a href="/admin/sme-tam-evaluations/<%= r.account_id %>"><%= r.owner_name || r.username %></a>
               <div style="color: var(--text-muted); font-size: 12.5px;"><%= [r.business_sector, r.business_size].filter(Boolean).join(' · ') %></div></td>
+            <td><%= r.started_with === 'blank' ? 'Blank' : (r.started_with === 'prefilled' ? '50-row sample' : '—') %></td>
+            <td><%= r.prefilled_copies %> / <%= r.blank_copies %></td>
             <td><%= r.prefilled_template_used %></td>
             <td><%= r.blank_template_downloaded %></td>
             <td><%= r.blank_started %></td>
