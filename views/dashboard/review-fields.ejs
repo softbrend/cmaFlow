@@ -16,12 +16,13 @@
 <% } %>
 
 <% if (items.length === 0) { %>
-  <div class="form-card wide">
+  <div class="form-card wide review-fields-card">
     <p class="form-hint" style="margin:0;">Nothing needs review right now — every column in this dataset was either resolved with high confidence, or already confirmed.</p>
   </div>
 <% } else { %>
   <form method="POST" action="/dataset/<%= dataset.id %>/review-fields">
-    <div class="form-card wide">
+    <div class="form-card wide review-fields-card">
+      <div class="table-scroll">
       <table class="table-simple">
         <thead>
           <tr>
@@ -46,10 +47,10 @@
                 <%= (it.confidence * 100).toFixed(0) %>%
                 <div style="font-size:11px; color: var(--text-muted);"><%= it.band %> — <%= it.confirmationAction === 'ask-sme' ? 'needs your input' : 'flagged for a quick check' %></div>
               </td>
-              <td style="max-width:260px; font-size:12px; color: var(--text-muted);">
+              <td class="rf-why" style="font-size:12.5px; color: var(--text-muted);">
                 <% (it.evidence || []).forEach(function(e) { %><div><%= e %></div><% }); %>
               </td>
-              <td>
+              <td class="rf-role">
                 <select name="items[<%= i %>][confirmedRole]" class="form-select">
                   <% roleOptions.forEach(function(opt) { %>
                     <option value="<%= opt.value %>" <%= opt.value === it.role ? 'selected' : '' %>><%= opt.label %></option>
@@ -64,6 +65,7 @@
           <% }); %>
         </tbody>
       </table>
+      </div>
     </div>
     <button type="submit" class="btn btn-accent" style="margin-top:14px;">Save confirmations</button>
   </form>

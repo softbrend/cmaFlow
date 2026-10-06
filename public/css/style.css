@@ -942,8 +942,24 @@ body.stage-evaluation-data-browser .main-inner { max-width: 1600px; }
    cap so the card spans the page, with long dataset IDs (e.g.
    EVALBLANK_CUSTOM_salon_sale_2026_xxxxxxxx) allowed to wrap, and a
    horizontal scroll fallback (.table-scroll) on very narrow screens. */
-body.stage-upload-new-dataset .main-inner:has(.dataset-list-card) { max-width: 1400px; }
+body.stage-upload-new-dataset .main-inner:has(.dataset-list-card),
+body.stage-upload-new-dataset .main-inner:has(.review-fields-card) { max-width: 1400px; }
 .form-card.wide.dataset-list-card { max-width: none; width: 100%; }
+
+/* Review field roles page (/dataset/:id/review-fields, 7 October 2026, per
+   Brenda: the card stopped at 760px while its 6-column table ran past it).
+   Same pattern as .dataset-list-card — a dedicated class lifts the cap so
+   the card spans the page, a .table-scroll wrapper is the narrow-screen
+   fallback, and the "Why" column gets a readable width instead of a thin
+   260px strip that made each evidence line wrap word by word. */
+.form-card.wide.review-fields-card { max-width: none; width: 100%; }
+.review-fields-card .table-simple td { vertical-align: top; }
+.review-fields-card .table-simple td.rf-why { min-width: 320px; max-width: 520px; }
+.review-fields-card .table-simple td.rf-role { min-width: 220px; }
+.review-fields-card .form-select {
+  width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--bg-panel); color: var(--text); font: inherit; font-size: 14px;
+}
 .dataset-list-card .table-simple td:first-child { overflow-wrap: anywhere; min-width: 200px; }
 .dataset-list-card .table-simple th, .dataset-list-card .table-simple td { vertical-align: middle; }
 .dataset-list-card .table-simple th { white-space: nowrap; }
