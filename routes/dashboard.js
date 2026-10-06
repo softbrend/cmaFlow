@@ -45,7 +45,8 @@ const {
 } = require('../services/format');
 const { buildEvaluationReport } = require('../services/evaluationReport');
 const { buildEvaluationReportWorkbook } = require('../services/evaluationReportExport');
-const { CANONICAL_ROLES, REPORT_CATALOG, buildReportCatalogAnalysis } = require('../services/reportCatalog');
+const { CANONICAL_ROLES, REPORT_CATALOG, buildReportCatalogAnalysis, drillSeasonality } = require('../services/reportCatalog');
+const { RAW_DRILLDOWN_PAGE_SIZE } = require('../services/rawDrillDown');
 const {
   upsertFileProfile, getOrBuildFullProfile, getOrBuildBusinessIntelligence, getCorrelationSample,
   buildBusinessContext, getOrBuildBusinessContext,
@@ -3797,7 +3798,7 @@ router.get('/browse-dataset/:id/report-catalog', async (req, res, next) => {
     const rawByFileType = await getRawRecordsByFileType(req.session.userId, id);
     const analysis = buildReportCatalogAnalysis(rawByFileType);
     const currency = null; // raw, pre-Map-&-Transform data has no confirmed currency yet
-    const { categorized, categoryOrder } = buildReportCatalogCards(analysis, currency);
+    const { categorized, categoryOrder } = buildReportCatalogCards(analysis, currency, dataset.id);
     const summaryKpiRow = [
       renderStatTile({ label: 'Reports unlocked', value: `${analysis.enabled.length} of 30` }),
       renderStatTile({ label: 'One field away', value: `${analysis.nearMiss.length} report${analysis.nearMiss.length === 1 ? '' : 's'}` }),
@@ -3813,6 +3814,46 @@ router.get('/browse-dataset/:id/report-catalog', async (req, res, next) => {
       summaryKpiRow,
       CANONICAL_ROLES,
       humanizeFileType,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /browse-dataset/:id/report-catalog/drill — the rows behind one bar of
+// the Report Catalog's #29 Seasonal Sales Analysis (by=weekday|hour,
+// value=the bar's label), fetched a page at a time by the shared drill-down
+// panel (public/js/raw-row-drilldown.js, 'endpoint' mode). Same response
+// contract as GET /descriptive-analytics/raw-drill-down: row <tr>s from
+// _raw-drilldown-rows.ejs, column list in X-Drilldown-Columns.
+router.get('/browse-dataset/:id/report-catalog/drill', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query(
+      `SELECT id FROM uploaded_datasets WHERE id = $1 AND account_id = $2`,
+      [id, req.session.userId]
+    );
+    if (!rows[0]) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
+
+    const by = req.query.by === 'hour' ? 'hour' : req.query.by === 'weekday' ? 'weekday' : null;
+    const value = String(req.query.value || '').trim();
+    if (Number(req.query.report) !== 29 || !by || !value) {
+      return res.status(400).render('errors/404', { title: 'Not found', layout: false });
+    }
+    const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
+
+    const rawByFileType = await getRawRecordsByFileType(req.session.userId, id);
+    const { columns, rows: matched } = drillSeasonality(rawByFileType, by, value);
+    const page = matched.slice(offset, offset + RAW_DRILLDOWN_PAGE_SIZE);
+
+    res.set('X-Drilldown-Columns', Buffer.from(JSON.stringify(columns), 'utf8').toString('base64'));
+    res.set('X-Drilldown-Total', String(matched.length));
+    res.render('dashboard/_raw-drilldown-rows', {
+      layout: false,
+      columns,
+      rows: page,
+      hasMore: offset + RAW_DRILLDOWN_PAGE_SIZE < matched.length,
+      nextOffset: offset + page.length,
     });
   } catch (err) {
     next(err);
@@ -4106,7 +4147,7 @@ function renderRankedTable(title, columns, rows, moneyColumns, currency) {
   return `<div class="chart-card"><div class="chart-title">${escapeHtml(title)}</div><div class="table-scroll"><table class="table-simple"><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table></div></div>`;
 }
 
-function buildReportCatalogCardHtml(report, data, currency) {
+function buildReportCatalogCardHtml(report, data, currency, datasetRowId = null) {
   const { title } = report;
   switch (data.kind) {
     case 'kpis':
@@ -4139,12 +4180,17 @@ function buildReportCatalogCardHtml(report, data, currency) {
         title: `${title} — distribution (days)`, items: data.histogram, money: false, valueColumnLabel: 'Orders',
       });
     case 'seasonality': {
+      // 🔍 on every weekday / hour bar → the base-file rows behind it
+      // (GET /browse-dataset/:id/report-catalog/drill, below).
+      const seasonDrill = (by) => (datasetRowId
+        ? { kind: 'endpoint', url: `/browse-dataset/${datasetRowId}/report-catalog/drill?report=${report.id}&by=${by}` }
+        : null);
       let html = renderBarChart({
-        title: `${title} — by weekday`, items: data.byWeekday, currency, money: true,
+        title: `${title} — by weekday`, items: data.byWeekday, currency, money: true, drilldown: seasonDrill('weekday'),
       });
       if (data.hasTime) {
         html += renderBarChart({
-          title: `${title} — by hour`, items: data.byHour, currency, money: true,
+          title: `${title} — by hour`, items: data.byHour, currency, money: true, drilldown: seasonDrill('hour'),
         });
       } else {
         html += '<div class="chart-card"><p class="chart-empty">Hour-level revenue isn\'t shown — this dataset\'s date field has no time component, only a calendar date.</p></div>';
@@ -4156,12 +4202,12 @@ function buildReportCatalogCardHtml(report, data, currency) {
   }
 }
 
-function buildReportCatalogCards(analysis, currency) {
+function buildReportCatalogCards(analysis, currency, datasetRowId = null) {
   const categorized = {};
   analysis.enabled.forEach((report) => {
     const data = analysis.reportData[report.id];
     if (!data) return;
-    const html = buildReportCatalogCardHtml(report, data, currency);
+    const html = buildReportCatalogCardHtml(report, data, currency, datasetRowId);
     categorized[report.category] = categorized[report.category] || [];
     categorized[report.category].push({ report, html });
   });

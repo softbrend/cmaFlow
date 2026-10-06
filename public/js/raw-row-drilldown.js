@@ -24,11 +24,16 @@
 
   var state = {
     dataset: null, fileType: null, column: null, mode: 'category',
-    value: null, bucketIndex: null, colMin: null, colMax: null, bins: null,
+    endpoint: null, value: null, bucketIndex: null, colMin: null, colMax: null, bins: null,
     loading: false, done: false,
   };
 
   function buildUrl(offset) {
+    if (state.mode === 'endpoint') {
+      // Dedicated server route (e.g. Report Catalog seasonality): the
+      // trigger carries the whole path; only same-site paths are accepted.
+      return state.endpoint + '&offset=' + offset;
+    }
     var url = '/descriptive-analytics/raw-drill-down'
       + '?dataset=' + encodeURIComponent(state.dataset)
       + '&fileType=' + encodeURIComponent(state.fileType)
@@ -104,11 +109,14 @@
   }
 
   function openPanel(trigger) {
+    state.endpoint = trigger.getAttribute('data-endpoint');
     state.dataset = trigger.getAttribute('data-dataset');
     state.fileType = trigger.getAttribute('data-file-type');
     state.column = trigger.getAttribute('data-column');
     var rawMode = trigger.getAttribute('data-mode');
-    state.mode = (rawMode === 'range' || rawMode === 'month' || rawMode === 'values' || rawMode === 'missing' || rawMode === 'duplicates')
+    state.mode = (rawMode === 'endpoint' && state.endpoint && state.endpoint.charAt(0) === '/' && state.endpoint.charAt(1) !== '/')
+      ? 'endpoint'
+      : (rawMode === 'range' || rawMode === 'month' || rawMode === 'values' || rawMode === 'missing' || rawMode === 'duplicates')
       ? rawMode : 'category';
     state.value = trigger.getAttribute('data-value');
     state.bucketIndex = trigger.getAttribute('data-bucket-index');

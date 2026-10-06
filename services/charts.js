@@ -78,6 +78,19 @@ function drillButton(item, drilldown, extraClass, formattedValue) {
   const safeSummary = escapeHtml(formattedValue || '');
   const safeLabel = escapeHtml(item.label);
 
+  // { kind: 'endpoint', url } — the caller owns a dedicated drill-down
+  // route (e.g. the Report Catalog's seasonality bars). The button carries
+  // the full request path, with this bar's label appended as ?value=; the
+  // panel script (public/js/raw-row-drilldown.js) just fetches it with
+  // &offset=N for each page. `url` must be a same-site path that already
+  // contains a "?" (it is built server-side, never from user input).
+  if (drilldown.kind === 'endpoint') {
+    const target = `${drilldown.url}&value=${encodeURIComponent(item.label)}`;
+    return `<button type="button" class="drilldown-row-trigger rawrow-drilldown-trigger${extraClass ? ` ${extraClass}` : ''}"
+      data-mode="endpoint" data-endpoint="${escapeHtml(target)}" data-summary="${safeSummary}" data-label="${safeLabel}"
+      title="See the ${safeSummary || 'matching'} row(s) behind ${safeLabel}">🔍</button>`;
+  }
+
   if (drilldown.kind === 'raw-category' || drilldown.kind === 'raw-range' || drilldown.kind === 'raw-month') {
     const safeDataset = escapeHtml(String(drilldown.datasetId));
     const safeFileType = escapeHtml(drilldown.fileType);

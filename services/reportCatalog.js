@@ -910,7 +910,38 @@ function buildReportCatalogAnalysis(rawByFileType) {
   };
 }
 
+// ------------------------------------------------------------------
+// Drill-down for report #29 (Seasonal Sales Analysis): the base-file rows
+// behind one weekday bar or one hour bar. Re-runs the same classify + join
+// the report itself uses, so row i of the base file lines up with fact i,
+// and applies the exact filter computeReport()'s #29 applies — a usable
+// date AND a usable price — so the rows listed always add up to the bar
+// they were opened from. Each row gets a trailing "Revenue counted"
+// column (the price figure that went into the total — for files with no
+// direct price column it is quantity × unit price, which no raw column
+// shows on its own).
+// ------------------------------------------------------------------
+function drillSeasonality(rawByFileType, by, value) {
+  const files = classifyRawFiles(rawByFileType);
+  const { facts, baseFileType } = buildEnrichedFacts(files);
+  const base = files.find((f) => f.fileType === baseFileType);
+  if (!base) return { columns: [], rows: [] };
+
+  const matched = [];
+  facts.forEach((f, i) => {
+    const d = parseDateLoose(f.DATE);
+    const price = parseNumericLoose(f.PRICE);
+    if (!d || price === null) return;
+    const label = by === 'hour' ? `${d.getUTCHours()}:00` : WEEKDAY_NAMES[d.getUTCDay()];
+    if (label !== value) return;
+    matched.push({ ...base.rows[i], 'Revenue counted': price });
+  });
+  const columns = [...Object.keys(base.rows[0] || {}).filter((c) => c.trim() !== ''), 'Revenue counted'];
+  return { columns, rows: matched };
+}
+
 module.exports = {
+  drillSeasonality,
   CANONICAL_ROLES,
   REPORT_CATALOG,
   detectFileRoles,

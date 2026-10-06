@@ -100,3 +100,27 @@
   </details>
 
 <% } %>
+
+<%# Shared raw-row drill-down panel (public/js/raw-row-drilldown.js) — opens
+    from the 🔍 buttons on the Seasonal Sales Analysis bars (weekday / hour)
+    and lists the rows behind the clicked bar, via GET /browse-dataset/:id/
+    report-catalog/drill. %>
+<div id="raw-drilldown-backdrop" class="drilldown-backdrop" hidden></div>
+<aside id="raw-drilldown-panel" class="drilldown-panel" hidden aria-hidden="true">
+  <div class="drilldown-panel-header">
+    <div>
+      <div class="drilldown-panel-title" id="raw-drilldown-title">—</div>
+      <div class="drilldown-panel-sub" id="raw-drilldown-sub"></div>
+    </div>
+    <button type="button" class="drilldown-close" id="raw-drilldown-close" aria-label="Close">✕</button>
+  </div>
+  <div class="drilldown-panel-body" id="raw-drilldown-body">
+    <div class="table-scroll">
+      <table class="table-simple" id="raw-drilldown-table">
+        <thead id="raw-drilldown-thead"></thead>
+        <tbody id="raw-drilldown-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</aside>
+<script src="/js/raw-row-drilldown.js" defer></script>
