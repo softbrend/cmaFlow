@@ -734,6 +734,7 @@ router.get('/sme-templates/evaluation-dataset/:datasetRowId', requireBusinessOwn
       // declared — empty for every template copy.
       isCustom: evalData.isCustom,
       datasetName: evalData.datasetName,
+      roleOptions: customDef.ROLE_OPTIONS,
       columnInputTypes: evalData.isCustom
         ? Object.fromEntries(evalData.customColumns.map((c) => [c.name, customDef.inputTypeForRole(c.role)]))
         : {},
@@ -803,6 +804,64 @@ router.post('/sme-templates/define-dataset', requireBusinessOwner, async (req, r
     });
     req.session.user.default_dataset_id = datasetRowId;
     res.redirect(`/sme-templates/evaluation-dataset/${datasetRowId}`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /sme-templates/evaluation-dataset/:datasetRowId/columns — add ONE
+// column to a dataset the owner defined themselves (Define New Dataset),
+// after it was created. Custom datasets only (a template copy's columns
+// come from its category and never change). The column joins the saved
+// definition with the owner's declared role, and every existing row gets an
+// empty value for it so the table, the analytics profile and the exports
+// all see the same shape. Bumps dataset_files (touchEvaluationDataset) so
+// the four analytics modules recompute on next view.
+router.post('/sme-templates/evaluation-dataset/:datasetRowId/columns', requireBusinessOwner, async (req, res, next) => {
+  try {
+    const accountId = req.session.userId;
+    const datasetRowId = parseInt(req.params.datasetRowId, 10);
+    if (!datasetRowId) return res.status(400).json({ error: 'bad_request' });
+
+    const evalData = await loadEvaluationDataset(accountId, datasetRowId);
+    if (!evalData) return res.status(404).json({ error: 'not_found' });
+    if (!evalData.isCustom || !evalData.isBlankOrigin) {
+      return res.status(403).json({ error: 'not_custom', message: "Columns can only be added to a dataset you defined yourself." });
+    }
+
+    const existing = resolveColumnsForDataset(evalData);
+    const checked = customDef.validateNewColumn(req.body && req.body.name, req.body && req.body.role, existing);
+    if (checked.error) return res.status(400).json({ error: 'invalid', message: checked.error });
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      // Serialise concurrent adds on the same dataset so positions stay unique.
+      await client.query('SELECT id FROM uploaded_datasets WHERE id = $1 FOR UPDATE', [evalData.datasetRowId]);
+      const { rows: pos } = await client.query(
+        'SELECT COALESCE(MAX(position), -1) + 1 AS next_pos FROM eval_custom_dataset_columns WHERE dataset_id = $1',
+        [evalData.datasetRowId]
+      );
+      await client.query(
+        `INSERT INTO eval_custom_dataset_columns (dataset_id, account_id, position, column_name, declared_role, is_core)
+         VALUES ($1, $2, $3, $4, $5, FALSE)`,
+        [evalData.datasetRowId, accountId, pos[0].next_pos, checked.key, checked.role]
+      );
+      await client.query(
+        `UPDATE dataset_records SET data = data || jsonb_build_object($1::text, ''::text)
+          WHERE dataset_id = $2 AND account_id = $3 AND file_type = $4 AND NOT (data ? $1::text)`,
+        [checked.key, evalData.datasetRowId, accountId, EVAL_FILE_TYPE]
+      );
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    await touchEvaluationDataset(evalData.datasetRowId, accountId);
+    res.json({ ok: true, column: { name: checked.key, role: checked.role } });
   } catch (err) {
     next(err);
   }

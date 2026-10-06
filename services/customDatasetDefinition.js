@@ -115,7 +115,29 @@ function validateDefinition(input) {
   return { errors, datasetName, columns };
 }
 
+// One extra column added AFTER the dataset exists ("+ Add column" in the
+// editor). existingNames: the dataset's current column keys. Same rules as
+// validateDefinition(): safe snake_case key, no clash with any existing
+// column (core or extra), a declared role, and the overall cap of six core
+// + MAX_EXTRA_COLUMNS extra columns.
+function validateNewColumn(rawName, rawRole, existingNames) {
+  const name = String(rawName || '').trim();
+  const role = String(rawRole || '').trim();
+  const existing = new Set((existingNames || []).map((n) => String(n).toLowerCase()));
+  if (name === '') return { error: 'Type a column name.' };
+  if (name.length > MAX_NAME_LENGTH) return { error: `The name must be ${MAX_NAME_LENGTH} characters or fewer.` };
+  const key = toColumnKey(name);
+  if (!key) return { error: 'Use letters or numbers in the name.' };
+  if (existing.has(key)) return { error: `"${name}" is already a column in this dataset.` };
+  if (!ROLE_VALUES.includes(role)) return { error: 'Choose what kind of information this column holds.' };
+  if ((existingNames || []).length >= CORE_COLUMNS.length + MAX_EXTRA_COLUMNS) {
+    return { error: `A dataset can have up to ${CORE_COLUMNS.length + MAX_EXTRA_COLUMNS} columns.` };
+  }
+  return { key, role };
+}
+
 module.exports = {
+  validateNewColumn,
   CORE_COLUMNS, ROLE_OPTIONS, ROLE_VALUES, MAX_EXTRA_COLUMNS, MAX_NAME_LENGTH, MAX_DATASET_NAME,
   toColumnKey, toDisplayLabel, inputTypeForRole, validateDefinition,
 };

@@ -24,7 +24,12 @@
   <div class="form-card wide data-browser-card" style="margin-bottom: 18px;">
     <div style="display:flex; align-items:center; justify-content:space-between; gap: 14px; flex-wrap: wrap;">
       <p class="form-hint" style="margin: 0;" id="eval-editor-count">Showing <%= records.length %> row<%= records.length === 1 ? '' : 's' %>.</p>
-      <button type="button" id="eval-add-row" class="btn btn-accent btn-sm">+ Add row</button>
+      <span style="display:inline-flex; gap:8px; flex-wrap:wrap;">
+        <% if (typeof isCustom !== 'undefined' && isCustom) { %>
+          <button type="button" id="eval-add-column" class="btn btn-outline btn-sm">+ Add column</button>
+        <% } %>
+        <button type="button" id="eval-add-row" class="btn btn-accent btn-sm">+ Add row</button>
+      </span>
     </div>
   </div>
 
@@ -108,6 +113,41 @@
       </form>
     </div>
   </div>
+
+  <% if (typeof isCustom !== 'undefined' && isCustom) { %>
+    <!-- "+ Add column": adds one column to a dataset the owner defined. Name
+         plus a required role; existing rows get an empty value for it. -->
+    <div id="eval-add-col-overlay" class="eval-modal-overlay" style="display:none;">
+      <div class="eval-modal" role="dialog" aria-modal="true" aria-labelledby="eval-add-col-title" style="max-width: 520px;">
+        <form id="eval-add-col-form" novalidate>
+          <div class="eval-modal-header">
+            <div class="eval-modal-header-row">
+              <h2 id="eval-add-col-title" class="form-title" style="font-size: 19px; margin: 0;">Add a column</h2>
+              <div class="eval-modal-header-actions">
+                <button type="button" id="eval-add-col-cancel" class="btn btn-ghost btn-sm">Cancel</button>
+                <button type="submit" id="eval-add-col-save" class="btn btn-accent btn-sm">Add column</button>
+              </div>
+            </div>
+            <p class="form-hint" style="margin: 6px 0 0;">The new column is added to every row, empty until you fill it in. Choose what kind of information it holds so CMA-Flow knows what it means.</p>
+          </div>
+          <div id="eval-add-col-alert" class="alert-error" style="display:none; margin: 0 28px 14px;" role="alert"></div>
+          <div class="eval-modal-body">
+            <div class="field">
+              <label for="eval-add-col-name">Column name</label>
+              <input type="text" id="eval-add-col-name" maxlength="40" placeholder="e.g. Stylist" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="eval-add-col-role">What does it hold?</label>
+              <select id="eval-add-col-role">
+                <option value="">— Choose —</option>
+                <% roleOptions.forEach(function (r) { %><option value="<%= r.value %>"><%= r.label %></option><% }); %>
+              </select>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  <% } %>
 <% } %>
 
 <script>
@@ -346,3 +386,61 @@
   });
 })();
 </script>
+
+<% if (typeof isCustom !== 'undefined' && isCustom) { %>
+<script>
+(function () {
+  var table = document.getElementById('eval-editor-table');
+  var openBtn = document.getElementById('eval-add-column');
+  var overlay = document.getElementById('eval-add-col-overlay');
+  if (!table || !openBtn || !overlay) return;
+  var form = document.getElementById('eval-add-col-form');
+  var nameInput = document.getElementById('eval-add-col-name');
+  var roleSelect = document.getElementById('eval-add-col-role');
+  var alertBox = document.getElementById('eval-add-col-alert');
+  var saveBtn = document.getElementById('eval-add-col-save');
+  var cancelBtn = document.getElementById('eval-add-col-cancel');
+  var url = '/sme-templates/evaluation-dataset/' + table.getAttribute('data-dataset-row-id') + '/columns';
+
+  function open() {
+    alertBox.style.display = 'none';
+    nameInput.value = '';
+    roleSelect.value = '';
+    overlay.style.display = '';
+    nameInput.focus();
+  }
+  function close() { overlay.style.display = 'none'; }
+  function showError(msg) { alertBox.textContent = msg; alertBox.style.display = ''; }
+
+  openBtn.addEventListener('click', open);
+  cancelBtn.addEventListener('click', close);
+  overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && overlay.style.display !== 'none') close(); });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    alertBox.style.display = 'none';
+    saveBtn.disabled = true;
+    cancelBtn.disabled = true;
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: nameInput.value, role: roleSelect.value }),
+    })
+      .then(function (resp) { return resp.json().then(function (body) { return { ok: resp.ok, body: body }; }); })
+      .then(function (result) {
+        saveBtn.disabled = false;
+        cancelBtn.disabled = false;
+        if (!result.ok) { showError((result.body && result.body.message) || "Couldn't add the column. Please try again."); return; }
+        // Reload so the header, every row's new empty cell and the Add-row form all show the new column.
+        window.location.reload();
+      })
+      .catch(function () {
+        saveBtn.disabled = false;
+        cancelBtn.disabled = false;
+        showError('A network error prevented adding the column. Please try again.');
+      });
+  });
+})();
+</script>
+<% } %>
