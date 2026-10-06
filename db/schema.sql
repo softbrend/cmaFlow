@@ -1263,7 +1263,7 @@ CREATE TABLE IF NOT EXISTS sme_tam_activity_events (
                          'prefilled_template_used', 'blank_started',
                          'blank_template_downloaded', 'sample_template_downloaded',
                          'row_added', 'upload_completed', 'upload_failed',
-                         'signup_dataset_chosen'
+                         'signup_dataset_chosen', 'custom_dataset_defined'
                      )),
     category         VARCHAR(100),
     dataset_origin   VARCHAR(10) CHECK (dataset_origin IN ('prefilled', 'blank')),
@@ -1291,7 +1291,7 @@ BEGIN
       'prefilled_template_used', 'blank_started',
       'blank_template_downloaded', 'sample_template_downloaded',
       'row_added', 'upload_completed', 'upload_failed',
-      'signup_dataset_chosen'
+      'signup_dataset_chosen', 'custom_dataset_defined'
   ));
 END $$;
 
@@ -1357,6 +1357,13 @@ CREATE TABLE IF NOT EXISTS eval_custom_dataset_columns (
 CREATE INDEX IF NOT EXISTS idx_eval_custom_dataset_columns_dataset
     ON eval_custom_dataset_columns(dataset_id, position);
 
+-- IMPORTANT (idempotency): this file is re-applied on EVERY Render deploy
+-- (preDeployCommand: npm run db:init). Every earlier block that re-creates
+-- sme_tam_activity_events_event_type_check must therefore ALREADY list every
+-- event type that can exist in the table, otherwise the re-apply fails once a
+-- row of the newer type has been written (this happened on 6 October 2026
+-- after the first 'custom_dataset_defined' event). When adding an event type,
+-- add it to ALL of the lists above and below, not just the last one.
 -- Activity log: new event type 'custom_dataset_defined' (counts only —
 -- how many columns, how many extra; consent-gated like every event).
 DO $$
