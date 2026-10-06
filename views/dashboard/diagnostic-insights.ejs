@@ -183,6 +183,34 @@
       <% } %>
     <% } %>
 
+    <%# Raw-row drill-down panel for the Revenue-by-transaction-type and
+        Cancellation-reason charts' 🔍 buttons — the same shared panel and
+        script the Full Descriptive Analytics tab uses (public/js/raw-row-
+        drilldown.js, GET /descriptive-analytics/raw-drill-down): one panel
+        for the page; JS swaps its title/columns/rows to whichever bar was
+        clicked. Only the tabs that render those charts need it. %>
+    <% if (activeView === 'revenue-bridge' || activeView === 'cancellations') { %>
+      <div id="raw-drilldown-backdrop" class="drilldown-backdrop" hidden></div>
+      <aside id="raw-drilldown-panel" class="drilldown-panel" hidden aria-hidden="true">
+        <div class="drilldown-panel-header">
+          <div>
+            <div class="drilldown-panel-title" id="raw-drilldown-title">—</div>
+            <div class="drilldown-panel-sub" id="raw-drilldown-sub"></div>
+          </div>
+          <button type="button" class="drilldown-close" id="raw-drilldown-close" aria-label="Close">✕</button>
+        </div>
+        <div class="drilldown-panel-body" id="raw-drilldown-body">
+          <div class="table-scroll">
+            <table class="table-simple" id="raw-drilldown-table">
+              <thead id="raw-drilldown-thead"></thead>
+              <tbody id="raw-drilldown-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </aside>
+      <script src="/js/raw-row-drilldown.js" defer></script>
+    <% } %>
+
     <% if (activeView !== 'dynamic-diagnostics') { %>
       <div class="kpi-row" style="margin-top:20px;"><%- cards.coverageKpiRow.join('') %></div>
     <% } %>

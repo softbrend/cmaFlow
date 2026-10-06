@@ -2204,7 +2204,7 @@ router.get('/diagnostic-insights', trackDirectFlowModuleVisit('diagnostic-insigh
     // this route always did, plus one upsert to save the result for next
     // time. Invalidates itself automatically the moment a new file lands
     // on this dataset (see getOrCompute()'s freshness check).
-    const diagRaw = await getOrComputeAnalyticsCache(selectedDataset.id, accountId, 'diagnostic-raw', async () => {
+    const diagRaw = await getOrComputeAnalyticsCache(selectedDataset.id, accountId, 'diagnostic-raw-v2', async () => {
       const rawByFileType = await getRawRecordsByFileType(accountId, selectedDataset.id);
       const txnPick = pickRawEntityRows(rawByFileType, 'Transaction');
       const entPick = pickRawEntityRows(rawByFileType, 'Entitlement');
@@ -2219,9 +2219,19 @@ router.get('/diagnostic-insights', trackDirectFlowModuleVisit('diagnostic-insigh
         sourceFileLabel: txnPick.fileType ? humanizeFileType(txnPick.fileType) : null,
         skippedRows: txnPick.rows.length - cleanTxns.length,
       };
+      // Where the transaction_type / cancellation_reason values physically
+      // live (raw file + column), so the two breakdown charts' 🔍 buttons
+      // can open the matching raw rows (GET /descriptive-analytics/raw-
+      // drill-down). null when the field wasn't detected in any column.
+      const txnTypeSource = txnPick.fieldMap && txnPick.fieldMap.transaction_type && txnPick.fieldMap.transaction_type.source;
+      const cancelReasonSource = entPick.fieldMap && entPick.fieldMap.cancellation_reason && entPick.fieldMap.cancellation_reason.source;
+      const computedDrill = {
+        txnType: (txnTypeSource && txnPick.fileType) ? { fileType: txnPick.fileType, column: txnTypeSource } : null,
+        cancelReason: (cancelReasonSource && entPick.fileType) ? { fileType: entPick.fileType, column: cancelReasonSource } : null,
+      };
 
       if (!computedHasAnyData) {
-        return { hasAnyData: false, rawInfo: computedRawInfo, currency: '', bridge: null, byType: null, priceImpacts: [], cancellations: null, coverage: null };
+        return { hasAnyData: false, rawInfo: computedRawInfo, currency: '', bridge: null, byType: null, priceImpacts: [], cancellations: null, coverage: null, drill: computedDrill };
       }
 
       const computedCurrency = mode(transactionRows.map((t) => t.currency)) || mode(monetizationRows.map((m) => m.currency)) || '';
@@ -2234,6 +2244,7 @@ router.get('/diagnostic-insights', trackDirectFlowModuleVisit('diagnostic-insigh
         priceImpacts: combinedPriceChangeImpact(transactionRows, monetizationRows),
         cancellations: cancellationReasonsRanked(entitlementRows),
         coverage: diagnosticCoverage(transactionRows, entitlementRows, monetizationRows),
+        drill: computedDrill,
       };
     });
 
@@ -2257,7 +2268,7 @@ router.get('/diagnostic-insights', trackDirectFlowModuleVisit('diagnostic-insigh
     // hasRawData, in the view.
     const hasRawData = diagRaw.hasAnyData;
     const rawInfo = diagRaw.rawInfo;
-    const { currency, bridge, byType, priceImpacts, cancellations, coverage } = diagRaw;
+    const { currency, bridge, byType, priceImpacts, cancellations, coverage, drill } = diagRaw;
 
     // Smart default, now that hasRawData is known: a dataset with real
     // Transaction/Entitlement/MonetizationConfig columns still opens on
@@ -2302,6 +2313,11 @@ router.get('/diagnostic-insights', trackDirectFlowModuleVisit('diagnostic-insigh
         subtitle: `Requires the optional transaction_type field — populated for ${coverage.txnTypePct.toFixed(1)}% of this dataset's transactions`,
         items: byType.items,
         currency,
+        // 🔍 on each bar → the raw transaction rows with that exact type
+        // (same panel/endpoint as Full Descriptive Analytics' breakdowns).
+        drilldown: (drill && drill.txnType) ? {
+          kind: 'raw-category', datasetId: selectedDataset.id, fileType: drill.txnType.fileType, column: drill.txnType.column,
+        } : null,
         emptyMessage: 'No transactions in this dataset carry a recognizable transaction-type column yet (e.g. "Type", "Billing Type") — add one to unlock this breakdown.',
       });
 
@@ -2324,6 +2340,9 @@ router.get('/diagnostic-insights', trackDirectFlowModuleVisit('diagnostic-insigh
         subtitle: `Requires the optional cancellation_reason field — populated for ${coverage.cancelReasonPct.toFixed(1)}% of this dataset's entitlements`,
         items: cancellations.items,
         money: false,
+        drilldown: (drill && drill.cancelReason) ? {
+          kind: 'raw-category', datasetId: selectedDataset.id, fileType: drill.cancelReason.fileType, column: drill.cancelReason.column,
+        } : null,
         emptyMessage: 'No entitlements in this dataset carry a recognizable cancellation-reason column yet — add one to unlock this ranking.',
       });
     }
