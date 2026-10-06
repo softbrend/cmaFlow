@@ -935,6 +935,20 @@ body.stage-evaluation-data-browser .main-inner { max-width: 1600px; }
    .form-card.wide on specificity alone. */
 .form-card.wide.data-browser-card { max-width: none; width: 100%; }
 
+/* "Previously uploaded datasets" card on /upload-dataset (7 October 2026,
+   per Brenda: the box was narrower than its table, so the Rows / Uploaded /
+   Default / delete columns hung outside the card). Same pattern as
+   .data-browser-card: a dedicated class that lifts .form-card.wide's 760px
+   cap so the card spans the page, with long dataset IDs (e.g.
+   EVALBLANK_CUSTOM_salon_sale_2026_xxxxxxxx) allowed to wrap, and a
+   horizontal scroll fallback (.table-scroll) on very narrow screens. */
+body.stage-upload-new-dataset .main-inner:has(.dataset-list-card) { max-width: 1400px; }
+.form-card.wide.dataset-list-card { max-width: none; width: 100%; }
+.dataset-list-card .table-simple td:first-child { overflow-wrap: anywhere; min-width: 200px; }
+.dataset-list-card .table-simple th, .dataset-list-card .table-simple td { vertical-align: middle; }
+.dataset-list-card .table-simple th { white-space: nowrap; }
+.dataset-list-card .table-simple td:nth-last-child(-n+4) { white-space: nowrap; }
+
 body.stage-evaluation-data-browser .field label { font-size: 15px; }
 body.stage-evaluation-data-browser .field input,
 body.stage-evaluation-data-browser .field select { font-size: 16px; padding: 13px 15px; }

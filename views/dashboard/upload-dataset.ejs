@@ -70,11 +70,12 @@
   </form>
 </div>
 
-<div class="form-card wide" style="margin-bottom: 26px;">
+<div class="form-card wide dataset-list-card" style="margin-bottom: 26px;">
   <div class="form-title">Previously uploaded datasets</div>
   <% if (!datasets || datasets.length === 0) { %>
     <p style="color: var(--text-muted);">No datasets uploaded yet.</p>
   <% } else { %>
+    <div class="table-scroll">
     <table class="table-simple">
       <thead><tr><th>Dataset ID</th><th>Name</th><th>Domain</th><th>File types</th><th>Files</th><th>Rows ingested</th><th>Uploaded</th><th>Default</th><th></th></tr></thead>
       <tbody>
@@ -111,6 +112,7 @@
         <% }); %>
       </tbody>
     </table>
+    </div>
   <% } %>
 </div>
 
