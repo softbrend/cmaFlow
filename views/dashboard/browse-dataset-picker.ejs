@@ -36,7 +36,8 @@
   </div>
 <% } else { %>
   <% datasets.forEach(function(d) { %>
-    <% var isEvalCopy = !!(d.dataset_id && (d.dataset_id.indexOf('EVALCOPY_') === 0 || d.dataset_id === 'EVALUATION_DEFAULT')); %>
+    <% // EVALBLANK_ covers both blank template copies and datasets the owner defined (EVALBLANK_CUSTOM_); both have the editor.
+       var isEvalCopy = !!(d.dataset_id && (d.dataset_id.indexOf('EVALCOPY_') === 0 || d.dataset_id.indexOf('EVALBLANK_') === 0 || d.dataset_id === 'EVALUATION_DEFAULT')); %>
     <div class="form-card wide" style="margin-bottom: 18px;">
       <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px;">
         <div class="form-title"><%= d.dataset_name %></div>
