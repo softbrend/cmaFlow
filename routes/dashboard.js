@@ -26,7 +26,7 @@ const {
   MODEL_TYPES, discoverMechanisms, getConfirmedClassifications, saveConfirmedClassifications,
   buildProductDrillDown,
 } = require('../services/monetizationDiscovery');
-const { buildRawDrillDown } = require('../services/rawDrillDown');
+const { buildRawDrillDown, PROFILE_MODES: PROFILE_DRILL_MODES } = require('../services/rawDrillDown');
 const { HISTOGRAM_BINS } = require('../services/datasetProfiler');
 const {
   revenueBridge, revenueByTransactionType, cancellationReasonsRanked, combinedPriceChangeImpact, diagnosticCoverage,
@@ -1476,9 +1476,15 @@ router.get('/descriptive-analytics/raw-drill-down', async (req, res, next) => {
 
     const fileType = String(req.query.fileType || '').trim();
     const column = String(req.query.column || '').trim();
-    const drillMode = req.query.mode === 'range' ? 'range' : req.query.mode === 'month' ? 'month' : 'category';
+    // 'values' / 'missing' / 'duplicates' serve the Evaluation Report's
+    // Data profile table (see services/rawDrillDown.js); 'duplicates' is
+    // file-wide, so it is the one mode that needs no column.
+    const drillMode = req.query.mode === 'range' ? 'range'
+      : req.query.mode === 'month' ? 'month'
+      : PROFILE_DRILL_MODES.includes(req.query.mode) ? req.query.mode
+      : 'category';
     const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
-    if (!fileType || !column) {
+    if (!fileType || (!column && drillMode !== 'duplicates')) {
       res.status(400).render('errors/404', { title: 'Not found', layout: false });
       return;
     }
@@ -1493,6 +1499,8 @@ router.get('/descriptive-analytics/raw-drill-down', async (req, res, next) => {
         res.status(400).render('errors/404', { title: 'Not found', layout: false });
         return;
       }
+    } else if (PROFILE_DRILL_MODES.includes(drillMode)) {
+      // Nothing more to match on — the column (or the whole file) is the filter.
     } else {
       // 'category' and 'month' both reduce to the same shape — an exact
       // string match against `value` (a raw category label, or a

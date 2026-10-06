@@ -11,6 +11,8 @@
 (function () {
   var panel = document.getElementById('raw-drilldown-panel');
   if (!panel) return; // page has no raw-drilldown-enabled charts
+  // Also used by the Evaluation Report's Data profile table (modes
+  // 'values', 'missing', 'duplicates').
 
   var backdrop = document.getElementById('raw-drilldown-backdrop');
   var closeBtn = document.getElementById('raw-drilldown-close');
@@ -33,7 +35,10 @@
       + '&column=' + encodeURIComponent(state.column)
       + '&mode=' + encodeURIComponent(state.mode)
       + '&offset=' + offset;
-    if (state.mode === 'range') {
+    if (state.mode === 'values' || state.mode === 'missing' || state.mode === 'duplicates') {
+      // Evaluation Report "Data profile" modes — the column (or the whole
+      // file, for 'duplicates') is the filter; there is no value to send.
+    } else if (state.mode === 'range') {
       url += '&bucketIndex=' + encodeURIComponent(state.bucketIndex)
         + '&colMin=' + encodeURIComponent(state.colMin)
         + '&colMax=' + encodeURIComponent(state.colMax)
@@ -103,7 +108,8 @@
     state.fileType = trigger.getAttribute('data-file-type');
     state.column = trigger.getAttribute('data-column');
     var rawMode = trigger.getAttribute('data-mode');
-    state.mode = rawMode === 'range' ? 'range' : rawMode === 'month' ? 'month' : 'category';
+    state.mode = (rawMode === 'range' || rawMode === 'month' || rawMode === 'values' || rawMode === 'missing' || rawMode === 'duplicates')
+      ? rawMode : 'category';
     state.value = trigger.getAttribute('data-value');
     state.bucketIndex = trigger.getAttribute('data-bucket-index');
     state.colMin = trigger.getAttribute('data-col-min');
@@ -114,7 +120,10 @@
     var label = trigger.getAttribute('data-label') || '';
     var summary = trigger.getAttribute('data-summary') || '';
     titleEl.textContent = label;
-    subEl.textContent = state.column + (summary ? ' · ' + summary : '');
+    var subBits = [];
+    if (state.column) subBits.push(state.column);
+    if (summary) subBits.push(summary);
+    subEl.textContent = subBits.join(' · ');
 
     thead.innerHTML = '';
     tbody.innerHTML = '';

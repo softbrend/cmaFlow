@@ -111,20 +111,43 @@
 <p class="chart-footnote" style="margin:-4px 0 10px;">
   <%= report.rowCount.toLocaleString() %> row(s) evaluated &nbsp;·&nbsp;
   <%= report.duplicateCount.toLocaleString() %> duplicate row(s) (<%= report.duplicatePct.toFixed(1) %>%)
+  <% if (report.duplicateCount > 0) { %>
+    <button type="button" class="drilldown-row-trigger rawrow-drilldown-trigger" data-mode="duplicates"
+      data-dataset="<%= dataset.id %>" data-file-type="<%= fileType %>" data-column="" data-label="Duplicate rows"
+      data-summary="<%= report.duplicateCount.toLocaleString() %> row(s) that repeat an earlier row"
+      title="See the duplicate rows">🔍</button>
+  <% } %>
+  &nbsp;·&nbsp; <span style="color: var(--text-muted);">Click 🔍 on a row below to see the values or the blank rows behind its numbers.</span>
 </p>
 <div class="chart-card" style="margin-bottom:18px;">
   <div class="table-scroll">
     <table class="table-simple">
       <thead><tr><th>Column</th><th>Data type</th><th>Non-null</th><th>Missing</th><th>Missing %</th><th>Unique</th></tr></thead>
       <tbody>
+        <% var origByNorm = {}; (report.columnMapping || []).forEach(function(m) { origByNorm[m.normalized] = m.original; }); %>
         <% report.profile.forEach(function(p) { %>
+          <% var rawCol = origByNorm[p.column] !== undefined ? origByNorm[p.column] : p.column; %>
           <tr>
             <td><%= p.column %></td>
             <td><%= p.dataType %></td>
             <td><%= formatCount(p.nonNull) %></td>
-            <td><%= formatCount(p.missing) %></td>
+            <td>
+              <%= formatCount(p.missing) %>
+              <% if (p.missing > 0) { %>
+                <button type="button" class="drilldown-row-trigger rawrow-drilldown-trigger" data-mode="missing"
+                  data-dataset="<%= dataset.id %>" data-file-type="<%= fileType %>" data-column="<%= rawCol %>"
+                  data-label="Blank: <%= p.column %>" data-summary="<%= formatCount(p.missing) %> row(s) with no value"
+                  title="See the rows where <%= p.column %> is blank">🔍</button>
+              <% } %>
+            </td>
             <td><%= p.missingPct.toFixed(1) %>%</td>
-            <td><%= formatCount(p.unique) %></td>
+            <td>
+              <%= formatCount(p.unique) %>
+              <button type="button" class="drilldown-row-trigger rawrow-drilldown-trigger" data-mode="values"
+                data-dataset="<%= dataset.id %>" data-file-type="<%= fileType %>" data-column="<%= rawCol %>"
+                data-label="Values: <%= p.column %>" data-summary="<%= formatCount(p.unique) %> distinct value(s)"
+                title="See every distinct value in <%= p.column %> and how many rows hold it">🔍</button>
+            </td>
           </tr>
         <% }); %>
       </tbody>
@@ -208,3 +231,28 @@
     </table>
   </div>
 </details>
+
+<%# Shared raw-row drill-down panel (public/js/raw-row-drilldown.js, GET
+    /descriptive-analytics/raw-drill-down) — the same one the Full
+    Descriptive Analytics and Diagnostic pages use; here it opens from the
+    Data profile table's 🔍 buttons (distinct values / blank rows /
+    duplicate rows). %>
+<div id="raw-drilldown-backdrop" class="drilldown-backdrop" hidden></div>
+<aside id="raw-drilldown-panel" class="drilldown-panel" hidden aria-hidden="true">
+  <div class="drilldown-panel-header">
+    <div>
+      <div class="drilldown-panel-title" id="raw-drilldown-title">—</div>
+      <div class="drilldown-panel-sub" id="raw-drilldown-sub"></div>
+    </div>
+    <button type="button" class="drilldown-close" id="raw-drilldown-close" aria-label="Close">✕</button>
+  </div>
+  <div class="drilldown-panel-body" id="raw-drilldown-body">
+    <div class="table-scroll">
+      <table class="table-simple" id="raw-drilldown-table">
+        <thead id="raw-drilldown-thead"></thead>
+        <tbody id="raw-drilldown-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</aside>
+<script src="/js/raw-row-drilldown.js" defer></script>
