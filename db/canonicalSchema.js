@@ -92,7 +92,8 @@ const CANONICAL_ENTITIES = {
         required: true,
         type: 'string',
         description: 'Unique identifier for this usage/billing record.',
-        synonyms: ['transactionid', 'invoiceid', 'orderid', 'resourceid', 'sku', 'ratecode', 'billingid', 'id'],
+        synonyms: ['transactionid', 'invoiceid', 'orderid', 'resourceid', 'sku', 'ratecode', 'billingid',
+          'recordid', 'id'],
       },
       customer_id: {
         required: true,
@@ -111,7 +112,7 @@ const CANONICAL_ENTITIES = {
         // Quantity ($)" and "Rounded Cost ($)"), and amount must never
         // claim the rate column even when scored as a tie against it.
         synonyms: ['amount', 'cost', 'totalcost', 'totalamount', 'roundedcost', 'unroundedcost',
-          'price', 'charge', 'totalcostinr'],
+          'price', 'charge', 'totalcostinr', 'revenue', 'totalrevenue', 'netrevenue'],
         // Used by the transform pipeline when no direct column matches:
         // amount = quantity * unit_price.
         derivable: { from: ['quantity', 'unit_price'], op: 'multiply' },
