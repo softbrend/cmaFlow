@@ -1,6 +1,10 @@
 <div class="page-title">✏️ <span class="page-title-text">Edit Your Evaluation Dataset</span></div>
 <p class="page-subtitle page-subtitle-wide">
+  <% if (typeof isCustom !== 'undefined' && isCustom) { %>
+    <strong><%= datasetName %></strong> — <%= records.length %> row<%= records.length === 1 ? '' : 's' %>, a dataset you defined yourself. Its columns are the six core columns plus the ones you added, so it is separate from every template copy you hold.
+  <% } else { %>
   <% if (categoryLabel) { %><strong><%= categoryLabel %></strong> — <% } %><%= records.length %> row<%= records.length === 1 ? '' : 's' %>, this is your own working copy of this category's template — separate from the shared template CSV, and separate from any other category's copy you hold.
+  <% } %>
   <% if (isBlankOrigin) { %>
     You started this copy blank, so every row is your own real data — click any cell to edit it in place, use <strong>Delete</strong> to remove a row you don't want, and <strong>+ Add row</strong> below to add a new one.
   <% } else { %>
@@ -8,6 +12,7 @@
   <% } %>
   new rows are picked up the next time you open one of the four analytics modules, if this copy is your current default dataset.
   <a href="/sme-templates/evaluation-dataset" style="margin-left: 6px;">All your dataset copies</a> ·
+  <a href="/sme-templates/define-dataset">Define New Dataset</a> ·
   <a href="/sme-templates">Download SME Templates</a>
 </p>
 
@@ -90,7 +95,12 @@
                 </select>
                 <input type="text" class="eval-add-choice-other" data-column="<%= col %>" placeholder="New <%= col.replace(/_/g, ' ') %> value" style="display:none; margin-top:6px;" autocomplete="off" aria-label="New <%= col.replace(/_/g, ' ') %> value" />
               <% } else { %>
-                <input type="text" id="eval-add-field-<%= col %>" name="<%= col %>" data-column="<%= col %>" autocomplete="off" />
+                <%
+                  // Define New Dataset: a column the owner declared as a date or a number
+                  // gets a matching input, so typed values arrive in a form the analytics can read.
+                  var itype = (typeof columnInputTypes !== 'undefined' && columnInputTypes && columnInputTypes[col]) ? columnInputTypes[col] : 'text';
+                %>
+                <input type="<%= itype %>"<%= itype === 'number' ? ' step=any' : '' %> id="eval-add-field-<%= col %>" name="<%= col %>" data-column="<%= col %>" autocomplete="off" />
               <% } %>
             </div>
           <% }); %>

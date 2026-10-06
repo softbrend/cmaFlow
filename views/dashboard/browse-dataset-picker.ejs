@@ -1,5 +1,12 @@
-<div class="page-title">🔎 <span class="page-title-text">Browse Dataset</span></div>
-<p class="page-subtitle">Pick one of your uploaded datasets and a file to browse and filter its records.</p>
+<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap;">
+  <div>
+    <div class="page-title">🔎 <span class="page-title-text">Browse Dataset</span></div>
+    <p class="page-subtitle">Pick one of your uploaded datasets and a file to browse and filter its records.</p>
+  </div>
+  <% if (typeof currentUser !== 'undefined' && currentUser && (currentUser.role === 'Business Owner Evaluator' || currentUser.role === 'SME Owner-TAM Evaluator')) { %>
+    <a class="btn btn-accent" href="/sme-templates/define-dataset" title="Create your own table with your own columns, like a new sheet in Excel">➕ Define New Dataset</a>
+  <% } %>
+</div>
 
 <%
   // Edit Dataset (added 3 October 2026, per Brenda's request) reuses the

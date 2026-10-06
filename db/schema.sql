@@ -1330,3 +1330,42 @@ CREATE TABLE IF NOT EXISTS sme_tam_decision_followups (
 
 CREATE INDEX IF NOT EXISTS idx_sme_tam_decision_followups_account
     ON sme_tam_decision_followups(account_id);
+
+-- ---------------------------------------------------------------------
+-- "Define New Dataset" (added 6 October 2026) — an owner can define their
+-- own dataset structure (six locked core columns + extra columns of their
+-- own), like a new sheet in Excel. The dataset itself is an ordinary
+-- blank evaluation copy (uploaded_datasets.dataset_id prefixed
+-- EVALBLANK_CUSTOM_), so the existing add/edit/delete-row editor works on
+-- it unchanged. This table stores its column list in order, plus the
+-- owner's own declaration of what each column means (declared_role, one of
+-- the nine coarse roles + other) — ground truth for the semantic-role
+-- evaluation. Structure only: never any cell values.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS eval_custom_dataset_columns (
+    id             SERIAL       PRIMARY KEY,
+    dataset_id     INTEGER      NOT NULL REFERENCES uploaded_datasets(id) ON DELETE CASCADE,
+    account_id     INTEGER      NOT NULL REFERENCES sme_accounts(id) ON DELETE CASCADE,
+    position       SMALLINT     NOT NULL,
+    column_name    VARCHAR(60)  NOT NULL,
+    declared_role  VARCHAR(30)  NOT NULL,
+    is_core        BOOLEAN      NOT NULL DEFAULT FALSE,
+    created_at     TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    UNIQUE (dataset_id, column_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_eval_custom_dataset_columns_dataset
+    ON eval_custom_dataset_columns(dataset_id, position);
+
+-- Activity log: new event type 'custom_dataset_defined' (counts only —
+-- how many columns, how many extra; consent-gated like every event).
+DO $$
+BEGIN
+  ALTER TABLE sme_tam_activity_events DROP CONSTRAINT IF EXISTS sme_tam_activity_events_event_type_check;
+  ALTER TABLE sme_tam_activity_events ADD CONSTRAINT sme_tam_activity_events_event_type_check CHECK (event_type IN (
+      'prefilled_template_used', 'blank_started',
+      'blank_template_downloaded', 'sample_template_downloaded',
+      'row_added', 'upload_completed', 'upload_failed',
+      'signup_dataset_chosen', 'custom_dataset_defined'
+  ));
+END $$;

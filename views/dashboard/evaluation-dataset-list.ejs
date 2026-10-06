@@ -35,7 +35,7 @@
              var isCurrent = defaultDatasetId && c.id === defaultDatasetId;
              var isBlank = c.dataset_id && c.dataset_id.indexOf('EVALBLANK_') === 0; %>
           <tr<% if (isCurrent) { %> style="background: var(--bg-input);"<% } %>>
-            <td><%= c.domain || c.dataset_name %><% if (isCurrent) { %> <span class="badge badge-active" style="margin-left: 6px;">★ Current</span><% } %> <span class="badge <%= isBlank ? 'badge-active' : 'badge-inactive' %>" style="margin-left: 6px;"><%= isBlank ? 'Your own data (editable)' : 'Synthetic template (locked)' %></span></td>
+            <td><%= (c.dataset_id && c.dataset_id.indexOf('EVALBLANK_CUSTOM_') === 0) ? c.dataset_name : (c.domain || c.dataset_name) %><% if (isCurrent) { %> <span class="badge badge-active" style="margin-left: 6px;">★ Current</span><% } %> <span class="badge <%= isBlank ? 'badge-active' : 'badge-inactive' %>" style="margin-left: 6px;"><%= isBlank ? 'Your own data (editable)' : 'Synthetic template (locked)' %></span></td>
             <td style="color: var(--text-muted); font-size: 13px;"><%= c.dataset_id %></td>
             <td><%= c.row_count %></td>
             <td><%= new Date(c.created_at).toLocaleDateString() %></td>

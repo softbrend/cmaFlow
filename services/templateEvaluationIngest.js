@@ -299,6 +299,89 @@ async function ingestBlankTemplateForEvaluation(accountId, resolvedTemplate) {
 }
 
 // ------------------------------------------------------------------
+// Define New Dataset (added 6 October 2026, per Brenda's request).
+// An owner defines their own columns (six locked core columns + extras,
+// validated by services/customDatasetDefinition.js) and gets a blank
+// evaluation copy shaped by them. It is an ordinary EVALBLANK_ copy —
+// dataset_id prefixed EVALBLANK_CUSTOM_ — so isBlankDatasetId(), the
+// listing, set-current, and the whole add/edit/delete-row editor treat it
+// exactly like a blank template copy. The only new piece is where its
+// column list comes from: eval_custom_dataset_columns, in the owner's own
+// order, with each column's declared role.
+// ------------------------------------------------------------------
+const EVAL_CUSTOM_MARKER = `${EVAL_BLANK_PREFIX}CUSTOM_`;
+
+function isCustomDatasetId(datasetId) {
+  return typeof datasetId === 'string' && datasetId.indexOf(EVAL_CUSTOM_MARKER) === 0;
+}
+
+// columns: [{ name, role, isCore }] already validated (name is a safe
+// snake_case key). domain: the owner's business category/sector label, so
+// per-category reporting still has something meaningful to group by.
+async function createCustomEvaluationDataset(accountId, { datasetName, domain, columns }) {
+  const slug = String(datasetName || 'dataset').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 16) || 'dataset';
+  const datasetId = sanitizeDatasetId(`${EVAL_CUSTOM_MARKER}${slug}_${Date.now().toString(36)}`);
+  const sanitizedId = sanitizeDatasetId(datasetId);
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: inserted } = await client.query(
+      `INSERT INTO uploaded_datasets (account_id, dataset_id, dataset_name, domain)
+       VALUES ($1, $2, $3, $4) RETURNING id`,
+      [accountId, datasetId, datasetName, domain || 'Custom dataset']
+    );
+    const datasetRowId = inserted[0].id;
+
+    // Header-only CSV on disk, same layout every other dataset copy uses,
+    // so dataset_files.stored_path points at something real.
+    const originalName = `${slug}_custom_dataset.csv`;
+    const destDir = path.join(DATASETS_ROOT, String(accountId), sanitizedId, EVAL_FILE_TYPE);
+    fs.mkdirSync(destDir, { recursive: true });
+    const headerOnlyCsv = `${columns.map((c) => `"${String(c.name).replace(/"/g, '""')}"`).join(',')}\n`;
+    fs.writeFileSync(path.join(destDir, originalName), headerOnlyCsv, 'utf-8');
+    const storedPath = path.join('uploads', 'datasets', String(accountId), sanitizedId, EVAL_FILE_TYPE, originalName);
+
+    await client.query(
+      `INSERT INTO dataset_files (dataset_id, account_id, file_type, original_name, stored_path, row_count)
+       VALUES ($1, $2, $3, $4, $5, 0)`,
+      [datasetRowId, accountId, EVAL_FILE_TYPE, originalName, storedPath]
+    );
+
+    for (const c of columns) {
+      await client.query(
+        `INSERT INTO eval_custom_dataset_columns (dataset_id, account_id, position, column_name, declared_role, is_core)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [datasetRowId, accountId, c.position, c.name, c.role, !!c.isCore]
+      );
+    }
+
+    await client.query('COMMIT');
+    await setDefaultDataset(accountId, datasetRowId);
+    return { datasetRowId, datasetId, columns };
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// The owner's column definition for one custom dataset, in order. Empty
+// array for any dataset that has none (every template copy).
+async function getCustomColumns(accountId, datasetRowId) {
+  const { rows } = await pool.query(
+    `SELECT column_name AS name, declared_role AS role, is_core AS "isCore", position
+       FROM eval_custom_dataset_columns
+      WHERE dataset_id = $1 AND account_id = $2
+      ORDER BY position, id`,
+    [datasetRowId, accountId]
+  );
+  return rows;
+}
+
+// ------------------------------------------------------------------
 // Auto-default at signup (added 2 October 2026, per Brenda's explicit
 // request): the business category a Template Evaluator declares at
 // signup (routes/auth.js's business_category field — validated there
@@ -473,4 +556,7 @@ module.exports = {
   listEvaluationDatasetCopies,
   getEvaluationDatasetById,
   isBlankDatasetId,
+  isCustomDatasetId,
+  createCustomEvaluationDataset,
+  getCustomColumns,
 };

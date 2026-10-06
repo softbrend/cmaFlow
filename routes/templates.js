@@ -32,7 +32,10 @@ const {
   // real datasets" request) — see services/templateEvaluationIngest.js's
   // own module-header comment on that track for the full picture.
   ingestBlankTemplateForEvaluation, findBlankCopyByCategory, isBlankDatasetId,
+  // Define New Dataset (added 6 October 2026) — see that section's comment below.
+  isCustomDatasetId, createCustomEvaluationDataset, getCustomColumns,
 } = require('../services/templateEvaluationIngest');
+const customDef = require('../services/customDatasetDefinition');
 // Only for the "switch without re-ingesting" path inside POST
 // /sme-templates/set-evaluation-default below — see its own comment.
 const { setDefaultDataset } = require('../services/accountDatasets');
@@ -134,8 +137,16 @@ async function loadEvaluationDataset(accountId, datasetRowId) {
       ORDER BY row_index, id`,
     [datasetRow.id, accountId, EVAL_FILE_TYPE]
   );
+  // A dataset the owner defined themselves (Define New Dataset) carries its
+  // own column list; every template copy gets [].
+  const isCustom = isCustomDatasetId(datasetRow.dataset_id);
+  const customColumns = isCustom ? await getCustomColumns(accountId, datasetRow.id) : [];
   return {
     datasetRowId: datasetRow.id,
+    datasetId: datasetRow.dataset_id,
+    datasetName: datasetRow.dataset_name,
+    isCustom,
+    customColumns,
     categoryLabel: datasetRow.domain,
     records,
     // Added 3 October 2026, alongside the blank-template feature — true
@@ -163,6 +174,10 @@ async function loadEvaluationDataset(accountId, datasetRowId) {
 // under an existing copy), which the callers treat as "no columns to
 // show or add against."
 function resolveColumnsForDataset(evalData) {
+  // An owner-defined dataset's columns are exactly its saved definition, in the owner's order.
+  if (evalData.isCustom && evalData.customColumns && evalData.customColumns.length > 0) {
+    return evalData.customColumns.map((c) => c.name);
+  }
   if (evalData.records.length > 0) return Object.keys(evalData.records[0].data);
   if (!evalData.categoryLabel) return [];
   try {
@@ -714,7 +729,80 @@ router.get('/sme-templates/evaluation-dataset/:datasetRowId', requireBusinessOwn
       // Delete in the view below; a prefilled copy stays exactly as
       // locked as it was before this feature existed.
       isBlankOrigin: evalData.isBlankOrigin,
+      // Define New Dataset: the dataset's own name, and each column's
+      // input type (date picker / number) derived from the role the owner
+      // declared — empty for every template copy.
+      isCustom: evalData.isCustom,
+      datasetName: evalData.datasetName,
+      columnInputTypes: evalData.isCustom
+        ? Object.fromEntries(evalData.customColumns.map((c) => [c.name, customDef.inputTypeForRole(c.role)]))
+        : {},
+      columnRoles: evalData.isCustom
+        ? Object.fromEntries(evalData.customColumns.map((c) => [c.name, c.role]))
+        : {},
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------
+// Define New Dataset (added 6 October 2026, per Brenda's request): the
+// owner defines their own dataset structure — six locked core columns plus
+// extra columns, each with a role the owner declares — and lands in the
+// same add/edit/delete-row editor every blank copy already uses. Gated
+// like every editable-copy route (requireBusinessOwner: Business Owner
+// Evaluator and SME Owner-TAM Evaluator only). Validation lives in
+// services/customDatasetDefinition.js; creation in
+// services/templateEvaluationIngest.js.
+// ---------------------------------------------------------------------
+function renderDefineDataset(res, { values, errors }) {
+  res.render('dashboard/define-dataset', {
+    title: 'Define New Dataset',
+    active: 'browse-dataset',
+    coreColumns: customDef.CORE_COLUMNS,
+    roleOptions: customDef.ROLE_OPTIONS,
+    maxExtra: customDef.MAX_EXTRA_COLUMNS,
+    maxNameLength: customDef.MAX_NAME_LENGTH,
+    values,
+    errors,
+  });
+}
+
+router.get('/sme-templates/define-dataset', requireBusinessOwner, (req, res) => {
+  renderDefineDataset(res, { values: { datasetName: '', extraColumns: [] }, errors: [] });
+});
+
+router.post('/sme-templates/define-dataset', requireBusinessOwner, async (req, res, next) => {
+  try {
+    const body = req.body || {};
+    // The form posts parallel arrays: extra_name[] / extra_role[]. Accept
+    // a single string too (one extra column posts a plain string).
+    const toArray = (v) => (Array.isArray(v) ? v : (v === undefined ? [] : [v]));
+    const names = toArray(body.extra_name);
+    const roles = toArray(body.extra_role);
+    const extraColumns = names.map((n, i) => ({ name: n, role: roles[i] }));
+    const result = customDef.validateDefinition({ datasetName: body.dataset_name, extraColumns });
+    if (result.errors.length > 0) {
+      return renderDefineDataset(res.status(400), {
+        values: { datasetName: String(body.dataset_name || ''), extraColumns },
+        errors: result.errors,
+      });
+    }
+
+    const accountId = req.session.userId;
+    const { rows: acct } = await pool.query('SELECT business_sector FROM sme_accounts WHERE id = $1', [accountId]);
+    const domain = (acct[0] && acct[0].business_sector) || 'Custom dataset';
+
+    const { datasetRowId } = await createCustomEvaluationDataset(accountId, {
+      datasetName: result.datasetName, domain, columns: result.columns,
+    });
+    await logEvent(req.session.user, 'custom_dataset_defined', {
+      category: domain, datasetOrigin: 'blank',
+      detail: { columns: result.columns.length, extraColumns: result.columns.filter((c) => !c.isCore).length },
+    });
+    req.session.user.default_dataset_id = datasetRowId;
+    res.redirect(`/sme-templates/evaluation-dataset/${datasetRowId}`);
   } catch (err) {
     next(err);
   }

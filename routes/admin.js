@@ -46,7 +46,7 @@ const {
   listAllSmeTamEvaluationStatuses, getCompletedSmeTamResponseSummary,
 } = require('../services/tamEvaluation');
 const { listAllDatasets, getDatasetForAdmin, deleteDataset } = require('../services/adminDatasets');
-const { getActivityReport, buildCsv } = require('../services/smeTamActivity');
+const { getActivityReport, buildCsv, getDeclaredRolesExport, buildDeclaredRolesCsv } = require('../services/smeTamActivity');
 const { listAllDecisionFollowups, buildDecisionsCsv } = require('../services/smeTamDecisions');
 const {
   startRun, logTrustRating, getDatasetComparisonSummary,
@@ -707,6 +707,21 @@ router.get('/admin/sme-tam-decisions.csv', async (req, res, next) => {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="sme_tam_decision_followups_${stamp}.csv"`);
     res.send('\uFEFF' + buildDecisionsCsv(rows));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Owner-declared column roles from "Define New Dataset" (consenting
+// respondents only; column names + chosen role, never cell values) — the
+// owner-labelled ground truth to compare against CAAGA's predictions.
+router.get('/admin/sme-tam-declared-roles.csv', async (req, res, next) => {
+  try {
+    const rows = await getDeclaredRolesExport();
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="sme_tam_declared_column_roles_${stamp}.csv"`);
+    res.send('\uFEFF' + buildDeclaredRolesCsv(rows));
   } catch (err) {
     next(err);
   }

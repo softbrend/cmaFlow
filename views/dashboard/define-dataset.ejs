@@ -1,0 +1,119 @@
+<div class="page-title">➕ <span class="page-title-text">Define New Dataset</span></div>
+<p class="page-subtitle page-subtitle-wide">Set up your own table, like opening a new sheet in Excel. Six core columns are always included so CMA-Flow can build your revenue, customer and trend reports. Add any other columns your business tracks, and tell CMA-Flow what kind of information each one holds. You will then enter your records one at a time.</p>
+
+<form method="POST" action="/sme-templates/define-dataset" id="define-dataset-form" novalidate>
+  <div class="form-card wide" style="margin-bottom: 18px;">
+    <div class="form-title">1. Name your dataset</div>
+
+    <% if (errors && errors.length) { %>
+      <div class="alert-error" role="alert">
+        <ul style="margin: 0; padding-left: 18px;"><% errors.forEach(function (e) { %><li><%= e %></li><% }); %></ul>
+      </div>
+    <% } %>
+
+    <div class="field">
+      <label for="dataset_name">Dataset name</label>
+      <input type="text" id="dataset_name" name="dataset_name" maxlength="80"
+             value="<%= values.datasetName %>" placeholder="e.g. Salon sales 2026" required />
+    </div>
+  </div>
+
+  <div class="form-card wide" style="margin-bottom: 18px;">
+    <div class="form-title">2. Core columns <span style="font-weight: 400; color: var(--text-muted); font-size: 13px;">(always included)</span></div>
+    <p class="form-hint">These six cannot be removed or renamed. They are what the Descriptive, Diagnostic, Predictive and Prescriptive modules need to work.</p>
+    <div class="table-scroll">
+      <table class="table-simple">
+        <thead><tr><th>Column</th><th>Holds</th><th>What to enter</th></tr></thead>
+        <tbody>
+          <% coreColumns.forEach(function (c) { %>
+            <tr>
+              <td><strong><%= c.label %></strong></td>
+              <td><%= c.role === 'Identifier' ? 'ID / code' : (c.role === 'Date/time' ? 'Date' : (c.role === 'Monetary amount' ? 'Money amount' : (c.role === 'Category' ? 'Category / type' : c.role))) %></td>
+              <td style="color: var(--text-muted);"><%= c.hint %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="form-card wide" style="margin-bottom: 18px;">
+    <div class="form-title">3. Add your own columns <span style="font-weight: 400; color: var(--text-muted); font-size: 13px;">(optional, up to <%= maxExtra %>)</span></div>
+    <p class="form-hint">For each extra column, type its name and choose what kind of information it holds. Your choice is how CMA-Flow learns what the column means, so pick the closest match. Only the column names and your choices are recorded for the study, never the values you enter.</p>
+
+    <div id="extra-columns"></div>
+    <p id="no-extra-hint" style="color: var(--text-muted); font-size: 13px; margin: 4px 0 10px;">No extra columns yet. You can create the dataset with just the six core columns.</p>
+    <button type="button" class="btn btn-outline" id="add-extra-column">+ Add a column</button>
+  </div>
+
+  <div style="display: flex; gap: 10px; margin-bottom: 30px;">
+    <button type="submit" class="btn btn-accent">Create dataset</button>
+    <a class="btn btn-ghost" href="/browse-dataset">Cancel</a>
+  </div>
+</form>
+
+<script>
+(function () {
+  var roleOptions = <%- JSON.stringify(roleOptions.map(function (r) { return { value: r.value, label: r.label }; })).replace(/</g, '\\u003c') %>;
+  var maxExtra = <%= maxExtra %>;
+  var maxNameLength = <%= maxNameLength %>;
+  var initial = <%- JSON.stringify((values.extraColumns || []).map(function (c) { return { name: String(c.name || ''), role: String(c.role || '') }; })).replace(/</g, '\\u003c') %>;
+
+  var container = document.getElementById('extra-columns');
+  var hint = document.getElementById('no-extra-hint');
+  var addBtn = document.getElementById('add-extra-column');
+
+  function refresh() {
+    var n = container.children.length;
+    hint.style.display = n === 0 ? '' : 'none';
+    addBtn.disabled = n >= maxExtra;
+  }
+
+  function addRow(name, role) {
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px;';
+
+    var nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.name = 'extra_name';
+    nameInput.maxLength = maxNameLength;
+    nameInput.placeholder = 'Column name, e.g. Stylist';
+    nameInput.value = name || '';
+    nameInput.setAttribute('aria-label', 'Column name');
+    nameInput.style.cssText = 'flex:1 1 220px; min-width:180px;';
+
+    var select = document.createElement('select');
+    select.name = 'extra_role';
+    select.setAttribute('aria-label', 'What kind of information this column holds');
+    select.style.cssText = 'flex:1 1 240px; min-width:200px;';
+    var placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = '— What does it hold? —';
+    select.appendChild(placeholder);
+    roleOptions.forEach(function (r) {
+      var o = document.createElement('option');
+      o.value = r.value;
+      o.textContent = r.label;
+      if (r.value === role) o.selected = true;
+      select.appendChild(o);
+    });
+
+    var remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'btn btn-ghost btn-sm';
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', function () { row.remove(); refresh(); });
+
+    row.appendChild(nameInput);
+    row.appendChild(select);
+    row.appendChild(remove);
+    container.appendChild(row);
+    refresh();
+    return nameInput;
+  }
+
+  addBtn.addEventListener('click', function () { addRow('', '').focus(); });
+  initial.forEach(function (c) { addRow(c.name, c.role); });
+  refresh();
+})();
+</script>

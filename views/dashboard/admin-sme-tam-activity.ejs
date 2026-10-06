@@ -17,6 +17,7 @@
             ['Downloaded the sample CSV (50 rows)', totals.downloadedSample, ''],
             ['Downloaded the blank template', totals.downloadedBlank, 'Headers-only CSV.'],
             ['Started a blank copy in the app', totals.startedBlank, 'Typing their own rows in the editor.'],
+            ['Defined their own dataset structure (Define New Dataset)', totals.ownersDefinedCustom, totals.customDatasets + ' dataset(s) defined, with ' + totals.customExtraColumns + ' extra column(s) beyond the six core ones.'],
             ['Added at least one new row', totals.addedRows, totals.rowsAdded + ' rows added in total.'],
             ['Uploaded a dataset', totals.uploaded, totals.uploadRows + ' rows uploaded in total.'],
             ['Declared an upload to be their real business records', totals.uploadedReal, totals.uploadsReal + ' real upload(s), ' + totals.uploadsSample + ' sample/test upload(s) declared.'],
@@ -55,7 +56,7 @@
       No field-role confirmations on uploaded data yet.
     <% } %>
   </p>
-  <p style="margin-top: 12px;"><a class="btn btn-accent btn-sm" href="/admin/sme-tam-activity.csv">Download per-owner CSV</a> <a class="btn btn-ghost btn-sm" href="/admin/sme-tam-decisions.csv">Download decision entries CSV</a></p>
+  <p style="margin-top: 12px;"><a class="btn btn-accent btn-sm" href="/admin/sme-tam-activity.csv">Download per-owner CSV</a> <a class="btn btn-ghost btn-sm" href="/admin/sme-tam-decisions.csv">Download decision entries CSV</a> <a class="btn btn-ghost btn-sm" href="/admin/sme-tam-declared-roles.csv">Download owner-declared column roles CSV</a></p>
 </div>
 
 <div class="form-card wide" style="max-width: none; margin-bottom: 26px;">
@@ -71,6 +72,7 @@
           <th data-sortable>Prefilled used</th>
           <th data-sortable>Blank downloads</th>
           <th data-sortable>Blank started</th>
+          <th data-sortable>Own datasets (extra cols)</th>
           <th data-sortable>Rows added</th>
           <th data-sortable>Uploads</th>
           <th data-sortable>Matching template</th>
@@ -94,6 +96,7 @@
             <td data-sort="<%= r.prefilled_template_used %>"><%= r.prefilled_template_used %></td>
             <td data-sort="<%= r.blank_template_downloaded %>"><%= r.blank_template_downloaded %></td>
             <td data-sort="<%= r.blank_started %>"><%= r.blank_started %></td>
+            <td data-sort="<%= r.custom_datasets %>"><%= r.custom_datasets %><% if (r.custom_datasets > 0) { %> <span style="color: var(--text-muted); font-size: 12.5px;">(<%= r.custom_extra_columns %>)</span><% } %></td>
             <td data-sort="<%= r.rows_added %>"><%= r.rows_added %><% if (r.rows_added > 0) { %> <span style="color: var(--text-muted); font-size: 12.5px;">(<%= r.rows_added_prefilled %> prefilled, <%= r.rows_added_blank %> blank)</span><% } %></td>
             <td data-sort="<%= r.uploads %>"><%= r.uploads %><% if (r.upload_rows > 0) { %> <span style="color: var(--text-muted); font-size: 12.5px;">(<%= r.upload_rows %> rows)</span><% } %></td>
             <td data-sort="<%= r.uploads_template_match %>"><%= r.uploads_template_match %></td>

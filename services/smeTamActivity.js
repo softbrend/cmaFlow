@@ -19,7 +19,7 @@ const { SME_TAM_ROLE, getOrCreateSession } = require('./tamEvaluation');
 const EVENT_TYPES = [
   'prefilled_template_used', 'blank_started', 'blank_template_downloaded',
   'sample_template_downloaded', 'row_added', 'upload_completed', 'upload_failed',
-  'signup_dataset_chosen',
+  'signup_dataset_chosen', 'custom_dataset_defined',
 ];
 
 async function logEvent(user, eventType, fields = {}) {
@@ -257,6 +257,8 @@ async function getActivityReport() {
           COUNT(*) FILTER (WHERE e.event_type = 'blank_started')::int             AS blank_started,
           COUNT(*) FILTER (WHERE e.event_type = 'blank_template_downloaded')::int AS blank_template_downloaded,
           COUNT(*) FILTER (WHERE e.event_type = 'sample_template_downloaded')::int AS sample_template_downloaded,
+          COUNT(*) FILTER (WHERE e.event_type = 'custom_dataset_defined')::int    AS custom_datasets,
+          COALESCE(SUM(NULLIF(e.detail->>'extraColumns', '')::int) FILTER (WHERE e.event_type = 'custom_dataset_defined'), 0)::int AS custom_extra_columns,
           COUNT(*) FILTER (WHERE e.event_type = 'row_added')::int                 AS rows_added,
           COUNT(*) FILTER (WHERE e.event_type = 'row_added' AND e.dataset_origin = 'prefilled')::int AS rows_added_prefilled,
           COUNT(*) FILTER (WHERE e.event_type = 'row_added' AND e.dataset_origin = 'blank')::int     AS rows_added_blank,
@@ -333,6 +335,9 @@ async function getActivityReport() {
     startedBlank: nWith('blank_started'),
     downloadedBlank: nWith('blank_template_downloaded'),
     downloadedSample: nWith('sample_template_downloaded'),
+    ownersDefinedCustom: nWith('custom_datasets'),
+    customDatasets: sum('custom_datasets'),
+    customExtraColumns: sum('custom_extra_columns'),
     addedRows: nWith('rows_added'),
     rowsAdded: sum('rows_added'),
     uploaded: nWith('uploads'),
@@ -371,6 +376,7 @@ const CSV_COLUMNS = [
   ['business_size', 'business_size'], ['evaluation_status', 'evaluation_status'],
   ['used_prefilled_template_count', 'prefilled_template_used'], ['started_blank_count', 'blank_started'],
   ['blank_template_downloads', 'blank_template_downloaded'], ['sample_template_downloads', 'sample_template_downloaded'],
+  ['custom_datasets_defined', 'custom_datasets'], ['custom_extra_columns_added', 'custom_extra_columns'],
   ['rows_added', 'rows_added'], ['rows_added_to_prefilled', 'rows_added_prefilled'], ['rows_added_to_blank', 'rows_added_blank'],
   ['uploads', 'uploads'], ['uploads_matching_template', 'uploads_template_match'],
   ['uploads_matching_after_blank_download', 'uploads_after_blank'], ['uploaded_rows', 'upload_rows'],
@@ -393,4 +399,34 @@ function buildCsv(consentingRows) {
   return lines.join('\r\n') + '\r\n';
 }
 
-module.exports = { logEvent, matchUploadToTemplate, computeUploadQuality, getActivityReport, buildCsv, surnameOf, EVENT_TYPES };
+// Owner-declared column roles for every custom dataset defined by a
+// consenting SME Owner-TAM respondent — one row per column. Structure only
+// (column name + the role the owner chose), never any cell values. This is
+// the owner-labelled ground truth for the semantic-role evaluation; it is
+// meant to be compared with CAAGA's own prediction for the same column.
+async function getDeclaredRolesExport() {
+  const { rows } = await pool.query(
+    `SELECT a.id AS account_id, a.username, a.business_sector,
+            d.dataset_id AS dataset_key, d.dataset_name,
+            c.position, c.column_name, c.declared_role, c.is_core
+       FROM eval_custom_dataset_columns c
+       JOIN uploaded_datasets d ON d.id = c.dataset_id
+       JOIN sme_accounts a ON a.id = c.account_id
+       JOIN sme_tam_evaluation_sessions s ON s.account_id = a.id
+      WHERE a.role = $1 AND s.consent_status = 'given'
+      ORDER BY a.id, d.id, c.position`, [SME_TAM_ROLE]);
+  return rows;
+}
+
+function buildDeclaredRolesCsv(rows) {
+  const cols = [
+    ['account_id', 'account_id'], ['username', 'username'], ['business_category', 'business_sector'],
+    ['dataset_key', 'dataset_key'], ['dataset_name', 'dataset_name'], ['column_position', 'position'],
+    ['column_name', 'column_name'], ['owner_declared_role', 'declared_role'], ['is_core_column', 'is_core'],
+  ];
+  const lines = [cols.map(([h]) => h).join(',')];
+  rows.forEach((r) => lines.push(cols.map(([, k]) => csvCell(r[k])).join(',')));
+  return `${lines.join('\r\n')}\r\n`;
+}
+
+module.exports = { getDeclaredRolesExport, buildDeclaredRolesCsv, logEvent, matchUploadToTemplate, computeUploadQuality, getActivityReport, buildCsv, surnameOf, EVENT_TYPES };
