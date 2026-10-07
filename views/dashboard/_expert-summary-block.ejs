@@ -3,7 +3,11 @@
     (once per evaluation_flow) so a 'walkthrough'-flow respondent's
     ratings are never rendered averaged together with a 'direct'-flow
     one's. Locals: label (string), s (one summarizeCompletedResponses()
-    result — { byItem, byDomain, completedCount }). %>
+    result — { byItem, byDomain, completedCount }). Optional local: totals
+    ({ registered, completed, questionnaire, notStarted }) — when the
+    including page passes it, the block also states how many evaluator
+    accounts exist in total (the SME Owner-TAM report does; the others
+    don't, so the line is simply omitted for them). %>
 <div class="form-card wide" style="max-width: none; margin-bottom: 26px;">
   <div class="form-title" style="font-size: 18px;">17-item questionnaire — <%= label %> respondents</div>
   <p class="form-hint">
@@ -11,6 +15,15 @@
     In-progress evaluations are excluded so partial ratings don't skew the figures.
     %Agree = share of ratings of 4 or 5 (Agree / Strongly Agree) on the 5-point scale.
   </p>
+
+  <% if (typeof totals !== 'undefined' && totals) { %>
+    <p class="form-hint" style="margin-top: -10px;">
+      <strong>Total <%= label %> evaluators registered: <%= totals.registered %></strong>
+      &nbsp;·&nbsp; <%= totals.completed %> completed
+      &nbsp;·&nbsp; <%= totals.questionnaire %> questionnaire open
+      &nbsp;·&nbsp; <%= totals.notStarted %> not started
+    </p>
+  <% } %>
 
   <% if (s.completedCount === 0) { %>
     <div class="placeholder-card">

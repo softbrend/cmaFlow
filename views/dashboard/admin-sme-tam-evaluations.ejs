@@ -62,4 +62,15 @@
     generic 17-item TAM summary the Template Evaluator report uses; it
     reads item text and domains from the summary object itself, so it
     shows the REWORDED SME_TAM_ITEMS wording here. %>
-<%- include('_expert-summary-block', { label: 'SME Owner-TAM', s: summary }) %>
+<%# Account totals for the summary block's "Total … evaluators registered"
+    line — counted from the same `statuses` list the Respondents table
+    above renders, so the two can never disagree. %>
+<%
+  var smeTamTotals = {
+    registered: statuses.length,
+    completed: statuses.filter(function (x) { return x.status === 'completed'; }).length,
+    questionnaire: statuses.filter(function (x) { return x.status === 'questionnaire'; }).length,
+    notStarted: statuses.filter(function (x) { return x.status !== 'completed' && x.status !== 'questionnaire'; }).length,
+  };
+%>
+<%- include('_expert-summary-block', { label: 'SME Owner-TAM', s: summary, totals: smeTamTotals }) %>
