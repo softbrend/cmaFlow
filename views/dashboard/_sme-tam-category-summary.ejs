@@ -1,0 +1,109 @@
+<%# Partial: Business Category summary for the SME Owner-TAM Evaluator
+    population (added 10 October 2026). Local: cs — the result of
+    services/smeTamCategorySummary.js's buildCategorySummary(). Counts are
+    over ALL SME Owner-TAM Evaluator accounts (never the search-filtered
+    list), and completion means the 17-item TAM questionnaire was submitted. %>
+<div class="form-card wide" style="max-width: none; margin-bottom: 22px;">
+  <div class="form-title" style="font-size: 18px;">Summary by SME business category — completed vs not completed</div>
+  <p class="form-hint">
+    <strong><%= cs.totals.registered %></strong> evaluator<%= cs.totals.registered === 1 ? '' : 's' %> registered
+    across <strong><%= cs.categoriesRepresented %></strong> of <%= cs.categoriesTotal %> business categories.
+    <strong><%= cs.totals.completed %></strong> completed the TAM questionnaire and
+    <strong><%= cs.totals.notCompleted %></strong> have not
+    (<%= cs.totals.inProgress %> questionnaire open, <%= cs.totals.notStarted %> not started)
+    — overall completion rate <strong><%= cs.totals.completionRate.toFixed(1) %>%</strong>.
+  </p>
+
+  <div class="kpi-row" style="margin-top: 6px;">
+    <div class="stat-tile">
+      <div class="stat-label">Registered</div>
+      <div class="stat-value"><%= cs.totals.registered %></div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-label">Completed</div>
+      <div class="stat-value"><%= cs.totals.completed %></div>
+      <div class="stat-delta" style="color: var(--text-muted); font-weight: 600;"><%= cs.totals.completionRate.toFixed(0) %>% of registered</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-label">Not completed</div>
+      <div class="stat-value"><%= cs.totals.notCompleted %></div>
+      <div class="stat-delta" style="color: var(--text-muted); font-weight: 600;"><%= cs.totals.inProgress %> open · <%= cs.totals.notStarted %> not started</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-label">Categories covered</div>
+      <div class="stat-value"><%= cs.categoriesRepresented %> / <%= cs.categoriesTotal %></div>
+    </div>
+  </div>
+
+  <div class="table-scroll" style="margin-top: 16px;">
+    <table class="table-simple">
+      <thead>
+        <tr>
+          <th>SME business category</th>
+          <th style="text-align: right;">Registered</th>
+          <th style="text-align: right;">Completed</th>
+          <th style="text-align: right;">Not completed</th>
+          <th style="text-align: right;">Questionnaire open</th>
+          <th style="text-align: right;">Not started</th>
+          <th style="min-width: 150px;">Completion rate</th>
+          <th>Not yet completed</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (cs.rows.length === 0) { %>
+          <tr><td colspan="8" style="color: var(--text-muted);">No SME Owner-TAM Evaluator accounts yet.</td></tr>
+        <% } %>
+        <% cs.rows.forEach(function(r) { %>
+          <tr>
+            <td><strong><%= r.category %></strong></td>
+            <td style="text-align: right;"><%= r.registered %></td>
+            <td style="text-align: right;"><span class="badge badge-active"><%= r.completed %></span></td>
+            <td style="text-align: right;"><span class="badge <%= r.notCompleted > 0 ? 'badge-risk-medium' : 'badge-inactive' %>"><%= r.notCompleted %></span></td>
+            <td style="text-align: right;"><%= r.inProgress %></td>
+            <td style="text-align: right;"><%= r.notStarted %></td>
+            <td>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="flex: 1; height: 8px; border-radius: 4px; background: rgba(127,127,127,0.25); overflow: hidden; min-width: 70px;">
+                  <div style="height: 100%; width: <%= r.completionRate.toFixed(1) %>%; background: #2f7d4f;"></div>
+                </div>
+                <span style="font-variant-numeric: tabular-nums; white-space: nowrap;"><%= r.completionRate.toFixed(0) %>%</span>
+              </div>
+            </td>
+            <td style="font-size: 13px;">
+              <% if (r.notCompletedList.length === 0) { %>
+                <span style="color: var(--text-muted);">All completed</span>
+              <% } else { %>
+                <details>
+                  <summary style="cursor: pointer;"><%= r.notCompletedList.length %> evaluator<%= r.notCompletedList.length === 1 ? '' : 's' %></summary>
+                  <ul style="margin: 6px 0 0 16px; padding: 0;">
+                    <% r.notCompletedList.forEach(function(p) { %>
+                      <li><%= p.owner_name %> <span style="color: var(--text-muted);">(<%= p.username %>) — <%= p.state === 'inProgress' ? ('open, ' + p.items_answered + '/17 answered') : 'not started' %></span></li>
+                    <% }); %>
+                  </ul>
+                </details>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+        <% if (cs.rows.length > 0) { %>
+          <tr style="font-weight: 700; border-top: 2px solid rgba(0,0,0,0.15);">
+            <td>Total</td>
+            <td style="text-align: right;"><%= cs.totals.registered %></td>
+            <td style="text-align: right;"><%= cs.totals.completed %></td>
+            <td style="text-align: right;"><%= cs.totals.notCompleted %></td>
+            <td style="text-align: right;"><%= cs.totals.inProgress %></td>
+            <td style="text-align: right;"><%= cs.totals.notStarted %></td>
+            <td><%= cs.totals.completionRate.toFixed(1) %>%</td>
+            <td></td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (cs.uncovered.length > 0) { %>
+    <p class="form-hint" style="margin-top: 12px;">
+      <strong>Categories with no evaluator yet (<%= cs.uncovered.length %>):</strong> <%= cs.uncovered.join(', ') %>.
+    </p>
+  <% } %>
+</div>

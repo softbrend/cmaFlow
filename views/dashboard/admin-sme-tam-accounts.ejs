@@ -5,6 +5,8 @@
   <div class="alert-success">Password updated for <strong><%= passwordReset %></strong>.</div>
 <% } %>
 
+<%- include('_sme-tam-category-summary', { cs: categorySummary }) %>
+
 <div style="display: flex; gap: 10px; margin-bottom: 18px; justify-content: space-between; flex-wrap: wrap;">
   <form method="GET" action="/admin/sme-tam-accounts" style="display: flex; gap: 10px; max-width: 520px; flex: 1;">
     <input type="text" name="q" value="<%= q %>" placeholder="Search username, name, business, or email"
@@ -26,14 +28,21 @@
           <th>Business size</th>
           <th>Email</th>
           <th>Joined</th>
+          <th>TAM evaluation</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         <% if (accounts.length === 0) { %>
-          <tr><td colspan="8" style="color: var(--text-muted);">No SME Owner-TAM Evaluator accounts match "<%= q %>".</td></tr>
+          <tr><td colspan="9" style="color: var(--text-muted);">No SME Owner-TAM Evaluator accounts match "<%= q %>".</td></tr>
         <% } %>
-        <% accounts.forEach(function(a) { %>
+        <% accounts.forEach(function(a) {
+             var ev = evalStatus[a.id] || { state: 'notStarted', items_answered: 0 };
+             var evLabel, evClass;
+             if (ev.state === 'completed') { evLabel = 'Completed'; evClass = 'badge-active'; }
+             else if (ev.state === 'inProgress') { evLabel = 'Not completed — ' + ev.items_answered + '/17'; evClass = 'badge-risk-medium'; }
+             else { evLabel = 'Not completed — not started'; evClass = 'badge-inactive'; }
+        %>
           <tr>
             <td><%= a.username %></td>
             <td><%= a.owner_name %></td>
@@ -42,6 +51,7 @@
             <td><%= a.business_size || '—' %></td>
             <td><%= a.email %></td>
             <td><%= new Date(a.created_at).toLocaleDateString() %></td>
+            <td style="white-space: nowrap;"><span class="badge <%= evClass %>"><%= evLabel %></span></td>
             <td style="text-align: right; white-space: nowrap;">
               <a class="btn btn-ghost btn-sm" href="/admin/accounts/<%= a.id %>/password">Change password</a>
             </td>

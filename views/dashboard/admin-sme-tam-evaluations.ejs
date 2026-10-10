@@ -1,6 +1,8 @@
 <div class="page-title">📝 <span class="page-title-text">View SME Owner-TAM Evaluation Report</span></div>
 <p class="page-subtitle">Every SME Owner-TAM Evaluator account's evaluation progress, and a cross-respondent summary of the reworded 17-item TAM questionnaire. Kept separate from the SME owner, Template Evaluator and Business Owner Evaluator reports — the wording differs from the original TAM items, so these results must not be pooled with <a href="/admin/evaluations">View Evaluation Report</a> or <a href="/admin/expert-evaluations">View Template Evaluation Report</a>.</p>
 
+<%- include('_sme-tam-category-summary', { cs: categorySummary }) %>
+
 <div class="form-card wide" style="max-width: none; margin-bottom: 26px;">
   <div class="form-title" style="font-size: 18px;">Respondents</div>
   <div class="table-scroll">

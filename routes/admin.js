@@ -48,6 +48,7 @@ const {
 const { listAllDatasets, getDatasetForAdmin, deleteDataset } = require('../services/adminDatasets');
 const { getActivityReport, buildCsv, getDeclaredRolesExport, buildDeclaredRolesCsv } = require('../services/smeTamActivity');
 const { listAllDecisionFollowups, buildDecisionsCsv } = require('../services/smeTamDecisions');
+const { buildCategorySummary, statusByAccount } = require('../services/smeTamCategorySummary');
 const {
   startRun, logTrustRating, getDatasetComparisonSummary,
 } = require('../services/gatingComparison');
@@ -213,12 +214,19 @@ router.get('/admin/business-owner-accounts', async (req, res, next) => {
 // ------------------------------------------------------------------
 router.get('/admin/sme-tam-accounts', async (req, res, next) => {
   try {
-    const accounts = await listSmeTamAccounts(req.query.q);
+    // Summary counts always cover ALL SME Owner-TAM Evaluator accounts,
+    // not just the search-filtered list (added 10 October 2026).
+    const [accounts, smeTamStatuses] = await Promise.all([
+      listSmeTamAccounts(req.query.q),
+      listAllSmeTamEvaluationStatuses(),
+    ]);
     res.render('dashboard/admin-sme-tam-accounts', {
       title: 'Manage SME Owner-TAM Evaluators',
       active: 'admin',
       adminSection: 'sme-tam-accounts',
       accounts,
+      categorySummary: buildCategorySummary(smeTamStatuses),
+      evalStatus: statusByAccount(smeTamStatuses),
       q: req.query.q || '',
       passwordReset: req.query.passwordReset || null,
     });
@@ -672,6 +680,7 @@ router.get('/admin/sme-tam-evaluations', async (req, res, next) => {
       adminSection: 'sme-tam-evaluations',
       statuses,
       summary,
+      categorySummary: buildCategorySummary(statuses),
     });
   } catch (err) {
     next(err);
