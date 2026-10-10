@@ -2,12 +2,15 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const pool = require('../db/pool');
-const { redirectIfAuthed } = require('../middleware/auth');
+const { redirectIfAuthed, requireAuth } = require('../middleware/auth');
 const { ensureDefaultDataset } = require('../services/accountDatasets');
 const { loadCategories, isValidCategory } = require('../services/smeCategories');
 const { ingestDefaultTemplateForCategory, ingestDefaultBlankTemplateForCategory } = require('../services/templateEvaluationIngest');
 const { getOrCreateSession, recordConsent, SME_TAM_ROLE: SME_TAM_ROLE_NAME } = require('../services/tamEvaluation');
 const { logEvent: logSmeTamEvent } = require('../services/smeTamActivity');
+const {
+  POSITIONS, OTHER_POSITION, DECISION_AUTHORITY, isValidPosition, isValidAuthority, isProfileComplete,
+} = require('../services/smeTamRespondentProfile');
 
 const router = express.Router();
 const SALT_ROUNDS = 12;
@@ -479,6 +482,9 @@ function renderSmeTamSignup(req, res) {
     old: {},
     categories: loadCategories(),
     businessSizes: SME_TAM_BUSINESS_SIZES,
+    positions: POSITIONS,
+    otherPosition: OTHER_POSITION,
+    decisionAuthority: DECISION_AUTHORITY,
   });
 }
 router.get('/smeOwnerTam-signup', redirectIfAuthed, renderSmeTamSignup);
@@ -495,6 +501,28 @@ const SME_TAM_BUSINESS_SIZES = [
 // from the chosen SME Business Category — the client script only mirrors
 // it for display; the server always derives it from the category manifest
 // itself (never from the submitted form), so it can't be tampered with.
+// Position in the business + decision-making involvement (added
+// 10 October 2026) — shared by the signup form and /smeOwnerTam/profile.
+function respondentProfileValidators() {
+  return [
+    body('respondent_position')
+      .trim()
+      .custom((value) => isValidPosition(value))
+      .withMessage('Select your position in the business.'),
+    body('respondent_position_other')
+      .trim()
+      .custom((value, { req }) => req.body.respondent_position !== OTHER_POSITION || (value && value.length > 0))
+      .withMessage('Please specify your position (you chose "Other Business Decision-Maker").')
+      .bail()
+      .isLength({ max: 150 })
+      .withMessage('Please keep your position to 150 characters or fewer.'),
+    body('decision_authority')
+      .trim()
+      .custom((value) => isValidAuthority(value))
+      .withMessage('Select your level of involvement in business decision-making.'),
+  ];
+}
+
 const smeTamSignupValidators = [
   body('username')
     .trim()
@@ -512,6 +540,7 @@ const smeTamSignupValidators = [
     .trim()
     .custom((value) => SME_TAM_BUSINESS_SIZES.some((s) => s.value === value))
     .withMessage('Select your business size.'),
+  ...respondentProfileValidators(),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters.'),
   body('confirm_password').custom((value, { req }) => value === req.body.password)
     .withMessage('Passwords do not match.'),
@@ -533,12 +562,19 @@ router.post('/smeOwnerTam-signup/register', redirectIfAuthed, smeTamSignupValida
       old: req.body,
       categories: loadCategories(),
       businessSizes: SME_TAM_BUSINESS_SIZES,
+      positions: POSITIONS,
+      otherPosition: OTHER_POSITION,
+      decisionAuthority: DECISION_AUTHORITY,
     });
   }
 
   const {
     username, full_name, email, business_category, password, dataset_origin, business_size,
+    respondent_position, decision_authority,
   } = req.body;
+  const respondent_position_other = respondent_position === OTHER_POSITION
+    ? (req.body.respondent_position_other || '').trim().slice(0, 150)
+    : null;
   // Read-only "Business / affiliation type": the category's own examples
   // line from the template manifest (e.g. "Restaurants, cafés, bakeries").
   // business_name (NOT NULL; shown in the header and admin banners) is the
@@ -552,10 +588,13 @@ router.post('/smeOwnerTam-signup/register', redirectIfAuthed, smeTamSignupValida
     const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
     const { rows } = await pool.query(
       `INSERT INTO sme_accounts
-         (username, owner_name, business_name, email, business_sector, business_type, business_size, password_hash, role, evaluation_flow)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'SME Owner-TAM Evaluator', 'direct')
-       RETURNING id, username, owner_name, business_name, email, role, business_sector, business_type, business_size, assigned_dataset, evaluation_flow`,
-      [username, full_name, affiliation, email, business_category, business_type, business_size, password_hash]
+         (username, owner_name, business_name, email, business_sector, business_type, business_size, password_hash, role, evaluation_flow,
+          respondent_position, respondent_position_other, decision_authority, respondent_profile_updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'SME Owner-TAM Evaluator', 'direct', $9, $10, $11, now())
+       RETURNING id, username, owner_name, business_name, email, role, business_sector, business_type, business_size, assigned_dataset, evaluation_flow,
+                 respondent_position, respondent_position_other, decision_authority`,
+      [username, full_name, affiliation, email, business_category, business_type, business_size, password_hash,
+        respondent_position, respondent_position_other, decision_authority]
     );
 
     const account = rows[0];
@@ -605,7 +644,10 @@ router.post('/smeOwnerTam-signup/register', redirectIfAuthed, smeTamSignupValida
         errors: [{ msg: 'That username or email is already registered.' }],
         old: req.body,
         categories: loadCategories(),
-      businessSizes: SME_TAM_BUSINESS_SIZES,
+        businessSizes: SME_TAM_BUSINESS_SIZES,
+        positions: POSITIONS,
+        otherPosition: OTHER_POSITION,
+        decisionAuthority: DECISION_AUTHORITY,
       });
     }
     next(err);
@@ -651,7 +693,8 @@ router.post('/login', redirectIfAuthed, async (req, res, next) => {
     // req.session.user.evaluation_flow on every request.
     const { rows } = await pool.query(
       `SELECT id, username, owner_name, business_name, email, role, business_sector,
-              evaluation_template_file, assigned_dataset, evaluation_flow, password_hash
+              evaluation_template_file, assigned_dataset, evaluation_flow, password_hash,
+              respondent_position, respondent_position_other, decision_authority
          FROM sme_accounts WHERE username = $1`,
       [username.trim()]
     );
@@ -692,7 +735,88 @@ router.post('/login', redirectIfAuthed, async (req, res, next) => {
 
     req.session.userId = account.id;
     req.session.user = account;
+    // An SME Owner-TAM Evaluator who registered before the position and
+    // decision-making questions existed answers them first (added
+    // 10 October 2026; see middleware/respondentProfileGate.js).
+    if (account.role === SME_TAM_ROLE_NAME && !isProfileComplete(account)) {
+      return res.redirect('/smeOwnerTam/profile');
+    }
     return res.redirect('/');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
+// GET/POST /smeOwnerTam/profile — position in the business and level of
+// involvement in decision-making for SME Owner-TAM Evaluators (added
+// 10 October 2026). Required once for accounts that registered before
+// these questions were on the signup form; can be revisited later to
+// correct an answer.
+// ------------------------------------------------------------------
+async function loadRespondentProfile(accountId) {
+  const { rows } = await pool.query(
+    `SELECT respondent_position, respondent_position_other, decision_authority
+       FROM sme_accounts WHERE id = $1`,
+    [accountId]
+  );
+  return rows[0] || {};
+}
+
+function renderRespondentProfile(res, { errors = [], old = {}, firstTime }) {
+  res.render('auth/smeOwnerTam-profile', {
+    title: 'Your role in the business',
+    layout: 'layout-auth',
+    errors,
+    old,
+    firstTime,
+    positions: POSITIONS,
+    otherPosition: OTHER_POSITION,
+    decisionAuthority: DECISION_AUTHORITY,
+  });
+}
+
+function requireSmeTam(req, res, next) {
+  if (req.session.user && req.session.user.role === SME_TAM_ROLE_NAME) return next();
+  return res.redirect('/');
+}
+
+router.get('/smeOwnerTam/profile', requireAuth, requireSmeTam, async (req, res, next) => {
+  try {
+    const saved = await loadRespondentProfile(req.session.user.id);
+    // Keep the session in step with the database (e.g. a tab signed in
+    // before this feature existed).
+    Object.assign(req.session.user, saved);
+    renderRespondentProfile(res, { old: saved, firstTime: !isProfileComplete(saved) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/smeOwnerTam/profile', requireAuth, requireSmeTam, respondentProfileValidators(), async (req, res, next) => {
+  const result = validationResult(req);
+  if (!result.isEmpty()) {
+    res.status(400);
+    return renderRespondentProfile(res, {
+      errors: result.array(),
+      old: req.body,
+      firstTime: !isProfileComplete(req.session.user),
+    });
+  }
+  const { respondent_position, decision_authority } = req.body;
+  const respondent_position_other = respondent_position === OTHER_POSITION
+    ? (req.body.respondent_position_other || '').trim().slice(0, 150)
+    : null;
+  try {
+    await pool.query(
+      `UPDATE sme_accounts
+          SET respondent_position = $1, respondent_position_other = $2, decision_authority = $3,
+              respondent_profile_updated_at = now()
+        WHERE id = $4 AND role = 'SME Owner-TAM Evaluator'`,
+      [respondent_position, respondent_position_other, decision_authority, req.session.user.id]
+    );
+    Object.assign(req.session.user, { respondent_position, respondent_position_other, decision_authority });
+    return req.session.save(() => res.redirect('/'));
   } catch (err) {
     next(err);
   }

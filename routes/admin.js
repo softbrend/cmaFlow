@@ -48,7 +48,8 @@ const {
 const { listAllDatasets, getDatasetForAdmin, deleteDataset } = require('../services/adminDatasets');
 const { getActivityReport, buildCsv, getDeclaredRolesExport, buildDeclaredRolesCsv } = require('../services/smeTamActivity');
 const { listAllDecisionFollowups, buildDecisionsCsv } = require('../services/smeTamDecisions');
-const { buildCategorySummary, statusByAccount } = require('../services/smeTamCategorySummary');
+const { buildCategorySummary, statusByAccount, buildDecisionMakerSummary } = require('../services/smeTamCategorySummary');
+const { PRIMARY_AUTHORITY_VALUES } = require('../services/smeTamRespondentProfile');
 const {
   startRun, logTrustRating, getDatasetComparisonSummary,
 } = require('../services/gatingComparison');
@@ -226,6 +227,7 @@ router.get('/admin/sme-tam-accounts', async (req, res, next) => {
       adminSection: 'sme-tam-accounts',
       accounts,
       categorySummary: buildCategorySummary(smeTamStatuses),
+      decisionSummary: buildDecisionMakerSummary(smeTamStatuses),
       evalStatus: statusByAccount(smeTamStatuses),
       q: req.query.q || '',
       passwordReset: req.query.passwordReset || null,
@@ -670,9 +672,12 @@ router.get('/admin/business-owner-evaluations/:accountId', async (req, res, next
 // ------------------------------------------------------------------
 router.get('/admin/sme-tam-evaluations', async (req, res, next) => {
   try {
+    // ?respondents=primary scores only Primary/Joint/Departmental
+    // Decision-Makers (added 10 October 2026).
+    const respondentFilter = req.query.respondents === 'primary' ? 'primary' : 'all';
     const [statuses, summary] = await Promise.all([
       listAllSmeTamEvaluationStatuses(),
-      getCompletedSmeTamResponseSummary(),
+      getCompletedSmeTamResponseSummary(respondentFilter === 'primary' ? PRIMARY_AUTHORITY_VALUES : undefined),
     ]);
     res.render('dashboard/admin-sme-tam-evaluations', {
       title: 'View SME Owner-TAM Evaluation Report',
@@ -681,6 +686,8 @@ router.get('/admin/sme-tam-evaluations', async (req, res, next) => {
       statuses,
       summary,
       categorySummary: buildCategorySummary(statuses),
+      decisionSummary: buildDecisionMakerSummary(statuses),
+      respondentFilter,
     });
   } catch (err) {
     next(err);

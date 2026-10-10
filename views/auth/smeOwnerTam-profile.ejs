@@ -1,0 +1,26 @@
+<div class="form-card wide">
+  <div class="form-title"><img src="/img/cma-flow-icon.png" alt="CMA-Flow" style="width:28px; height:28px; border-radius:7px; background:#fff; padding:2px; vertical-align:-6px; margin-right:8px;" /><%= firstTime ? 'Two quick questions before you continue' : 'Your role in the business' %></div>
+  <% if (firstTime) { %>
+    <p class="form-hint">We've added two questions about your role in the business. They help the study report CMA-Flow's results by the kind of decision-maker who used it. This takes less than a minute, and your datasets and any answers you've already given are unchanged.</p>
+  <% } else { %>
+    <p class="form-hint">You can update your answers here if your role was recorded incorrectly.</p>
+  <% } %>
+
+  <% if (errors && errors.length) { %>
+    <div class="alert-error">
+      <ul>
+        <% errors.forEach(function(e) { %><li><%= e.msg %></li><% }); %>
+      </ul>
+    </div>
+  <% } %>
+
+  <form method="POST" action="/smeOwnerTam/profile" autocomplete="off">
+    <%- include('_smeTam-respondent-fields', { old: old, positions: positions, otherPosition: otherPosition, decisionAuthority: decisionAuthority }) %>
+    <p class="form-hint" style="margin: 4px 0 14px;">These answers are recorded with your evaluation and reported only in aggregate, de-identified form, as described in the informed-consent information you agreed to.</p>
+    <button type="submit" class="btn btn-accent btn-block"><%= firstTime ? 'Save and continue' : 'Save changes' %></button>
+  </form>
+
+  <div class="form-footer">
+    <% if (!firstTime) { %><a href="/">Back to CMA-Flow</a> · <% } %><a href="/logout">Sign out</a>
+  </div>
+</div>

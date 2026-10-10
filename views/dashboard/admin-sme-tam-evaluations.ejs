@@ -2,6 +2,7 @@
 <p class="page-subtitle">Every SME Owner-TAM Evaluator account's evaluation progress, and a cross-respondent summary of the reworded 17-item TAM questionnaire. Kept separate from the SME owner, Template Evaluator and Business Owner Evaluator reports — the wording differs from the original TAM items, so these results must not be pooled with <a href="/admin/evaluations">View Evaluation Report</a> or <a href="/admin/expert-evaluations">View Template Evaluation Report</a>.</p>
 
 <%- include('_sme-tam-category-summary', { cs: categorySummary }) %>
+<%- include('_sme-tam-decision-summary', { ds: decisionSummary }) %>
 
 <div class="form-card wide" style="max-width: none; margin-bottom: 26px;">
   <div class="form-title" style="font-size: 18px;">Respondents</div>
@@ -39,6 +40,7 @@
             <td><%= s.owner_name %> <span style="color: var(--text-muted);">(<%= s.username %>)</span></td>
             <td><%= s.business_type || '—' %>
               <div style="color: var(--text-muted); font-size: 12.5px;"><%= [s.business_sector, s.business_size].filter(Boolean).join(' · ') %></div>
+              <div style="color: var(--text-muted); font-size: 12.5px;"><%= [s.respondent_position === 'Other Business Decision-Maker' && s.respondent_position_other ? 'Other: ' + s.respondent_position_other : s.respondent_position, s.decision_authority].filter(Boolean).join(' · ') || 'Role not yet answered' %></div>
             </td>
             <td><span class="badge <%= consentClass %>"><%= consentLabel %></span></td>
             <td><span class="badge <%= statusClass %>"><%= statusLabel %></span></td>
@@ -75,4 +77,12 @@
     notStarted: statuses.filter(function (x) { return x.status !== 'completed' && x.status !== 'questionnaire'; }).length,
   };
 %>
-<%- include('_expert-summary-block', { label: 'SME Owner-TAM', s: summary, totals: smeTamTotals }) %>
+<%# Respondent filter for the questionnaire summary (added 10 October 2026):
+    all respondents, or only primary SME decision-makers (Primary, Joint and
+    Departmental Decision-Makers). %>
+<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px;">
+  <span style="font-weight: 600;">Questionnaire summary for:</span>
+  <a class="btn btn-sm <%= respondentFilter === 'primary' ? 'btn-ghost' : 'btn-accent' %>" href="/admin/sme-tam-evaluations">All respondents</a>
+  <a class="btn btn-sm <%= respondentFilter === 'primary' ? 'btn-accent' : 'btn-ghost' %>" href="/admin/sme-tam-evaluations?respondents=primary">Primary SME decision-makers only</a>
+</div>
+<%- include('_expert-summary-block', { label: respondentFilter === 'primary' ? 'SME Owner-TAM (primary decision-maker)' : 'SME Owner-TAM', s: summary, totals: respondentFilter === 'primary' ? null : smeTamTotals }) %>

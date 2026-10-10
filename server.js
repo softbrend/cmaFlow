@@ -10,6 +10,7 @@ const expressLayouts = require('express-ejs-layouts');
 const pool = require('./db/pool');
 const { attachUser } = require('./middleware/auth');
 const { evaluationGate } = require('./middleware/evaluationGate');
+const { respondentProfileGate } = require('./middleware/respondentProfileGate');
 const { TMP_ROOT } = require('./middleware/upload');
 const { reconcileStuckUploadJobs } = require('./services/uploadJobs');
 const authRoutes = require('./routes/auth');
@@ -119,6 +120,9 @@ app.use(session({
 
 app.use(attachUser);
 app.use(evaluationGate);
+// SME Owner-TAM Evaluators must answer the position and decision-making
+// questions before using the app (added 10 October 2026).
+app.use(respondentProfileGate);
 
 // --- Routes ---
 // templateRoutes MUST be registered before adminRoutes. adminRoutes opens

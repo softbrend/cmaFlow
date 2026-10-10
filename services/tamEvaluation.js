@@ -663,6 +663,7 @@ async function listAllSmeTamEvaluationStatuses() {
   const { rows } = await pool.query(
     `SELECT a.id AS account_id, a.username, a.owner_name, a.business_name,
             a.business_type, a.business_sector, a.business_size,
+            a.respondent_position, a.respondent_position_other, a.decision_authority,
             s.status, s.current_task, s.started_at,
             s.consent_status, s.consent_decided_at,
             s.walkthrough_completed_at, s.completed_at,
@@ -704,12 +705,20 @@ async function listAllSmeTamEvaluationStatuses() {
 // (getCompletedBusinessOwnerResponseSummary), or the original 17-item TAM
 // instrument for everyone else (getCompletedResponseSummary,
 // getCompletedExpertResponseSummary — both unchanged).
-async function summarizeCompletedResponses(responsesTable, sessionsTable, evaluationFlowFilter, role) {
+// decisionAuthorityFilter (optional array of sme_accounts.decision_authority
+// values, added 10 October 2026) — restricts the summary to respondents who
+// reported one of those decision-making levels. Only the SME Owner-TAM
+// report passes it (see getCompletedSmeTamResponseSummary()).
+async function summarizeCompletedResponses(responsesTable, sessionsTable, evaluationFlowFilter, role, decisionAuthorityFilter) {
   const params = [];
   let flowJoin = '';
   if (evaluationFlowFilter) {
     flowJoin = 'JOIN sme_accounts acc ON acc.id = s.account_id AND acc.evaluation_flow = $1';
     params.push(evaluationFlowFilter);
+  }
+  if (Array.isArray(decisionAuthorityFilter) && decisionAuthorityFilter.length) {
+    params.push(decisionAuthorityFilter);
+    flowJoin += ` JOIN sme_accounts acc_da ON acc_da.id = s.account_id AND acc_da.decision_authority = ANY($${params.length})`;
   }
   const { rows } = await pool.query(
     `SELECT r.item_code, r.domain, r.rating
@@ -787,8 +796,10 @@ async function getCompletedBusinessOwnerResponseSummary() {
 // sme_tam_evaluation_responses/_sessions. Never combined with
 // getCompletedResponseSummary()/getCompletedExpertResponseSummary(): the
 // wording differs, so the three TAM-family result sets stay separate.
-async function getCompletedSmeTamResponseSummary() {
-  return summarizeCompletedResponses('sme_tam_evaluation_responses', 'sme_tam_evaluation_sessions', undefined, SME_TAM_ROLE);
+// decisionAuthorities (optional, added 10 October 2026): pass e.g. the three
+// primary decision-maker levels to score only those respondents.
+async function getCompletedSmeTamResponseSummary(decisionAuthorities) {
+  return summarizeCompletedResponses('sme_tam_evaluation_responses', 'sme_tam_evaluation_sessions', undefined, SME_TAM_ROLE, decisionAuthorities);
 }
 
 // ------------------------------------------------------------------

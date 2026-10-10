@@ -1,6 +1,6 @@
 <div class="form-card wide">
   <div class="form-title"><img src="/img/cma-flow-icon.png" alt="CMA-Flow" style="width:28px; height:28px; border-radius:7px; background:#fff; padding:2px; vertical-align:-6px; margin-right:8px;" />Create your SME Owner-TAM Evaluator account</div>
-  <p class="form-hint">Information captured: username, full name, email, SME business category (which fills in your business / affiliation type), business size, and password — see the informed-consent information just above the Create account button for everything the evaluation records. You'll download that category's CSV template (or use the one automatically assigned to you), open any of CMA-Flow's four analytics modules in whatever order you like (there is no walkthrough to follow), and complete a short evaluation whenever you are ready using the Technology Acceptance Model (TAM) questionnaire.</p>
+  <p class="form-hint">Information captured: username, full name, email, SME business category (which fills in your business / affiliation type), business size, your position in the business, your level of involvement in business decision-making, and password — see the informed-consent information just above the Create account button for everything the evaluation records. You'll download that category's CSV template (or use the one automatically assigned to you), open any of CMA-Flow's four analytics modules in whatever order you like (there is no walkthrough to follow), and complete a short evaluation whenever you are ready using the Technology Acceptance Model (TAM) questionnaire.</p>
 
   <% if (errors && errors.length) { %>
     <div class="alert-error">
@@ -53,6 +53,8 @@
       </select>
     </div>
 
+    <%- include('_smeTam-respondent-fields', { old: old, positions: positions, otherPosition: otherPosition, decisionAuthority: decisionAuthority }) %>
+
     <div class="field">
       <label>Starting dataset</label>
       <div style="display:flex; flex-direction:column; gap:10px; margin-top:4px;">
@@ -84,7 +86,7 @@
         <p class="form-hint" style="margin: 0 0 8px;">This account takes part in a research evaluation of CMA-Flow, a doctoral study (Doctor of Information Technology, AMA University) by Brenda M. Balala of Notre Dame of Marbel University. Taking part is voluntary.</p>
         <p style="margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: #fff;">What is recorded</p>
         <ul style="margin: 0 0 8px; padding-left: 20px; font-size: 13.5px; color: rgba(255,255,255,0.88);">
-          <li>Your account details: username, full name, email, business category and size.</li>
+          <li>Your account details: username, full name, email, business category and size, your position in the business, and your level of involvement in business decision-making.</li>
           <li>Your ratings and optional remarks on the 17-item questionnaire about your experience, and any optional feedback you choose to write.</li>
           <li>An automatic log of how much time you spend on each of the four analytics modules.</li>
           <li>Simple counts of how you use the templates — whether you downloaded one (sample or blank), added rows, or uploaded a file — with the date and time.</li>

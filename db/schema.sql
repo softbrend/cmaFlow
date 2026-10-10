@@ -131,6 +131,30 @@ ALTER TABLE sme_accounts ADD COLUMN IF NOT EXISTS cohort VARCHAR(30);
 ALTER TABLE sme_accounts ADD COLUMN IF NOT EXISTS business_type VARCHAR(100);
 ALTER TABLE sme_accounts ADD COLUMN IF NOT EXISTS business_size VARCHAR(50);
 
+-- Respondent profile for SME Owner-TAM Evaluators (added 10 October 2026):
+-- position in the business (one of 15 standard options, with free text when
+-- "Other Business Decision-Maker" is chosen) and level of involvement in
+-- business decision-making (5 levels). Asked on the signup form; accounts
+-- created before this are asked on their next login
+-- (middleware/respondentProfileGate.js). Allowed values live in
+-- services/smeTamRespondentProfile.js. Nullable — other roles leave them empty.
+ALTER TABLE sme_accounts ADD COLUMN IF NOT EXISTS respondent_position VARCHAR(100);
+ALTER TABLE sme_accounts ADD COLUMN IF NOT EXISTS respondent_position_other VARCHAR(150);
+ALTER TABLE sme_accounts ADD COLUMN IF NOT EXISTS decision_authority VARCHAR(40);
+ALTER TABLE sme_accounts ADD COLUMN IF NOT EXISTS respondent_profile_updated_at TIMESTAMPTZ;
+
+DO $$
+BEGIN
+  ALTER TABLE sme_accounts
+      ADD CONSTRAINT sme_accounts_decision_authority_check
+      CHECK (decision_authority IS NULL OR decision_authority IN (
+        'Primary Decision-Maker', 'Joint Decision-Maker', 'Departmental Decision-Maker',
+        'Decision-Support Personnel', 'Operational Staff'
+      ));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
 DO $$
 BEGIN
   ALTER TABLE sme_accounts

@@ -5,6 +5,8 @@
   <div><strong>Business/Affiliation Type:</strong> <%= account.business_type || '—' %></div>
   <div><strong>SME Business Category:</strong> <%= account.business_sector || '—' %></div>
   <div><strong>Business Size:</strong> <%= account.business_size || '—' %></div>
+  <div><strong>Position in the Business:</strong> <%= account.respondent_position ? (account.respondent_position === 'Other Business Decision-Maker' && account.respondent_position_other ? 'Other: ' + account.respondent_position_other : account.respondent_position) : 'Not yet answered' %></div>
+  <div><strong>Decision-Making Involvement:</strong> <%= account.decision_authority || 'Not yet answered' %><% if (['Primary Decision-Maker', 'Joint Decision-Maker', 'Departmental Decision-Maker'].indexOf(account.decision_authority) !== -1) { %> <span class="badge badge-active">Primary SME decision-maker</span><% } %></div>
 </div>
 
 <p style="margin-bottom: 18px;"><a href="/admin/sme-tam-evaluations">← Back to SME Owner-TAM evaluations</a></p>

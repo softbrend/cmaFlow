@@ -119,6 +119,10 @@
       <% if (hasUserManual) { %>
         <li><a href="/user-manual" class="<%= active === 'user-manual' ? 'active' : '' %>"><span class="nav-dot"></span>User Manual</a></li>
       <% } %>
+      <%# Position / decision-making answers (added 10 October 2026). %>
+      <% if (currentUser && currentUser.role === 'SME Owner-TAM Evaluator') { %>
+        <li><a href="/smeOwnerTam/profile"><span class="nav-dot"></span>My Role in the Business</a></li>
+      <% } %>
     <% } %>
   </ul>
 

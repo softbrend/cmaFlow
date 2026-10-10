@@ -10,6 +10,9 @@
 // numbers always agree with the Respondents table on the evaluation report
 // page. Never mixes in any other population's accounts.
 const { loadCategories } = require('./smeCategories');
+const {
+  POSITIONS, DECISION_AUTHORITY, isPrimaryDecisionMaker, displayPosition,
+} = require('./smeTamRespondentProfile');
 
 const UNSPECIFIED = 'Not specified';
 
@@ -33,6 +36,7 @@ function buildCategorySummary(statuses) {
     if (!byName.has(name)) {
       byName.set(name, {
         category: name, registered: 0, completed: 0, inProgress: 0, notStarted: 0,
+        primary: 0, primaryCompleted: 0,
         completedList: [], notCompletedList: [],
       });
     }
@@ -40,11 +44,17 @@ function buildCategorySummary(statuses) {
     const bucket = classify(s.status);
     row.registered += 1;
     row[bucket] += 1;
+    if (isPrimaryDecisionMaker(s.decision_authority)) {
+      row.primary += 1;
+      if (bucket === 'completed') row.primaryCompleted += 1;
+    }
     const person = {
       account_id: s.account_id,
       owner_name: s.owner_name,
       username: s.username,
       business_size: s.business_size,
+      position: displayPosition(s.respondent_position, s.respondent_position_other),
+      decision_authority: s.decision_authority || null,
       state: bucket,
       items_answered: s.items_answered || 0,
       completed_at: s.completed_at || null,
@@ -71,8 +81,10 @@ function buildCategorySummary(statuses) {
     t.completed += r.completed;
     t.inProgress += r.inProgress;
     t.notStarted += r.notStarted;
+    t.primary += r.primary;
+    t.primaryCompleted += r.primaryCompleted;
     return t;
-  }, { registered: 0, completed: 0, inProgress: 0, notStarted: 0 });
+  }, { registered: 0, completed: 0, inProgress: 0, notStarted: 0, primary: 0, primaryCompleted: 0 });
   totals.notCompleted = totals.inProgress + totals.notStarted;
   totals.completionRate = totals.registered ? (totals.completed / totals.registered) * 100 : 0;
 
@@ -98,4 +110,50 @@ function statusByAccount(statuses) {
   return map;
 }
 
-module.exports = { buildCategorySummary, statusByAccount };
+// Decision-making involvement and position summary (added 10 October 2026),
+// with completed vs not completed for each level/position. "Not yet
+// answered" covers accounts that registered before the questions existed
+// and haven't logged in since.
+const NOT_ANSWERED = 'Not yet answered';
+
+function tally(statuses, keyFn, order) {
+  const map = new Map(order.map((k) => [k, { key: k, registered: 0, completed: 0, notCompleted: 0 }]));
+  (statuses || []).forEach((s) => {
+    const k = keyFn(s);
+    const key = map.has(k) ? k : NOT_ANSWERED;
+    if (!map.has(key)) map.set(key, { key, registered: 0, completed: 0, notCompleted: 0 });
+    const row = map.get(key);
+    row.registered += 1;
+    if (s.status === 'completed') row.completed += 1;
+    else row.notCompleted += 1;
+  });
+  return Array.from(map.values());
+}
+
+function buildDecisionMakerSummary(statuses) {
+  const byAuthority = tally(statuses, (s) => s.decision_authority, DECISION_AUTHORITY.map((d) => d.value))
+    .map((r) => {
+      const def = DECISION_AUTHORITY.find((d) => d.value === r.key);
+      return { ...r, description: def ? def.description : 'Registered before the question was added; asked on next login.', primary: !!(def && def.primary) };
+    });
+  const byPosition = tally(statuses, (s) => s.respondent_position, POSITIONS)
+    .filter((r) => r.registered > 0);
+
+  const primaryRows = byAuthority.filter((r) => r.primary);
+  const sum = (rows, f) => rows.reduce((t, r) => t + r[f], 0);
+  const answered = (statuses || []).filter((s) => s.decision_authority).length;
+  return {
+    byAuthority,
+    byPosition,
+    primary: {
+      registered: sum(primaryRows, 'registered'),
+      completed: sum(primaryRows, 'completed'),
+      notCompleted: sum(primaryRows, 'notCompleted'),
+    },
+    answered,
+    notAnswered: (statuses || []).length - answered,
+    total: (statuses || []).length,
+  };
+}
+
+module.exports = { buildCategorySummary, statusByAccount, buildDecisionMakerSummary };

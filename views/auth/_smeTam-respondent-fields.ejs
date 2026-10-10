@@ -1,0 +1,51 @@
+<%# Partial: position in the business + decision-making involvement for
+    SME Owner-TAM Evaluators (added 10 October 2026). Used by the signup form
+    and by /smeOwnerTam/profile. Locals: old, positions, otherPosition,
+    decisionAuthority. %>
+<div class="field">
+  <label for="respondent_position">Your position in the business</label>
+  <select id="respondent_position" name="respondent_position" required>
+    <option value="" disabled <%= !old.respondent_position ? 'selected' : '' %>>Select your position…</option>
+    <% positions.forEach(function(p, i) { %>
+      <option value="<%= p %>" <%= old.respondent_position === p ? 'selected' : '' %>><%= (i + 1) %>. <%= p === otherPosition ? p + ' (Please Specify)' : p %></option>
+    <% }); %>
+  </select>
+</div>
+
+<div class="field" id="position_other_field" style="<%= old.respondent_position === otherPosition ? '' : 'display:none;' %>">
+  <label for="respondent_position_other">Please specify your position</label>
+  <input type="text" id="respondent_position_other" name="respondent_position_other" maxlength="150"
+         value="<%= old.respondent_position_other || '' %>" placeholder="e.g. Store Supervisor, Farm Manager" />
+</div>
+
+<div class="field">
+  <label>What is your level of involvement in business decision-making?</label>
+  <div style="display:flex; flex-direction:column; gap:10px; margin-top:4px;">
+    <% decisionAuthority.forEach(function(d, i) { %>
+      <div style="display:flex; align-items:flex-start; gap:10px;">
+        <input type="radio" id="authority_<%= i %>" name="decision_authority" value="<%= d.value %>" required
+               style="width:18px; height:18px; flex:0 0 18px; margin:2px 0 0;" <%= old.decision_authority === d.value ? 'checked' : '' %> />
+        <label for="authority_<%= i %>" style="margin:0; font-weight:600; cursor:pointer;"><%= d.value %>
+          <span class="form-hint" style="display:block; margin:2px 0 0; font-weight:400;"><%= d.description %></span>
+        </label>
+      </div>
+    <% }); %>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var select = document.getElementById('respondent_position');
+    var field = document.getElementById('position_other_field');
+    var input = document.getElementById('respondent_position_other');
+    if (!select || !field || !input) return;
+    var OTHER = <%- JSON.stringify(otherPosition) %>;
+    function sync() {
+      var isOther = select.value === OTHER;
+      field.style.display = isOther ? '' : 'none';
+      input.required = isOther;
+    }
+    select.addEventListener('change', sync);
+    sync();
+  })();
+</script>

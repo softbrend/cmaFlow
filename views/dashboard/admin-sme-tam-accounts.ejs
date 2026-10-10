@@ -6,6 +6,7 @@
 <% } %>
 
 <%- include('_sme-tam-category-summary', { cs: categorySummary }) %>
+<%- include('_sme-tam-decision-summary', { ds: decisionSummary }) %>
 
 <div style="display: flex; gap: 10px; margin-bottom: 18px; justify-content: space-between; flex-wrap: wrap;">
   <form method="GET" action="/admin/sme-tam-accounts" style="display: flex; gap: 10px; max-width: 520px; flex: 1;">
@@ -26,6 +27,8 @@
           <th>Business / affiliation type</th>
           <th>SME business category</th>
           <th>Business size</th>
+          <th>Position</th>
+          <th>Decision-making involvement</th>
           <th>Email</th>
           <th>Joined</th>
           <th>TAM evaluation</th>
@@ -34,7 +37,7 @@
       </thead>
       <tbody>
         <% if (accounts.length === 0) { %>
-          <tr><td colspan="9" style="color: var(--text-muted);">No SME Owner-TAM Evaluator accounts match "<%= q %>".</td></tr>
+          <tr><td colspan="11" style="color: var(--text-muted);">No SME Owner-TAM Evaluator accounts match "<%= q %>".</td></tr>
         <% } %>
         <% accounts.forEach(function(a) {
              var ev = evalStatus[a.id] || { state: 'notStarted', items_answered: 0 };
@@ -49,6 +52,17 @@
             <td><%= a.business_type || '—' %></td>
             <td><%= a.business_sector || '—' %></td>
             <td><%= a.business_size || '—' %></td>
+            <td><%= a.respondent_position ? (a.respondent_position === 'Other Business Decision-Maker' && a.respondent_position_other ? 'Other: ' + a.respondent_position_other : a.respondent_position) : '—' %></td>
+            <td>
+              <% if (a.decision_authority) { %>
+                <%= a.decision_authority %>
+                <% if (['Primary Decision-Maker', 'Joint Decision-Maker', 'Departmental Decision-Maker'].indexOf(a.decision_authority) !== -1) { %>
+                  <div><span class="badge badge-active" style="margin-top: 3px;">Primary SME decision-maker</span></div>
+                <% } %>
+              <% } else { %>
+                <span style="color: var(--text-muted);">Not yet answered</span>
+              <% } %>
+            </td>
             <td><%= a.email %></td>
             <td><%= new Date(a.created_at).toLocaleDateString() %></td>
             <td style="white-space: nowrap;"><span class="badge <%= evClass %>"><%= evLabel %></span></td>

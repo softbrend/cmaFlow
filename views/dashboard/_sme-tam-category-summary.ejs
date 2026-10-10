@@ -30,6 +30,11 @@
       <div class="stat-delta" style="color: var(--text-muted); font-weight: 600;"><%= cs.totals.inProgress %> open · <%= cs.totals.notStarted %> not started</div>
     </div>
     <div class="stat-tile">
+      <div class="stat-label">Primary decision-makers</div>
+      <div class="stat-value"><%= cs.totals.primaryCompleted %> / <%= cs.totals.primary %></div>
+      <div class="stat-delta" style="color: var(--text-muted); font-weight: 600;">completed / registered</div>
+    </div>
+    <div class="stat-tile">
       <div class="stat-label">Categories covered</div>
       <div class="stat-value"><%= cs.categoriesRepresented %> / <%= cs.categoriesTotal %></div>
     </div>
@@ -46,12 +51,13 @@
           <th style="text-align: right;">Questionnaire open</th>
           <th style="text-align: right;">Not started</th>
           <th style="min-width: 150px;">Completion rate</th>
+          <th style="text-align: right; white-space: nowrap;">Primary DMs</th>
           <th>Not yet completed</th>
         </tr>
       </thead>
       <tbody>
         <% if (cs.rows.length === 0) { %>
-          <tr><td colspan="8" style="color: var(--text-muted);">No SME Owner-TAM Evaluator accounts yet.</td></tr>
+          <tr><td colspan="9" style="color: var(--text-muted);">No SME Owner-TAM Evaluator accounts yet.</td></tr>
         <% } %>
         <% cs.rows.forEach(function(r) { %>
           <tr>
@@ -69,6 +75,7 @@
                 <span style="font-variant-numeric: tabular-nums; white-space: nowrap;"><%= r.completionRate.toFixed(0) %>%</span>
               </div>
             </td>
+            <td style="text-align: right;"><%= r.primaryCompleted %> / <%= r.primary %></td>
             <td style="font-size: 13px;">
               <% if (r.notCompletedList.length === 0) { %>
                 <span style="color: var(--text-muted);">All completed</span>
@@ -77,7 +84,7 @@
                   <summary style="cursor: pointer;"><%= r.notCompletedList.length %> evaluator<%= r.notCompletedList.length === 1 ? '' : 's' %></summary>
                   <ul style="margin: 6px 0 0 16px; padding: 0;">
                     <% r.notCompletedList.forEach(function(p) { %>
-                      <li><%= p.owner_name %> <span style="color: var(--text-muted);">(<%= p.username %>) — <%= p.state === 'inProgress' ? ('open, ' + p.items_answered + '/17 answered') : 'not started' %></span></li>
+                      <li><%= p.owner_name %> <span style="color: var(--text-muted);">(<%= p.username %>) — <%= p.state === 'inProgress' ? ('open, ' + p.items_answered + '/17 answered') : 'not started' %><%= p.decision_authority ? ' · ' + p.decision_authority : '' %></span></li>
                     <% }); %>
                   </ul>
                 </details>
@@ -94,12 +101,15 @@
             <td style="text-align: right;"><%= cs.totals.inProgress %></td>
             <td style="text-align: right;"><%= cs.totals.notStarted %></td>
             <td><%= cs.totals.completionRate.toFixed(1) %>%</td>
+            <td style="text-align: right;"><%= cs.totals.primaryCompleted %> / <%= cs.totals.primary %></td>
             <td></td>
           </tr>
         <% } %>
       </tbody>
     </table>
   </div>
+
+  <p class="form-hint" style="margin-top: 10px;"><strong>Primary DMs</strong> = primary SME decision-makers (Primary, Joint or Departmental Decision-Maker), shown as completed / registered.</p>
 
   <% if (cs.uncovered.length > 0) { %>
     <p class="form-hint" style="margin-top: 12px;">
