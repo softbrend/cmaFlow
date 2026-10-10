@@ -74,6 +74,9 @@
         <div class="info-box">Revenue bridge compares the two most recent months with transaction data (New / Expansion / Contraction / Churned revenue, per customer) — this dataset needs at least two distinct months of Transaction history to compute one.</div>
       <% } else { %>
         <div class="kpi-row"><%- cards.bridgeKpiRow.join('') %></div>
+        <% if (cards.bridgeSummary) { %>
+          <div class="info-box"><strong><%= cards.bridgeSummary %></strong></div>
+        <% } %>
         <div class="chart-card">
           <div class="chart-title">Revenue bridge: <%= bridge.prevLabel %> → <%= bridge.currLabel %></div>
           <div class="chart-subtitle">Per-customer revenue comparison between the two most recent months with transaction data</div>

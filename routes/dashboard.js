@@ -2296,18 +2296,58 @@ router.get('/diagnostic-insights', trackDirectFlowModuleVisit('diagnostic-insigh
       ];
 
       if (bridge) {
+        // "Revenue Change" tile (was "Net new revenue", which SME owners
+        // and evaluators read as "new customers' revenue" rather than the
+        // month-over-month change it actually is). Full month names,
+        // 2-decimal compact amounts, a ↑/↓ arrow instead of a +/- sign on
+        // the percentage, and a plain-language sentence under the tiles.
+        const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const fullMonthLabel = (label) => {
+          const m = String(label || '').match(/^([A-Za-z]{3})[a-z]*\.?\s+(\d{4})$/);
+          if (!m) return String(label || '');
+          const idx = MONTHS_FULL.findIndex((name) => name.slice(0, 3).toLowerCase() === m[1].toLowerCase());
+          return idx === -1 ? String(label) : `${MONTHS_FULL[idx]} ${m[2]}`;
+        };
+        const compactMoney2 = (value) => {
+          const n = Number(value) || 0;
+          const abs = Math.abs(n);
+          let body;
+          if (abs >= 1e9) body = `${(abs / 1e9).toFixed(2)}B`;
+          else if (abs >= 1e6) body = `${(abs / 1e6).toFixed(2)}M`;
+          else if (abs >= 1e3) body = `${(abs / 1e3).toFixed(2)}K`;
+          else body = abs.toLocaleString('en-US', { maximumFractionDigits: 2 });
+          return `${currency ? `${currency} ` : ''}${body}`;
+        };
+        const prevFull = fullMonthLabel(bridge.prevLabel);
+        const currFull = fullMonthLabel(bridge.currLabel);
+        const change = Number(bridge.netNew) || 0;
+        const pct = bridge.netNewPct === null || bridge.netNewPct === undefined ? null : Math.abs(Number(bridge.netNewPct));
+        const signChar = change < 0 ? '−' : (change > 0 ? '+' : '');
+        const arrow = change < 0 ? '↓' : (change > 0 ? '↑' : '');
+        const deltaText = pct === null ? '' : `${arrow ? `${arrow} ` : ''}${pct.toFixed(1)}% vs. ${prevFull}`;
+        const changeTile = `<div class="stat-tile">
+    <div class="stat-label">Revenue Change</div>
+    <div class="stat-value">${escapeHtml(`${signChar}${compactMoney2(change)}`)}</div>
+    ${deltaText ? `<div class="stat-delta ${change >= 0 ? 'is-up' : 'is-down'}">${escapeHtml(deltaText)}</div>` : ''}
+  </div>`;
         cards.bridgeKpiRow = [
+          changeTile,
           renderStatTile({
-            label: 'Net new revenue',
-            value: formatCompactMoney(bridge.netNew, currency),
-            delta: bridge.netNewPct,
-            sublabel: bridge.prevLabel,
-          }),
-          renderStatTile({
-            label: `${bridge.prevLabel} → ${bridge.currLabel}`,
-            value: `${formatCompactMoney(bridge.prevTotal, currency)} → ${formatCompactMoney(bridge.currTotal, currency)}`,
+            label: `${prevFull} → ${currFull}`,
+            value: `${compactMoney2(bridge.prevTotal)} → ${compactMoney2(bridge.currTotal)}`,
           }),
         ];
+        // "from August to September 2026" when both months share a year,
+        // "from December 2025 to January 2026" when they don't.
+        const [prevMonth, prevYear] = prevFull.split(' ');
+        const [, currYear] = currFull.split(' ');
+        const fromTo = (prevYear && currYear && prevYear === currYear)
+          ? `from ${prevMonth} to ${currFull}`
+          : `from ${prevFull} to ${currFull}`;
+        const pctPart = pct === null ? '' : ` (${pct.toFixed(1)}%)`;
+        cards.bridgeSummary = change === 0
+          ? `Revenue was unchanged ${fromTo}.`
+          : `Revenue ${change < 0 ? 'decreased' : 'increased'} by ${compactMoney2(change)}${pctPart} ${fromTo}.`;
         cards.bridgeTable = bridge.rows.map((r) => ({
           category: r.category,
           amount: formatMoney(r.amount, currency),
