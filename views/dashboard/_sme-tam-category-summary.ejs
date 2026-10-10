@@ -52,12 +52,11 @@
           <th style="text-align: right;">Not started</th>
           <th style="min-width: 150px;">Completion rate</th>
           <th style="text-align: right; white-space: nowrap;">Primary DMs</th>
-          <th>Not yet completed</th>
         </tr>
       </thead>
       <tbody>
         <% if (cs.rows.length === 0) { %>
-          <tr><td colspan="9" style="color: var(--text-muted);">No SME Owner-TAM Evaluator accounts yet.</td></tr>
+          <tr><td colspan="8" style="color: var(--text-muted);">No SME Owner-TAM Evaluator accounts yet.</td></tr>
         <% } %>
         <% cs.rows.forEach(function(r) { %>
           <tr>
@@ -76,17 +75,30 @@
               </div>
             </td>
             <td style="text-align: right;"><%= r.primaryCompleted %> / <%= r.primary %></td>
-            <td style="font-size: 13px;">
+          </tr>
+          <%# Full-width row under each category listing who has not yet
+              completed (revised 11 October 2026 — previously a narrow last
+              column that squeezed the names). %>
+          <tr class="not-completed-row">
+            <td colspan="8" style="padding-top: 0; border-top: none;">
               <% if (r.notCompletedList.length === 0) { %>
-                <span style="color: var(--text-muted);">All completed</span>
+                <span style="color: var(--text-muted); font-size: 13px;">✓ All evaluators in this category have completed the TAM questionnaire.</span>
               <% } else { %>
-                <details>
-                  <summary style="cursor: pointer;"><%= r.notCompletedList.length %> evaluator<%= r.notCompletedList.length === 1 ? '' : 's' %></summary>
-                  <ul style="margin: 6px 0 0 16px; padding: 0;">
+                <details open>
+                  <summary style="cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-muted);">Not yet completed (<%= r.notCompletedList.length %>)</summary>
+                  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; margin-top: 8px;">
                     <% r.notCompletedList.forEach(function(p) { %>
-                      <li><%= p.owner_name %> <span style="color: var(--text-muted);">(<%= p.username %>) — <%= p.state === 'inProgress' ? ('open, ' + p.items_answered + '/17 answered') : 'not started' %><%= p.decision_authority ? ' · ' + p.decision_authority : '' %></span></li>
+                      <div style="border: 1px solid rgba(127,127,127,0.25); border-radius: 8px; padding: 8px 10px; font-size: 13px; line-height: 1.4;">
+                        <div style="font-weight: 600;"><%= p.owner_name %> <span style="font-weight: 400; color: var(--text-muted);">(<%= p.username %>)</span></div>
+                        <div style="color: var(--text-muted);">
+                          <% if (p.state === 'inProgress') { %>Questionnaire open — <%= p.items_answered %>/17 answered<% } else { %>Not started<% } %>
+                        </div>
+                        <% if (p.decision_authority || p.position) { %>
+                          <div style="color: var(--text-muted);"><%= [p.position, p.decision_authority].filter(Boolean).join(' · ') %></div>
+                        <% } %>
+                      </div>
                     <% }); %>
-                  </ul>
+                  </div>
                 </details>
               <% } %>
             </td>
@@ -102,7 +114,6 @@
             <td style="text-align: right;"><%= cs.totals.notStarted %></td>
             <td><%= cs.totals.completionRate.toFixed(1) %>%</td>
             <td style="text-align: right;"><%= cs.totals.primaryCompleted %> / <%= cs.totals.primary %></td>
-            <td></td>
           </tr>
         <% } %>
       </tbody>
