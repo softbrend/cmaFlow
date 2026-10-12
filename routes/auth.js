@@ -16,7 +16,7 @@ const router = express.Router();
 const SALT_ROUNDS = 12;
 
 // New-account registration was closed while the TAM/user-acceptance
-// evaluation was underway (JIOS manuscript, Section 5.8), so the
+// evaluation was underway (manuscript, user-acceptance section), so the
 // respondent roster stayed fixed to the invited participants. Re-opened
 // now that the evaluation window has closed.
 const SIGNUPS_OPEN = true;

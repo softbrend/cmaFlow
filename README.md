@@ -7,6 +7,21 @@ Dataset, Browse Dataset, and Monetization discovery — deliberately placed
 last, after the upload/browse steps, since it reads the raw files those
 steps produce), backed by a local PostgreSQL database named **cmadb**.
 
+## Data and materials included in this repository
+
+| Material | Location | Notes |
+|---|---|---|
+| CMA-Flow / CAAGA source code | repository root (`routes/`, `services/`, `views/`, `db/`) | Full application, including the eligibility rules and analytics modules |
+| Synthetic test dataset (4 files: customers, transactions, entitlements, monetization configs; 67,049 rows) | `sample-data/synthetic-dataset/` | Fully synthetic; see its `README.md` for structure and upload steps |
+| 20 synthetic SME category templates (50 sample rows each) | `data/sme-templates/` | The starting datasets offered to SME owner participants |
+| Semantic-role evaluation scripts | `scripts/exportSemanticRoleEvaluation.js`, `scripts/evaluate_semantic_role_inference.py` | Export of CAAGA's role predictions and the precision/recall/F1 scoring |
+| Aggregate semantic-role results (Table 3) | `table3_semantic_role_accuracy.csv` / `.md` | Per-role precision, recall, F1 and macro averages |
+
+Not included: the Olist dataset (public on Kaggle; download it from the
+original source), column-level rater labels and predictions (they include
+column names from two private participant datasets), and any data uploaded
+or entered by evaluation participants.
+
 All six steps of the conceptual framework's Process panel are fully wired
 up and verified end to end against a live PostgreSQL-backed instance:
 **Upload New Dataset**, **Browse Dataset**, **Descriptive analytics**,

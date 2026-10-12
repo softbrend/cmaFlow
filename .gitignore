@@ -9,6 +9,17 @@ uploads/
 # This folder also holds deliverables and scratch that aren't app source —
 # keep the repo scoped to the actual CMA-Flow codebase.
 docs/
-sample-data/
+sample-data/*
+!sample-data/synthetic-dataset/
 Claude outputs/
 cma-flow-app/
+
+# Internal planning notes and row-level evaluation files — kept locally,
+# not published (row-level labels include column names from private
+# participant datasets).
+claude/
+caaga_role_predictions.csv
+rater_labeling_template.csv
+rater_labels.csv
+rater1_copy.csv
+rater2_copy.csv

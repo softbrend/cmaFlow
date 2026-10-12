@@ -19,8 +19,7 @@
 //     a third, access-code-gated population (routes/auth.js's
 //     /businessOwner-signup) created specifically to take the NEW
 //     15-item ISO/IEC 25010 Quality-in-Use questionnaire (ISO25010_ITEMS
-//     below), answering the editorial letter's decision-support-
-//     effectiveness critique without touching either TAM population's
+//     below), measuring decision-support effectiveness without touching either TAM population's
 //     already-collected data.
 // Every function below takes the account's role as its last argument and
 // picks the matching table set via tablesFor() — the task list and all
@@ -224,8 +223,7 @@ const SME_TAM_ITEMS = [
 const SME_TAM_ITEMS_BY_CODE = new Map(SME_TAM_ITEMS.map((item) => [item.code, item]));
 
 // ------------------------------------------------------------------
-// ISO/IEC 25010 Quality-in-Use instrument — added 2 October 2026 in
-// response to the editorial decision letter's core complaint: TAM
+// ISO/IEC 25010 Quality-in-Use instrument — added 2 October 2026. TAM
 // measures acceptance (would a respondent adopt the tool), not
 // decision-support effectiveness (did using it produce a good decision).
 //

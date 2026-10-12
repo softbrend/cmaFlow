@@ -1,7 +1,6 @@
 // SME Owner-TAM Evaluator decision follow-up (added 4 October 2026).
 //
-// Evidence for decision-support effectiveness (the editorial reviewers'
-// main concern): on each Prescriptive recommendation an owner can record
+// Evidence for decision-support effectiveness: on each Prescriptive recommendation an owner can record
 // what they will do with it, how confident they are in that decision, what
 // they would change, and — returning later — what actually happened.
 // Consent-first (RA 10173): nothing is written unless the account's

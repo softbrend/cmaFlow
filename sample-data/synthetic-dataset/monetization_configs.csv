@@ -1,0 +1,9 @@
+config_id,model_type,product_service,price,unit,tier,currency,effective_from,effective_to
+CFG0001,Subscription,Pro Plan,49.99,per month,Standard,USD,2024-09-16,2025-12-19
+CFG0002,Subscription,Pro Plan,59.99,per month,Standard,USD,2025-12-20,
+CFG0003,Subscription,Pro Plan (Enterprise),199.99,per month,Enterprise,USD,2024-09-16,
+CFG0004,Pay-per-use,Cloud Storage,0.023,per GB-month,Standard,USD,2024-09-16,2026-03-19
+CFG0005,Pay-per-use,Cloud Storage,0.019,per GB-month,Standard,USD,2026-03-20,
+CFG0006,Data-as-a-Service,Analytics API,0.89,per 1K calls,Standard,USD,2024-09-16,
+CFG0007,Freemium,Insight Suite,0,per month,Free,USD,2024-09-16,
+CFG0008,Freemium,Insight Suite,34.99,per month,Pro,USD,2024-09-16,
