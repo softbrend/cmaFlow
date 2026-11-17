@@ -12,6 +12,8 @@ const fs = require('fs');
 const path = require('path');
 const pool = require('../db/pool');
 const { DATASETS_ROOT, sanitizeDatasetId } = require('../middleware/upload');
+const ExcelJS = require('exceljs');
+const { parse: parseCsvSync } = require('csv-parse/sync');
 
 // Grouped for Manage Datasets: owners sorted alphabetically (a.business_name),
 // and within each owner's group the most recently uploaded dataset first
@@ -99,4 +101,201 @@ async function deleteDataset(datasetRowId) {
   return dataset;
 }
 
-module.exports = { listAllDatasets, getDatasetForAdmin, deleteDataset };
+// ------------------------------------------------------------------
+// Download (added 17 November 2026) — lets an Admin download any owner's
+// dataset from the dataset-list pages (SME Owner-TAM Evaluator Datasets
+// and the other three lists, which share views/dashboard/
+// admin-datasets.ejs). The export is rebuilt from dataset_records — the
+// exact rows the analytics pages were computed from — rather than served
+// from uploads/datasets/ on disk, because Render's filesystem is not
+// persistent across deploys, so the original CSV may no longer exist
+// even though its rows are still in the database. When the original file
+// IS still on disk, its header line is used only to restore the owner's
+// original column order (JSONB does not preserve key order); any column
+// not found in that header is appended after it.
+//
+// One physical file -> one CSV. Several files -> one .xlsx workbook with
+// one sheet per file. Rows are read in keyset-paginated batches; the CSV
+// path streams them straight to the response, so a large single-file
+// dataset is never held in memory all at once.
+// ------------------------------------------------------------------
+const DOWNLOAD_BATCH = 5000;
+
+// Each downloadable "part" of a dataset: one per dataset_files row, plus
+// one per file_type for any legacy rows that predate source_file_id.
+async function listDownloadParts(datasetRowId) {
+  const { rows: files } = await pool.query(
+    `SELECT id, file_type, original_name, stored_path, row_count
+       FROM dataset_files
+      WHERE dataset_id = $1
+      ORDER BY uploaded_at ASC, id ASC`,
+    [datasetRowId]
+  );
+  const parts = files.map((f) => ({
+    sourceFileId: f.id,
+    fileType: f.file_type,
+    originalName: f.original_name,
+    storedPath: f.stored_path,
+  }));
+  const { rows: legacy } = await pool.query(
+    `SELECT DISTINCT file_type
+       FROM dataset_records
+      WHERE dataset_id = $1 AND source_file_id IS NULL
+      ORDER BY file_type`,
+    [datasetRowId]
+  );
+  legacy.forEach((l) => parts.push({ sourceFileId: null, fileType: l.file_type, originalName: `${l.file_type}.csv`, storedPath: null }));
+  return parts;
+}
+
+function partWhere(datasetRowId, part, startParam) {
+  const params = [datasetRowId, part.fileType];
+  let clause = `dataset_id = $1 AND file_type = $2`;
+  if (part.sourceFileId != null) {
+    params.push(part.sourceFileId);
+    clause += ` AND source_file_id = $${params.length}`;
+  } else {
+    clause += ` AND source_file_id IS NULL`;
+  }
+  if (startParam !== undefined) {
+    params.push(startParam);
+    clause += ` AND row_index > $${params.length}`;
+  }
+  return { clause, params };
+}
+
+// Reads just the header line of the original CSV, if it is still on disk.
+function readOriginalHeader(storedPath) {
+  if (!storedPath) return null;
+  const candidates = path.isAbsolute(storedPath)
+    ? [storedPath]
+    : [path.join(__dirname, '..', storedPath), path.join(DATASETS_ROOT, storedPath)];
+  for (const abs of candidates) {
+    try {
+      if (!fs.existsSync(abs)) continue;
+      const fd = fs.openSync(abs, 'r');
+      const buf = Buffer.alloc(65536);
+      const n = fs.readSync(fd, buf, 0, buf.length, 0);
+      fs.closeSync(fd);
+      let text = buf.slice(0, n).toString('utf8').replace(/^﻿/, '');
+      const nl = text.search(/\r?\n/);
+      if (nl >= 0) text = text.slice(0, nl);
+      const header = parseCsvSync(text, { relax_column_count: true, trim: true })[0];
+      if (header && header.length) return header;
+    } catch (e) { /* fall through to DB-derived order */ }
+  }
+  return null;
+}
+
+async function columnsForPart(datasetRowId, part) {
+  const { clause, params } = partWhere(datasetRowId, part);
+  // Union of keys across the part, in first-seen order (sampled, then
+  // topped up with any key that only appears later in the file).
+  const { rows: sample } = await pool.query(
+    `SELECT data FROM dataset_records WHERE ${clause} ORDER BY row_index ASC LIMIT 2000`, params
+  );
+  const seen = [];
+  const set = new Set();
+  sample.forEach((r) => Object.keys(r.data || {}).forEach((k) => { if (!set.has(k)) { set.add(k); seen.push(k); } }));
+  const { rows: allKeys } = await pool.query(
+    `SELECT DISTINCT jsonb_object_keys(data) AS k FROM dataset_records WHERE ${clause}`, params
+  );
+  allKeys.forEach((r) => { if (!set.has(r.k)) { set.add(r.k); seen.push(r.k); } });
+
+  const header = readOriginalHeader(part.storedPath);
+  if (!header) return seen;
+  const ordered = header.filter((h) => set.has(h));
+  const inHeader = new Set(ordered);
+  return ordered.concat(seen.filter((k) => !inHeader.has(k)));
+}
+
+// Calls onBatch(rowsOfDataObjects) for every batch, in row order.
+async function forEachRowBatch(datasetRowId, part, onBatch) {
+  let last = -2147483648;
+  for (;;) {
+    const { clause, params } = partWhere(datasetRowId, part, last);
+    const { rows } = await pool.query(
+      `SELECT row_index, data FROM dataset_records WHERE ${clause} ORDER BY row_index ASC LIMIT ${DOWNLOAD_BATCH}`,
+      params
+    );
+    if (!rows.length) break;
+    await onBatch(rows.map((r) => r.data || {}));
+    last = rows[rows.length - 1].row_index;
+    if (rows.length < DOWNLOAD_BATCH) break;
+  }
+}
+
+function csvCell(v) {
+  if (v === null || v === undefined) return '';
+  const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function safeFilePart(s) {
+  return String(s || 'dataset').replace(/\.csv$/i, '').replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 80) || 'dataset';
+}
+
+function sheetNameFor(part, used) {
+  let base = String(part.originalName || part.fileType || 'Sheet')
+    .replace(/\.csv$/i, '')
+    .replace(/[\[\]:*?\/\\]/g, '_')
+    .slice(0, 31) || 'Sheet';
+  let name = base;
+  let n = 2;
+  while (used.has(name.toLowerCase())) {
+    const suffix = ` (${n++})`;
+    name = base.slice(0, 31 - suffix.length) + suffix;
+  }
+  used.add(name.toLowerCase());
+  return name;
+}
+
+// Streams the dataset to an Express response. Returns false (and writes
+// nothing) if the dataset has no rows at all.
+async function streamDatasetDownload(dataset, res) {
+  const parts = await listDownloadParts(dataset.id);
+  if (!parts.length) return false;
+  const baseName = safeFilePart(dataset.dataset_id || dataset.dataset_name);
+
+  if (parts.length === 1) {
+    const part = parts[0];
+    const columns = await columnsForPart(dataset.id, part);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${baseName}.csv"`);
+    res.write('﻿'); // so Excel opens UTF-8 (e.g. ñ, ₱) correctly
+    res.write(columns.map(csvCell).join(',') + '\r\n');
+    await forEachRowBatch(dataset.id, part, async (batch) => {
+      const chunk = batch.map((d) => columns.map((c) => csvCell(d[c])).join(',')).join('\r\n') + '\r\n';
+      if (!res.write(chunk)) await new Promise((r) => res.once('drain', r));
+    });
+    res.end();
+    return true;
+  }
+
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="${baseName}.xlsx"`);
+  // Regular (in-memory) Workbook, not ExcelJS.stream.xlsx.WorkbookWriter:
+  // the streaming writer in the exceljs 3.x pinned in package.json writes
+  // zip entries Excel/openpyxl reject as corrupt. Multi-file datasets in
+  // CMA-Flow are small enough (evaluation templates, owner uploads) that
+  // building the workbook in memory first is fine.
+  const workbook = new ExcelJS.Workbook();
+  const used = new Set();
+  for (const part of parts) {
+    const columns = await columnsForPart(dataset.id, part);
+    const sheet = workbook.addWorksheet(sheetNameFor(part, used));
+    sheet.addRow(columns);
+    await forEachRowBatch(dataset.id, part, async (batch) => {
+      batch.forEach((d) => sheet.addRow(columns.map((c) => {
+        const v = d[c];
+        if (v === null || v === undefined) return null;
+        return typeof v === 'object' ? JSON.stringify(v) : v;
+      })));
+    });
+  }
+  await workbook.xlsx.write(res);
+  res.end();
+  return true;
+}
+
+module.exports = { listAllDatasets, getDatasetForAdmin, deleteDataset, streamDatasetDownload };

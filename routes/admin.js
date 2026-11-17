@@ -45,7 +45,7 @@ const {
   listAllBusinessOwnerEvaluationStatuses, getCompletedBusinessOwnerResponseSummary, getModuleVisits,
   listAllSmeTamEvaluationStatuses, getCompletedSmeTamResponseSummary,
 } = require('../services/tamEvaluation');
-const { listAllDatasets, getDatasetForAdmin, deleteDataset } = require('../services/adminDatasets');
+const { listAllDatasets, getDatasetForAdmin, deleteDataset, streamDatasetDownload } = require('../services/adminDatasets');
 const { getActivityReport, buildCsv, getDeclaredRolesExport, buildDeclaredRolesCsv } = require('../services/smeTamActivity');
 const { listAllDecisionFollowups, buildDecisionsCsv } = require('../services/smeTamDecisions');
 const { buildCategorySummary, statusByAccount, buildDecisionMakerSummary } = require('../services/smeTamCategorySummary');
@@ -803,6 +803,7 @@ router.get('/admin/datasets', async (req, res, next) => {
       datasets,
       q,
       deleted: req.query.deleted || null,
+      empty: req.query.empty || null,
     });
   } catch (err) {
     next(err);
@@ -830,6 +831,7 @@ router.get('/admin/expert-datasets', async (req, res, next) => {
       datasets,
       q,
       deleted: req.query.deleted || null,
+      empty: req.query.empty || null,
       basePath: '/admin/expert-datasets',
       ownerLabel: 'Template Evaluator',
     });
@@ -856,6 +858,7 @@ router.get('/admin/business-owner-datasets', async (req, res, next) => {
       datasets,
       q,
       deleted: req.query.deleted || null,
+      empty: req.query.empty || null,
       basePath: '/admin/business-owner-datasets',
       ownerLabel: 'Business Owner Evaluator',
     });
@@ -881,6 +884,7 @@ router.get('/admin/sme-tam-datasets', async (req, res, next) => {
       datasets,
       q,
       deleted: req.query.deleted || null,
+      empty: req.query.empty || null,
       basePath: '/admin/sme-tam-datasets',
       ownerLabel: 'SME Owner-TAM Evaluator',
     });
@@ -976,6 +980,28 @@ router.get('/admin/datasets/:id/erd', async (req, res, next) => {
       backLabel: label,
     });
   } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------
+// GET /admin/datasets/:id/download — downloads one owner's dataset
+// (added 17 November 2026; see services/adminDatasets.js's
+// streamDatasetDownload()). A single-file dataset comes down as .csv, a
+// multi-file one as an .xlsx workbook with one sheet per file. Read-only:
+// nothing about the dataset or its analytics changes.
+// ------------------------------------------------------------------
+router.get('/admin/datasets/:id/download', async (req, res, next) => {
+  try {
+    const dataset = await getDatasetForAdmin(req.params.id);
+    if (!dataset) return res.status(404).render('errors/404', { title: 'Not found', layout: false });
+    const sent = await streamDatasetDownload(dataset, res);
+    if (!sent) {
+      const { listPath } = datasetsSectionFor(dataset.owner_role);
+      return res.redirect(`${listPath}?empty=${encodeURIComponent(dataset.dataset_name)}`);
+    }
+  } catch (err) {
+    if (res.headersSent) { console.error('Dataset download failed mid-stream:', err); return res.end(); }
     next(err);
   }
 });

@@ -1,7 +1,11 @@
 <% var basePath = typeof basePath !== 'undefined' ? basePath : '/admin/datasets'; %>
 <% var ownerLabel = typeof ownerLabel !== 'undefined' ? ownerLabel : 'SME owner'; %>
 <div class="page-title">🗂️ <span class="page-title-text"><%= title %></span></div>
-<p class="page-subtitle">Every dataset uploaded by every <%= ownerLabel %> account, grouped by owner (A–Z) with each owner's most recently uploaded dataset first. View analytics opens it read-only in the four analytics pages; ERD shows its entity-relationship diagram; Delete removes it and everything computed from it.</p>
+<p class="page-subtitle">Every dataset uploaded by every <%= ownerLabel %> account, grouped by owner (A–Z) with each owner's most recently uploaded dataset first. View analytics opens it read-only in the four analytics pages; ERD shows its entity-relationship diagram; Download saves its data (.csv for a single-file dataset, .xlsx with one sheet per file otherwise); Delete removes it and everything computed from it.</p>
+
+<% if (typeof empty !== 'undefined' && empty) { %>
+  <div class="alert-success" style="background:#fdecea;color:#8a1f11;border-color:#f5c2bd;">Nothing to download — <strong><%= empty %></strong> has no rows.</div>
+<% } %>
 
 <% if (deleted) { %>
   <div class="alert-success">Deleted <strong><%= deleted %></strong>.</div>
@@ -52,6 +56,7 @@
             <td style="text-align: right; white-space: nowrap;">
               <a class="btn btn-ghost btn-sm" href="/admin/datasets/<%= d.id %>/view">View analytics</a>
               <a class="btn btn-ghost btn-sm" href="/admin/datasets/<%= d.id %>/erd">🗺️ ERD</a>
+              <a class="btn btn-ghost btn-sm" href="/admin/datasets/<%= d.id %>/download" download title="<%= d.file_count > 1 ? 'Download as .xlsx (one sheet per file)' : 'Download as .csv' %>">⬇️ Download</a>
               <a class="btn btn-ghost btn-sm" href="/admin/datasets/<%= d.id %>/delete">Delete</a>
             </td>
           </tr>
